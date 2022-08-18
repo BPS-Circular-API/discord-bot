@@ -1,8 +1,8 @@
-import configparser, discord, sqlite3, logging
+import configparser, discord, logging, requests
 from discord.ext import commands
 
 bot_version = "0.1.0"
-intents = discord.Intents.all()
+intents = discord.Intents.none()
 prefix = "!"
 
 # Loading config.ini
@@ -18,6 +18,13 @@ except Exception as e:
 try:
     discord_token: str = config.get('secret', 'discord-token')
     log_level: str = config.get('main', 'log-level')
+
+    embed_footer: str = config.get('discord', 'embed_footer')
+    embed_color: int = int(config.get('discord', 'embed_color'), base=16)
+    embed_title: str = config.get('discord', 'embed_title')
+
+
+
 except Exception as err:
     print("Error reading the config.ini file. Error: " + str(err))
     exit()
@@ -43,14 +50,29 @@ def colorlogger(name='moonball'):
 
 log = colorlogger()
 
-
+"""
 try:
     con = sqlite3.connect('./data/data.db')
 except Exception as err:
     log.error("Error: Could not connect to data.db." + str(err))
     exit(1)
-# noinspection PyUnboundLocalVariable
 cur = con.cursor()
-
+"""
 client = commands.Bot(command_prefix=prefix, intents=intents, help_command=None, case_insensitive=True)  # Setting prefix
+
+
+
+async def get_circular_list(category: str, receive: str = "all") -> list | None:
+    url = "https://raj.moonball.io/bpsapi/v1/list/"
+    if not category in ["ptm", "general", "exam"]:
+        return None
+    if not receive in ["all", "links", "titles"]:
+        return None
+
+    payload = {'category': category, "receive": receive}
+
+    request = requests.get(url, json=payload)
+    info = request.json()
+    log.debug(info)
+    return info
 
