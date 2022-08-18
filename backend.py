@@ -4,7 +4,8 @@ from discord.ext import commands
 bot_version = "0.1.0"
 intents = discord.Intents.none()
 prefix = "!"
-
+categories = ["ptm", "general", "exam"]
+receives = ["all", "links", "titles"]
 # Loading config.ini
 config = configparser.ConfigParser()
 
