@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives
+from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_latest_circular
 
 category_options = []
 for i in categories:
@@ -61,10 +61,18 @@ class Commands(commands.Cog):
         # split the output into chunks of 2000 characters
         if len(output) > 1999:
             # split the output into chunks of 2000 characters
-            n = 2000
-            output = [output[i:i + n] for i in range(0, len(output), n)]
-            print(output)
-            for i in output:
+            output = output.split('\n')
+
+            n = 1999
+
+            final_list = ['']
+            for out in output:
+                if len(final_list[-1] + out) <= n:
+                    final_list[-1] += '\n' + out
+                else:
+                    final_list.append(out)
+
+            for i in final_list:
                 await ctx.send(i)
         else:
             await ctx.send(output)
@@ -72,9 +80,27 @@ class Commands(commands.Cog):
 
     @commands.slash_command()
     async def latest(self, ctx, category: discord.Option(choices=category_options), receive: discord.Option(choices=receive_options)):
-        raw_res = await get_circular_list(category, "latest")
+        raw_res = await get_latest_circular(category)
+        print(raw_res)
+        title = raw_res['title']
+        link = raw_res['link']
+        embed = discord.Embed(title=title, url="https://raj.moonball.io/bpsapi/docs", description=f"Here is the latest circular from category {category.capitalize()}", color=embed_color)
+        embed.set_author(name=embed_title)
+        link = link.split(':')
+        link = f"{link[0]}:{link[1]}"
 
-        titles, unprocessed_links, links = [], [], []
+        if receive == "all":
+            embed.add_field(name="Title", value=title, inline=False)
+            embed.add_field(name="Download URL", value=link, inline=False)
+        elif receive == "titles":
+            embed.add_field(name="Title", value=title, inline=False)
+        elif receive == "links":
+            embed.add_field(name="Download URL", value=link, inline=False)
+
+        embed.set_footer(text=embed_footer)
+        await ctx.respond(embed=embed)
+
+
 
 def setup(client):
     client.add_cog(Commands(client))

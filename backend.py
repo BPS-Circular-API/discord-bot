@@ -77,3 +77,15 @@ async def get_circular_list(category: str, receive: str = "all") -> list | None:
     log.debug(info)
     return info
 
+
+async def get_latest_circular(category: str) -> dict | None:
+    url = "https://raj.moonball.io/bpsapi/v1/latest/"
+    if not category in ["ptm", "general", "exam"]:
+        return None
+
+    payload = {'category': category}
+
+    request = requests.get(url, json=payload)
+    info = request.json()
+    log.debug(info)
+    return info
