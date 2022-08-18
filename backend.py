@@ -89,3 +89,15 @@ async def get_latest_circular(category: str) -> dict | None:
     info = request.json()
     log.debug(info)
     return info
+
+async def search_circular(circular_name: str) -> dict | None:
+    url = "https://raj.moonball.io/bpsapi/v1/search/"
+    if not circular_name:
+        return None
+
+    payload = {'title': circular_name}
+
+    request = requests.get(url, json=payload)
+    info = request.json()
+    log.debug(info)
+    return info
