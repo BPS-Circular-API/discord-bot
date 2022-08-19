@@ -19,6 +19,7 @@ except Exception as e:
 try:
     discord_token: str = config.get('secret', 'discord-token')
     log_level: str = config.get('main', 'log-level')
+    owner_ids: list = config.get('main', 'owner-ids').strip().split(',')
 
     embed_footer: str = config.get('discord', 'embed_footer')
     embed_color: int = int(config.get('discord', 'embed_color'), base=16)
@@ -29,6 +30,7 @@ try:
 except Exception as err:
     print("Error reading the config.ini file. Error: " + str(err))
     exit()
+
 
 # Initializing the logger
 def colorlogger(name='moonball'):
@@ -51,6 +53,10 @@ def colorlogger(name='moonball'):
 
 log = colorlogger()
 
+
+owner_ids = [int(i) for i in owner_ids]
+log.debug(str(owner_ids))
+
 """
 try:
     con = sqlite3.connect('./data/data.db')
@@ -64,7 +70,7 @@ client = commands.Bot(command_prefix=prefix, intents=intents, help_command=None,
 
 
 async def get_circular_list(category: str, receive: str = "all") -> list | None:
-    url = "https://raj.moonball.io/bpsapi/v1/list/"
+    url = "https://bpsapi.rajtech.me/v1/list/"
     if not category in ["ptm", "general", "exam"]:
         return None
     if not receive in ["all", "links", "titles"]:
@@ -79,7 +85,7 @@ async def get_circular_list(category: str, receive: str = "all") -> list | None:
 
 
 async def get_latest_circular(category: str) -> dict | None:
-    url = "https://raj.moonball.io/bpsapi/v1/latest/"
+    url = "https://bpsapi.rajtech.me/v1/latest/"
     if not category in ["ptm", "general", "exam"]:
         return None
 
@@ -90,12 +96,28 @@ async def get_latest_circular(category: str) -> dict | None:
     log.debug(info)
     return info
 
+
+
 async def search_circular(circular_name: str) -> dict | None:
-    url = "https://raj.moonball.io/bpsapi/v1/search/"
+    url = "https://bpsapi.rajtech.me/v1/search/"
     if not circular_name:
         return None
 
     payload = {'title': circular_name}
+
+    request = requests.get(url, json=payload)
+    info = request.json()
+    log.debug(info)
+    return info
+
+
+
+async def get_latest_circular_cached(category: str) -> dict | None:
+    url = "https://bpsapi.rajtech.me/v1/cached-latest/"
+    if not category in ["ptm", "general", "exam"]:
+        return None
+
+    payload = {'category': category}
 
     request = requests.get(url, json=payload)
     info = request.json()

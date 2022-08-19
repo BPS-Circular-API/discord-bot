@@ -1,3 +1,5 @@
+import sqlite3
+
 import discord
 from discord.ext import commands
 from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_latest_circular, search_circular
@@ -8,19 +10,19 @@ for i in categories:
     category_options.append(discord.OptionChoice(i.capitalize().strip(), value=i.strip().lower()))
 del categories
 
+
 receive_options = []
 for i in receives:
     receive_options.append(discord.OptionChoice(i.capitalize().strip(), value=i.strip().lower()))
 del receives
 
 
-# create slash command group
-circular = SlashCommandGroup("circular", "Circular related commands.")
-admin = circular.create_subgroup("admin", "Admin commands for the bot")
 
 
 class Commands(commands.Cog):
     def __init__(self, client):
+        self.con = sqlite3.connect('./data/data.db')
+        self.cur = self.con.cursor()
         self.client = client
 
 
@@ -28,7 +30,9 @@ class Commands(commands.Cog):
     async def on_ready(self):
         log.info("Cog : Commands.py loaded.")
 
-
+    # create slash command group
+    circular = SlashCommandGroup("circular", "Circular related commands.")
+    admin = circular.create_subgroup("admin", "Admin commands for the bot")
 
     @circular.command(name='list', description='List all circulars in a particular category.')
     async def list(self, ctx, category: discord.Option(choices=category_options), receive: discord.Option(choices=receive_options)):
@@ -91,16 +95,16 @@ class Commands(commands.Cog):
         raw_res = await get_latest_circular(category)
         title = raw_res['title']
         link = raw_res['link']
-        embed = discord.Embed(title=title, url="https://raj.moonball.io/bpsapi/docs", description=f"Here is the latest circular from category `{category.capitalize()}`", color=embed_color)
+        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", url="https://raj.moonball.io/bpsapi/docs", color=embed_color)
         embed.set_author(name=embed_title)
         link = link.split(':')
         link = f"{link[0]}:{link[1]}"
 
         if receive == "all":
-            embed.add_field(name="Title", value=title, inline=False)
+            embed.add_field(name="Title", value=f"`{title}`", inline=False)
             embed.add_field(name="Download URL", value=link, inline=False)
         elif receive == "titles":
-            embed.add_field(name="Title", value=title, inline=False)
+            embed.add_field(name="Title", value=f"`{title}`", inline=False)
         elif receive == "links":
             embed.add_field(name="Download URL", value=link, inline=False)
 
@@ -113,7 +117,7 @@ class Commands(commands.Cog):
     async def search(self, ctx, circular_title: str):
         await ctx.defer()
         raw_res = await search_circular(circular_title.strip())
-        embed = discord.Embed(title="Circular Search", url="https://raj.moonball.io/bpsapi/docs", description=f"Here is the result searching for that circular! Keep in mind you need to input the exact name!", color=embed_color)
+        embed = discord.Embed(title="Circular Search", url="https://raj.moonball.io/bpsapi/docs", color=embed_color)
         embed.set_author(name=embed_title)
         embed.set_footer(text=embed_footer)
         if raw_res:
@@ -123,6 +127,23 @@ class Commands(commands.Cog):
             embed.add_field(name="Title", value=f"`{circular_title}`", inline=False)
             embed.add_field(name="Download URL", value="No result found", inline=False)
         await ctx.followup.send(embed=embed)
+
+    # Admin commands
+    @admin.command(name="setup", description="Sets up the bot for the first time.")
+    async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
+        await ctx.defer()
+        guild = ctx.guild
+        if message:
+            message = message.replace("<", "").replace(">", "").replace('"', "") # Remove the <> and " from the message
+
+        if not message:
+            self.cur.execute(f"INSERT INTO notify (guild_id, channel_id) VALUES ({guild.id}, {channel.id});")
+        else:
+            self.cur.execute(f'INSERT INTO notify (guild_id, channel_id, message) VALUES ({guild.id}, {channel.id}, "{message}");')
+
+        self.con.commit()
+        await ctx.followup.send("Done!")
+
 
 
 
