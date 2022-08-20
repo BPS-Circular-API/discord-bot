@@ -43,7 +43,7 @@ class Commands(commands.Cog):
         # Loop through the raw API output
         for item in raw_res:
             titles.append(f"**{loop_int}**. `{item['title']}`")  # Add the title to the list
-            unprocessed_links.append(f"**{loop_int}**. {item['link']}") # Add the link to the list
+            unprocessed_links.append(f"{item['link']}") # Add the link to the list
             loop_int += 1
 
         # Remove the redundant download url parameter after ?download=xxxx
@@ -53,38 +53,20 @@ class Commands(commands.Cog):
             links.append(link)
 
         del unprocessed_links
-
-        title_string = "\n".join(titles)
-        link_string = "\n".join(links)
+        embed = discord.Embed(title=f"Here is the result getting the `{category.capitalize()}` circulars!", color=embed_color)
+        embed.set_footer(text=embed_footer)
+        embed.set_author(name=embed_title)
 
         if receive == "all":
-            output = f"Here is the result getting the {category.capitalize()} circulars!\n\n> **Titles** \n{title_string}\n\n> **Download URLs**\n{link_string}"
+            for title, link in zip(titles, links):
+                embed.add_field(name=title, value=link, inline=False)
         elif receive == "titles":
-            output = f"Here is the result getting the {category.capitalize()} circular titles!\n\n> **Titles** \n{title_string}"
+            for title in titles:
+                embed.add_field(name=title, value="\u200b", inline=False)
         elif receive == "links":
-            output = f"Here is the result getting the {category.capitalize()} circular download links!\n\n> **Download URLs**\n{link_string}"
-        else:
-            output = ""
-
-        # split the output into chunks of 2000 characters
-        if len(output) > 1999:
-            # split the output into chunks of 2000 characters
-            output = output.split('\n')
-
-            n = 1999    # The total number of characters in each chunk
-
-            final_list = ['']
-            for out in output:
-                if len(final_list[-1] + out) <= n:  # If the current chunk + the next chunk is less than 2000 characters
-                    final_list[-1] += '\n' + out    # Add the next chunk to the current chunk
-                else:
-                    final_list.append(out)       # If the current chunk + the next chunk is greater than 2000 characters, add the next chunk to the list
-
-            for i in final_list:
-                await ctx.followup.send(i)
-        else:
-            await ctx.followup.send(output)
-
+            for link in links:
+                embed.add_field(name="\u200b", value=link, inline=False)
+        await ctx.followup.send(embed=embed)
 
 
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
