@@ -1,6 +1,5 @@
 import discord, os
-from discord.ext import commands
-from backend import client, discord_token, log, get_circular_list
+from backend import client, discord_token, log
 
 @client.event
 async def on_ready():

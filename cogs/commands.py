@@ -1,6 +1,4 @@
-import sqlite3
-
-import discord
+import sqlite3, discord
 from discord.ext import commands
 from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_latest_circular, search_circular
 from discord import SlashCommandGroup

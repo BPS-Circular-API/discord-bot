@@ -40,7 +40,7 @@ class Owners(commands.Cog):
         else:
             embed = discord.Embed(title="Execute SQL", description="**Success!**\nResults found.", color=embed_color).set_footer(text=embed_footer).set_author(name=embed_title)
             for i in res:
-                embed.add_field(name=str(i[0]), value=str(i[1]), inline=False)
+                embed.add_field(name=str(i), value=str(i), inline=False)
         self.con.commit()
         self.con.close()
         await ctx.followup.send(embed=embed, ephemeral=True)
