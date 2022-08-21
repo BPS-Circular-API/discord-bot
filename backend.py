@@ -24,6 +24,7 @@ try:
     embed_footer: str = config.get('discord', 'embed_footer')
     embed_color: int = int(config.get('discord', 'embed_color'), base=16)
     embed_title: str = config.get('discord', 'embed_title')
+    embed_url: str = config.get('discord', 'embed_url')
 
 
 

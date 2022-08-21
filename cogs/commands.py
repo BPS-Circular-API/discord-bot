@@ -70,34 +70,30 @@ class Commands(commands.Cog):
 
 
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
-    async def latest(self, ctx, category: discord.Option(choices=category_options), receive: discord.Option(choices=receive_options)):
+    async def latest(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
         raw_res = await get_latest_circular(category)
         title = raw_res['title']
         link = raw_res['link']
-        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", url="https://raj.moonball.io/bpsapi/docs", color=embed_color)
+        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color)
         embed.set_author(name=embed_title)
         link = link.split(':')
         link = f"{link[0]}:{link[1]}"
 
-        if receive == "all":
-            embed.add_field(name="Title", value=f"`{title}`", inline=False)
-            embed.add_field(name="Download URL", value=link, inline=False)
-        elif receive == "titles":
-            embed.add_field(name="Title", value=f"`{title}`", inline=False)
-        elif receive == "links":
-            embed.add_field(name="Download URL", value=link, inline=False)
+
+        embed.add_field(name="Title", value=f"`{title}`", inline=False)
+        embed.add_field(name="Download URL", value=link, inline=False)
+
 
         embed.set_footer(text=embed_footer)
         await ctx.followup.send(embed=embed)
 
-
-
+    
     @circular.command(name="search", description="Searches for a particular circular in a particular category.")
     async def search(self, ctx, circular_title: str):
         await ctx.defer()
         raw_res = await search_circular(circular_title.strip())
-        embed = discord.Embed(title="Circular Search", url="https://raj.moonball.io/bpsapi/docs", color=embed_color)
+        embed = discord.Embed(title="Circular Search", color=embed_color)
         embed.set_author(name=embed_title)
         embed.set_footer(text=embed_footer)
         if raw_res:
@@ -108,9 +104,11 @@ class Commands(commands.Cog):
             embed.add_field(name="Download URL", value="No result found", inline=False)
         await ctx.followup.send(embed=embed)
 
+    """
     # Admin commands
     @admin.command(name="setup", description="Sets up the bot for the first time.")
     async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
+        
         await ctx.defer()
         guild = ctx.guild
         if message:
@@ -122,9 +120,22 @@ class Commands(commands.Cog):
             self.cur.execute(f'INSERT INTO notify (guild_id, channel_id, message) VALUES ({guild.id}, {channel.id}, "{message}");')
 
         self.con.commit()
-        await ctx.followup.send("Done!")
+        
+        await ctx.followup.send("Coming Soon!")
+    """
 
-
+    @circular.command(name="help", description="Shows the help message for the circular commands.")
+    async def help(self, ctx):
+        embed = discord.Embed(title="Circular Commands", description="Here is the list of commands for the circulars.", color=embed_color)
+        embed.set_author(name=embed_title)
+        embed.set_footer(text=embed_footer)
+        embed.add_field(name="/circular list", value="List all circulars in a particular category.", inline=False)
+        embed.add_field(name="/circular latest", value="Sends the latest circular, the download URL and a the preview of a particular category.", inline=False)
+        embed.add_field(name="/circular search", value="Searches for the given circular's exact name and returns download URL ", inline=False)
+        embed.add_field(name="/circular help", value="Shows the help message for the circular commands.", inline=False)
+        await ctx.followup.send(embed=embed)
+        # add embed image
+        embed.set_image(url="https://i.imgur.com/qXQQQQQ.png")
 
 
 def setup(client):

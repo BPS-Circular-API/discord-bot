@@ -19,6 +19,26 @@ class Listeners(commands.Cog):
         self.check_for_circular.start()
 
 
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        log.info(f"I just joined a server: {guild.id}")
+        embed = discord.Embed(title=f"Thanks for adding me!", description=f"Here's the command guide! An admin can ", color=embed_color)
+        embed.add_field(name="Command Guide", value=f"All the commands start with `/circular`, they're slash commands. ", inline=False)
+        embed.set_footer(text=embed_footer)
+        embed.set_author(name=embed_title)
+        # find the first channel in the guild and send to it
+        channels = guild.text_channels
+        log.debug(channels)
+        for channel in channels:
+            log.debug(channel)
+            try:
+                await self.client.get_channel(channel[0]).send(embed=embed)
+                break
+            except discord.Forbidden:
+                pass
+
+
+
     @commands.slash_command()
     async def testnotify(self, ctx):
         self.new_circular_cat = "general"
@@ -33,8 +53,8 @@ class Listeners(commands.Cog):
             latest = await get_latest_circular_cached(cat)
             self.cached_latest[cat] = latest
 
-        log.debug(self.cached_latest)
-        log.debug(self.old_cached_latest)
+        log.debug(f"Current cached", self.cached_latest)
+        log.debug(f"old cached", self.old_cached_latest)
         if self.cached_latest != self.old_cached_latest:
             log.info("new circular")
             # check which category has new circular
