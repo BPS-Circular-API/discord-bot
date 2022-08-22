@@ -1,5 +1,11 @@
+import asyncio
 import configparser, discord, logging, requests
+# from rank_bm25 import BM25Okapi
+import os
+
 from discord.ext import commands
+import pypdfium2 as pdfium
+
 
 bot_version = "0.1.0"
 intents = discord.Intents.none()
@@ -99,7 +105,7 @@ async def get_latest_circular(category: str) -> dict | None:
 
 
 
-async def search_circular(circular_name: str) -> dict | None:
+async def get_circular_url(circular_name: str) -> dict | None:
     url = "https://bpsapi.rajtech.me/v1/search/"
     if not circular_name:
         return None
@@ -119,6 +125,45 @@ async def get_latest_circular_cached(category: str) -> dict | None:
         return None
 
     payload = {'category': category}
+
+    request = requests.get(url, json=payload)
+    info = request.json()
+    log.debug(info)
+    return info
+
+
+async def get_png(download_url, file_name: str):
+    windows_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36'}
+    pdf_file = requests.get(download_url, headers=windows_headers)
+
+    with open(f"./{file_name}.pdf", "wb") as f:
+        f.write(pdf_file.content)
+
+    pdf = pdfium.PdfDocument(f"./{file_name}.pdf")
+    page = pdf[0]
+    pil_image = page.render_topil(
+        scale=2,
+        rotation=0,
+        crop=(0, 0, 0, 0),
+        colour=(255, 255, 255, 255),
+        annotations=True,
+        greyscale=False,
+        optimise_mode=pdfium.OptimiseMode.NONE,
+    )
+    pil_image.save(f"./{file_name}.png")
+    os.remove(f"./{file_name}.pdf")
+
+    return f"./{file_name}.png"
+
+
+
+
+async def search(title):
+    url = "https://bpsapi.rajtech.me/v1/search/"
+    if not title:
+        return None
+
+    payload = {'title': title}
 
     request = requests.get(url, json=payload)
     info = request.json()

@@ -1,6 +1,7 @@
+import os
 import sqlite3, discord
 from discord.ext import commands
-from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_latest_circular, search_circular
+from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_latest_circular, get_png, search
 from discord import SlashCommandGroup
 
 category_options = []
@@ -83,26 +84,38 @@ class Commands(commands.Cog):
 
         embed.add_field(name="Title", value=f"`{title}`", inline=False)
         embed.add_field(name="Download URL", value=link, inline=False)
-
-
         embed.set_footer(text=embed_footer)
-        await ctx.followup.send(embed=embed)
 
-    
+        await get_png(link, title)
+
+        file = discord.File(f"./{title}.png", filename="image.png")
+        embed.set_image(url="attachment://image.png")
+        await ctx.followup.send(embed=embed, file=file)
+        os.remove(f"./{title}.png")
+
+
     @circular.command(name="search", description="Searches for a particular circular in a particular category.")
     async def search(self, ctx, circular_title: str):
         await ctx.defer()
-        raw_res = await search_circular(circular_title.strip())
+        searched = await search(circular_title)
+        title = searched[0]
+        link = searched[1]
         embed = discord.Embed(title="Circular Search", color=embed_color)
         embed.set_author(name=embed_title)
         embed.set_footer(text=embed_footer)
-        if raw_res:
-            embed.add_field(name="Title", value=f"`{circular_title}`", inline=False)
-            embed.add_field(name="Download URL", value=str(raw_res), inline=False)
-        else:
-            embed.add_field(name="Title", value=f"`{circular_title}`", inline=False)
-            embed.add_field(name="Download URL", value="No result found", inline=False)
-        await ctx.followup.send(embed=embed)
+        embed.add_field(name="Title", value=f"`{title}`", inline=False)
+        embed.add_field(name="Download URL", value=link, inline=False)
+
+        print(searched)
+    
+        await get_png(link, title)
+
+        file = discord.File(f"./{title}.png", filename="image.png")
+        embed.set_image(url="attachment://image.png")
+        await ctx.followup.send(embed=embed, file=file)
+
+
+
 
     """
     # Admin commands
@@ -136,6 +149,7 @@ class Commands(commands.Cog):
         await ctx.followup.send(embed=embed)
         # add embed image
         embed.set_image(url="https://i.imgur.com/qXQQQQQ.png")
+
 
 
 def setup(client):
