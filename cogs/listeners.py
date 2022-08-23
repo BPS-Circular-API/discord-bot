@@ -56,9 +56,8 @@ class Listeners(commands.Cog):
 
         for cat in categories:
             self.cached_latest[cat] = await get_latest_circular_cached(cat)
-        self.cached_latest['general'] = {'title': "potatooo", 'link': 'https://bpsdoha.com/circular/category/38-circular-ay-2022-23?download=1113:19th-founders-day-celebrations-2022-23'}
         if self.cached_latest != self.old_cached_latest:
-            log.info("new circular")
+            log.info("There's a new circular posted!")
             # check which category has new circular
             for cat in categories:
                 if self.cached_latest[cat] != self.old_cached_latest[cat]:
