@@ -8,6 +8,7 @@ import pypdfium2 as pdfium
 
 
 bot_version = "0.1.0"
+# indents for guilds and channels
 intents = discord.Intents.none()
 prefix = "!"
 categories = ["ptm", "general", "exam"]
