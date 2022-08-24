@@ -34,7 +34,7 @@ class Commands(commands.Cog):
     admin = circular.create_subgroup("admin", "Admin commands for the bot")
 
     @circular.command(name='list', description='List all circulars in a particular category.')
-    async def list(self, ctx, category: discord.Option(choices=category_options), receive: discord.Option(choices=receive_options)):
+    async def list(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
         raw_res = await get_circular_list(category, "all")
 
@@ -58,15 +58,10 @@ class Commands(commands.Cog):
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
 
-        if receive == "all":
-            for title, link in zip(titles, links):
-                embed.add_field(name=title, value=link, inline=False)
-        elif receive == "titles":
-            for title in titles:
-                embed.add_field(name=title, value="\u200b", inline=False)
-        elif receive == "links":
-            for link in links:
-                embed.add_field(name="\u200b", value=link, inline=False)
+
+        for title, link in zip(titles, links):
+            embed.add_field(name=title, value=link, inline=False)
+
         await ctx.followup.send(embed=embed)
 
 
