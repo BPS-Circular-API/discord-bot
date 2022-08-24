@@ -39,31 +39,23 @@ class Listeners(commands.Cog):
 
 
 
-    @commands.slash_command()
-    async def testnotify(self, ctx):
-        self.new_circular_cat = "general"
-        await self.check_for_circular()
-
-
     @tasks.loop(seconds=3600)
     async def check_for_circular(self):
         categories = ["ptm", "general", "exam"]
-        if self.old_cached_latest == {}:
-            for cat in categories:
-                self.old_cached_latest[cat] = await get_latest_circular_cached(cat)
-        else:
+        if self.old_cached_latest == {}:    # If the bot just started and there is no older cached
+            self.old_cached_latest = await get_latest_circular_cached("all")
+        else:   # If cached exists
             self.old_cached_latest = self.cached_latest
 
-        for cat in categories:
-            self.cached_latest[cat] = await get_latest_circular_cached(cat)
-        if self.cached_latest != self.old_cached_latest:
+
+        self.cached_latest = await get_latest_circular_cached("all")
+        if self.cached_latest != self.old_cached_latest:    # If the cached circular list is different from the current one
             log.info("There's a new circular posted!")
-            # check which category has new circular
-            for cat in categories:
+            for cat in categories:  # Check which category has a new circular
                 if self.cached_latest[cat] != self.old_cached_latest[cat]:
                     log.info(f"{cat} has new circular")
                     self.new_circular_cat = cat # Let's just HOPE that they will not upload multiple circulars to multiple categories within an hour
-            await self.notify()
+            await self.notify() # notify each server
 
 
 

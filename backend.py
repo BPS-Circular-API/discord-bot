@@ -1,7 +1,4 @@
-import asyncio
-import configparser, discord, logging, requests
-# from rank_bm25 import BM25Okapi
-import os
+import configparser, discord, logging, requests, os
 
 from discord.ext import commands
 import pypdfium2 as pdfium
@@ -33,11 +30,10 @@ try:
     embed_title: str = config.get('discord', 'embed_title')
     embed_url: str = config.get('discord', 'embed_url')
 
-
-
 except Exception as err:
     print("Error reading the config.ini file. Error: " + str(err))
     exit()
+
 
 
 # Initializing the logger
@@ -65,14 +61,6 @@ log = colorlogger()
 owner_ids = [int(i) for i in owner_ids]
 log.debug(str(owner_ids))
 
-"""
-try:
-    con = sqlite3.connect('./data/data.db')
-except Exception as err:
-    log.error("Error: Could not connect to data.db." + str(err))
-    exit(1)
-cur = con.cursor()
-"""
 client = commands.Bot(command_prefix=prefix, intents=intents, help_command=None, case_insensitive=True)  # Setting prefix
 
 
@@ -122,13 +110,22 @@ async def get_circular_url(circular_name: str) -> dict | None:
 
 async def get_latest_circular_cached(category: str) -> dict | None:
     url = "https://bpsapi.rajtech.me/v1/cached-latest/"
-    if not category in ["ptm", "general", "exam"]:
+    if not category in ["ptm", "general", "exam", "all"]:
         return None
 
-    payload = {'category': category}
 
-    request = requests.get(url, json=payload)
-    info = request.json()
+    if category == "all":
+        info = {}
+        for i in categories:
+            payload = {'category': i}
+            request = requests.get(url, json=payload)
+            res = request.json()
+            info[i] = res
+    else:
+        payload = {'category': category}
+        request = requests.get(url, json=payload)
+        info = request.json()
+
     log.debug(info)
     return info
 
