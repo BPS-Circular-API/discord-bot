@@ -117,38 +117,73 @@ class Commands(commands.Cog):
 
 
 
-    """
+
     # Admin commands
-    @admin.command(name="setup", description="Sets up the bot for the first time.")
+    @admin.command(name="setup", description="Set up the bot to notify the user when a circular is available in a channel.")
     async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
-        
         await ctx.defer()
-        guild = ctx.guild
+        log.debug(f"Got a server setup request from {ctx.author.name}")
+        self.cur.execute(f"SELECT * FROM notify WHERE guild_id = {ctx.guild.id}")   # Check if the guild is already in the database
+        res = self.cur.fetchone()
+
+        if res:
+            log.debug(res)
+            e_embed = discord.Embed(title="Server Setup", description=f"The server has an already existing reminder configuration!", color=embed_color)
+            e_embed.set_author(name=embed_title)
+            e_embed.set_footer(text=embed_footer)
+            e_embed.add_field(name="Channel", value=f"`{res[1]}`", inline=False)
+            e_embed.add_field(name="Message", value=f"`{res[2]}`", inline=True)
+            e_embed.add_field(name="To delete!", value=f"Use `/circular admin delete` to delete this existing configuration!", inline=False)
+            await ctx.followup.send(embed=e_embed)
+            return
+
         if message:
             message = message.replace("<", "").replace(">", "").replace('"', "") # Remove the <> and " from the message
-
-        if not message:
-            self.cur.execute(f"INSERT INTO notify (guild_id, channel_id) VALUES ({guild.id}, {channel.id});")
+            self.cur.execute(f'INSERT INTO notify (guild_id, channel_id, message) VALUES ({ctx.guild.id}, {channel.id}, "{message}");')
         else:
-            self.cur.execute(f'INSERT INTO notify (guild_id, channel_id, message) VALUES ({guild.id}, {channel.id}, "{message}");')
-
+            self.cur.execute(f"INSERT INTO notify (guild_id, channel_id) VALUES ({ctx.guild.id}, {channel.id});")
         self.con.commit()
-        
-        await ctx.followup.send("Coming Soon!")
-    """
+        c_embed = discord.Embed(title="Success!", description="The reminder configuration for this server has successfully been added!", color=embed_color)
+        c_embed.set_author(name=embed_title)
+        c_embed.set_footer(text=embed_footer)
+        c_embed.add_field(name="Channel", value=f"{channel.mention}", inline=False)
+        if message:
+            c_embed.add_field(name="Message", value=f"`{message}`", inline=False)
+        await ctx.followup.send(embed=c_embed)
+
+
+
+
+    @admin.command(name="delete", description="Delete the server's circular reminder configuration.")
+    async def delete(self, ctx):
+        await ctx.defer()
+        self.cur.execute(f"SELECT * FROM notify WHERE guild_id = {ctx.guild.id}")
+        res = self.cur.fetchone()
+        if not res:
+            e_embed = discord.Embed(title="Server Setup", description=f"The server has no reminder configuration!", color=embed_color)
+            e_embed.set_author(name=embed_title)
+            e_embed.set_footer(text=embed_footer)
+            await ctx.followup.send(embed=e_embed)
+            return
+        self.cur.execute(f"DELETE FROM notify WHERE guild_id = {ctx.guild.id}")
+        self.con.commit()
+        d_embed = discord.Embed(title="Success!", description="The bot has successfully been set up to remind, in this server.", color=embed_color)
+        d_embed.set_author(name=embed_title)
+        d_embed.set_footer(text=embed_footer)
+        await ctx.followup.send(embed=d_embed)
+
 
     @circular.command(name="help", description="Shows the help message for the circular commands.")
     async def help(self, ctx):
+        await ctx.defer()
         embed = discord.Embed(title="Circular Commands", description="Here is the list of commands for the circulars.", color=embed_color)
         embed.set_author(name=embed_title)
         embed.set_footer(text=embed_footer)
         embed.add_field(name="/circular list", value="List all circulars in a particular category.", inline=False)
         embed.add_field(name="/circular latest", value="Sends the latest circular, the download URL and a the preview of a particular category.", inline=False)
-        embed.add_field(name="/circular search", value="Searches for the given circular's exact name and returns download URL ", inline=False)
-        embed.add_field(name="/circular help", value="Shows the help message for the circular commands.", inline=False)
+        embed.add_field(name="/circular search", value="Searches for a circular from input and gives preview and circular details", inline=False)
         await ctx.followup.send(embed=embed)
         # add embed image
-        embed.set_image(url="https://i.imgur.com/qXQQQQQ.png")
 
 
 
