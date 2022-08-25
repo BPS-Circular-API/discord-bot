@@ -8,7 +8,7 @@ bot_version = "0.1.0"
 # indents for guilds and channels
 intents = discord.Intents.none()
 prefix = "!"
-categories = ["ptm", "general", "exam"]
+categories = ["general", "exam", "general"]
 receives = ["all", "links", "titles"]
 # Loading config.ini
 config = configparser.ConfigParser()
@@ -24,6 +24,7 @@ try:
     discord_token: str = config.get('secret', 'discord-token')
     log_level: str = config.get('main', 'log-level')
     owner_ids: list = config.get('main', 'owner-ids').strip().split(',')
+    owner_guilds: list = config.get('main', 'owner-guilds').strip().split(',')
 
     embed_footer: str = config.get('discord', 'embed_footer')
     embed_color: int = int(config.get('discord', 'embed_color'), base=16)
@@ -60,6 +61,7 @@ log = colorlogger()
 
 owner_ids = [int(i) for i in owner_ids]
 log.debug(str(owner_ids))
+log.debug(str(owner_guilds))
 
 client = commands.Bot(command_prefix=prefix, intents=intents, help_command=None, case_insensitive=True)  # Setting prefix
 

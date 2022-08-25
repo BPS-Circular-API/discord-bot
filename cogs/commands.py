@@ -36,6 +36,7 @@ class Commands(commands.Cog):
     @circular.command(name='list', description='List all circulars in a particular category.')
     async def list(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
+        log.info(f"{ctx.author} in {ctx.guild.name} is requesting a list of circulars in {category}.")
         raw_res = await get_circular_list(category, "all")
 
         titles, unprocessed_links, links = [], [], []   # Define 3 empty lists
@@ -68,15 +69,16 @@ class Commands(commands.Cog):
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
     async def latest(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
+        log.info(f"{ctx.author.id} in {ctx.guild.id} is requesting the latest circular in {category}.")
+
         raw_res = await get_latest_circular(category)
         title = raw_res['title']
         link = raw_res['link']
-        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color)
-        embed.set_author(name=embed_title)
         link = link.split(':')
         link = f"{link[0]}:{link[1]}"
 
-
+        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color)
+        embed.set_author(name=embed_title)
         embed.add_field(name="Title", value=f"`{title}`", inline=False)
         embed.add_field(name="Download URL", value=link, inline=False)
         embed.set_footer(text=embed_footer)
@@ -85,6 +87,7 @@ class Commands(commands.Cog):
 
         file = discord.File(f"./{title}.png", filename="image.png")
         embed.set_image(url="attachment://image.png")
+
         await ctx.followup.send(embed=embed, file=file)
         os.remove(f"./{title}.png")
 
@@ -92,22 +95,25 @@ class Commands(commands.Cog):
     @circular.command(name="search", description="Searches for a particular circular in a particular category.")
     async def search(self, ctx, circular_title: str):
         await ctx.defer()
-        searched = await search(circular_title)
+
+        log.info(f"{ctx.author.id} in {ctx.guild.id} is searching for {circular_title}")
+        searched = await search(circular_title) # Search for the circular from the backend function
         title = searched[0]
         link = searched[1]
-        embed = discord.Embed(title="Circular Search", color=embed_color)
+
+        embed = discord.Embed(title="Circular Search", color=embed_color)   # Create an embed
         embed.set_author(name=embed_title)
         embed.set_footer(text=embed_footer)
         embed.add_field(name="Title", value=f"`{title}`", inline=False)
         embed.add_field(name="Download URL", value=link, inline=False)
 
-        await get_png(link, title)
+        await get_png(link, title)  # Download the circular image from the link (backend function)
 
         file = discord.File(f"./{title}.png", filename="image.png")
         embed.set_image(url="attachment://image.png")
 
-        await ctx.followup.send(embed=embed, file=file)
-        os.remove(f"./{title}.png")
+        await ctx.followup.send(embed=embed, file=file) # Send the embed with the image
+        os.remove(f"./{title}.png") # Delete the image after sending it
 
 
 
@@ -117,17 +123,20 @@ class Commands(commands.Cog):
     @admin.command(name="setup", description="Set up the bot to notify the user when a circular is available in a channel.")
     async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
         await ctx.defer()
-        guild = await self.client.fetch_guild(ctx.guild.id)
-        author = await  guild.fetch_member(ctx.author.id)
-        if not author.guild_permissions.administrator:
-            if not author.id in owner_ids:
+        log.info(f"{ctx.author.id} in {ctx.guild.id} is setting up the bot in {channel.name}.")
+
+        guild = await self.client.fetch_guild(ctx.guild.id) # Get the guild from the discord API
+        author = await guild.fetch_member(ctx.author.id)   # Get the author from the discord API
+
+        if not author.guild_permissions.administrator:  # Check if the author has admin permissions
+            if not author.id in owner_ids:  # Check if the author is an owner
                 await ctx.followup.send(embed=discord.Embed(title="Error!", description="You do not have permission to use this command!", color=embed_color))
                 return
-        log.debug(f"Got a server setup request from {ctx.author.name}")
+
         self.cur.execute(f"SELECT * FROM notify WHERE guild_id = {ctx.guild.id}")   # Check if the guild is already in the database
         res = self.cur.fetchone()
 
-        if res:
+        if res: # If the guild is in the database
             log.debug(res)
             e_embed = discord.Embed(title="Server Setup", description=f"The server has an already existing reminder configuration!", color=embed_color)
             e_embed.set_author(name=embed_title)
@@ -138,18 +147,22 @@ class Commands(commands.Cog):
             await ctx.followup.send(embed=e_embed)
             return
 
-        if message:
+        if message: # If the message is not None
             message = message.replace("<", "").replace(">", "").replace('"', "") # Remove the <> and " from the message
             self.cur.execute(f'INSERT INTO notify (guild_id, channel_id, message) VALUES ({ctx.guild.id}, {channel.id}, "{message}");')
-        else:
+        else:   # If the message is None
             self.cur.execute(f"INSERT INTO notify (guild_id, channel_id) VALUES ({ctx.guild.id}, {channel.id});")
-        self.con.commit()
+
+        self.con.commit()   # Commit the changes to the database
+
         c_embed = discord.Embed(title="Success!", description="The reminder configuration for this server has successfully been added!", color=embed_color)
         c_embed.set_author(name=embed_title)
         c_embed.set_footer(text=embed_footer)
         c_embed.add_field(name="Channel", value=f"{channel.mention}", inline=False)
-        if message:
+
+        if message: # If the message is not None, add the message to the embed
             c_embed.add_field(name="Message", value=f"`{message}`", inline=False)
+
         await ctx.followup.send(embed=c_embed)
 
 
@@ -158,28 +171,38 @@ class Commands(commands.Cog):
     @admin.command(name="delete", description="Delete the server's circular reminder configuration.")
     async def delete(self, ctx):
         await ctx.defer()
-        # check if user is a server admin
-        guild = await self.client.fetch_guild(ctx.guild.id)
-        author = await  guild.fetch_member(ctx.author.id)
+        log.info(f"{ctx.author.id} in {ctx.guild.id} is deleting the reminder configuration.")
+
+        guild = await self.client.fetch_guild(ctx.guild.id) # Get the guild from the discord API
+        author = await guild.fetch_member(ctx.author.id)
         if not author.guild_permissions.administrator:
             if not author.id in owner_ids:
                 await ctx.followup.send(embed=discord.Embed(title="Error!", description="You do not have permission to use this command!", color=embed_color))
                 return
 
-        self.cur.execute(f"SELECT * FROM notify WHERE guild_id = {ctx.guild.id}")
-        res = self.cur.fetchone()
-        if not res:
+        self.cur.execute(f"SELECT * FROM notify WHERE guild_id = {ctx.guild.id}")   # Check if the guild is already in the database
+        res = self.cur.fetchone()   # Get the result from the database
+
+        if not res: # If the guild is not in the database
             e_embed = discord.Embed(title="Server Setup", description=f"The server has no reminder configuration!", color=embed_color)
             e_embed.set_author(name=embed_title)
             e_embed.set_footer(text=embed_footer)
             await ctx.followup.send(embed=e_embed)
             return
-        self.cur.execute(f"DELETE FROM notify WHERE guild_id = {ctx.guild.id}")
-        self.con.commit()
+
+        self.cur.execute(f"DELETE FROM notify WHERE guild_id = {ctx.guild.id}") # Delete the guild from the database
+        self.con.commit()   # Commit the changes to the database
+
         d_embed = discord.Embed(title="Success!", description="The bot has successfully been set up to remind, in this server.", color=embed_color)
         d_embed.set_author(name=embed_title)
         d_embed.set_footer(text=embed_footer)
+
         await ctx.followup.send(embed=d_embed)
+
+
+    @circular.command(name="invite", description="Invite the bot to your server.")
+    async def invite(self, ctx):
+        await ctx.respond(embed=discord.Embed(title="Invite", description=f"Use this link to invite the bot to your server:\n https://bpsapi.rajtech.me/r/discord-bot-invite", color=embed_color))
 
 
     @circular.command(name="help", description="Shows the help message for the circular commands.")
@@ -191,8 +214,9 @@ class Commands(commands.Cog):
         embed.add_field(name="/circular list", value="List all circulars in a particular category.", inline=False)
         embed.add_field(name="/circular latest", value="Sends the latest circular, the download URL and a the preview of a particular category.", inline=False)
         embed.add_field(name="/circular search", value="Searches for a circular from input and gives preview and circular details", inline=False)
+        embed.add_field(name="/circular admin setup", value="Set up a channel to remind in, when a new circular is posted", inline=False)
+        embed.add_field(name="/circular admin delete", value="Delete the server's circular reminder configuration", inline=False)
         await ctx.followup.send(embed=embed)
-        # add embed image
 
 
 

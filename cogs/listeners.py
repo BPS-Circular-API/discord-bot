@@ -1,4 +1,5 @@
 import os
+import random
 import sqlite3, discord
 from discord.ext import commands, tasks
 from backend import log, get_latest_circular_cached, embed_color, embed_footer, embed_title, get_png
@@ -17,13 +18,17 @@ class Listeners(commands.Cog):
     async def on_ready(self):
         log.info(f"Cog : Listeners.py loaded.")
         self.check_for_circular.start()
+        self.random_status.start()
 
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         log.info(f"I just joined a server: {guild.id}")
+        guild = await self.client.fetch_guild(guild.id)
         embed = discord.Embed(title=f"Thanks for adding me!", description=f"Here's the command guide! An admin can ", color=embed_color)
+        embed.add_field(name="Admin Guide", value="Please up the circular-reminder with `/circular admin setup` to receive notifications when new circulars are posted.", inline=False)
         embed.add_field(name="Command Guide", value=f"All the commands start with `/circular`, they're slash commands. ", inline=False)
+
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
         # find the first channel in the guild and send to it
@@ -38,6 +43,29 @@ class Listeners(commands.Cog):
                 pass
 
 
+    @tasks.loop(seconds=60)
+    async def random_status(self):
+        random_number = random.randint(0, 6)
+        if random_number == 0:
+            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(self.client.users)} Users!"))
+        elif random_number == 1:
+            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(self.client.guilds)} Guilds!"))
+        elif random_number == 2:
+            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"/circular help"))
+        elif random_number == 3:
+            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"/circular admin setup"))
+        elif random_number == 4:
+            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"I'm Open Source!"))
+        elif random_number == 5:
+            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"Made by `Raj Dave#3215`"))
+        elif random_number == 6:
+            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"/circular invite"))
+
+
+
+
+
+
 
     @tasks.loop(seconds=3600)
     async def check_for_circular(self):
@@ -46,7 +74,6 @@ class Listeners(commands.Cog):
             self.old_cached_latest = await get_latest_circular_cached("all")
         else:   # If cached exists
             self.old_cached_latest = self.cached_latest
-
 
         self.cached_latest = await get_latest_circular_cached("all")
         if self.cached_latest != self.old_cached_latest:    # If the cached circular list is different from the current one
@@ -78,15 +105,14 @@ class Listeners(commands.Cog):
         embed.set_image(url="attachment://image.png")
         os.remove(f"./{title}.png")
 
-        embed.add_field(name=f"{self.new_circular_cat.capitalize()} | {title}",
-                        value=link, inline=False)
+        embed.add_field(name=f"{self.new_circular_cat.capitalize()} | {title}", value=link, inline=False)
         for guild, channel in zip(guilds, channels):
             guild = self.client.get_guild(int(guild[0]))
             channel = await guild.fetch_channel(int(channel[0]))
             await channel.send(embed=embed, file=file)
 
 
-
+    @random_status.before_loop
     @check_for_circular.before_loop
     async def before_my_task(self):
         await self.client.wait_until_ready()
