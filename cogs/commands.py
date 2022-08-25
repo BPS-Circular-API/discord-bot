@@ -1,7 +1,7 @@
 import os
 import sqlite3, discord
 from discord.ext import commands
-from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_latest_circular, get_png, search, owner_ids
+from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_latest_circular, get_png, search, owner_ids, DeleteButton
 from discord import SlashCommandGroup
 
 category_options = []
@@ -63,7 +63,8 @@ class Commands(commands.Cog):
         for title, link in zip(titles, links):
             embed.add_field(name=title, value=link, inline=False)
 
-        await ctx.followup.send(embed=embed)
+        msg = await ctx.followup.send(embed=embed)
+        await msg.edit(embed=embed, view=DeleteButton(msg))
 
 
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
@@ -88,7 +89,8 @@ class Commands(commands.Cog):
         file = discord.File(f"./{title}.png", filename="image.png")
         embed.set_image(url="attachment://image.png")
 
-        await ctx.followup.send(embed=embed, file=file)
+        msg = await ctx.followup.send(embed=embed, file=file)
+        await msg.edit(embed=embed, view=DeleteButton(msg))
         os.remove(f"./{title}.png")
 
 
@@ -112,7 +114,8 @@ class Commands(commands.Cog):
         file = discord.File(f"./{title}.png", filename="image.png")
         embed.set_image(url="attachment://image.png")
 
-        await ctx.followup.send(embed=embed, file=file) # Send the embed with the image
+        msg = await ctx.followup.send(embed=embed, file=file)
+        await msg.edit(embed=embed, view=DeleteButton(msg))
         os.remove(f"./{title}.png") # Delete the image after sending it
 
 
@@ -163,7 +166,7 @@ class Commands(commands.Cog):
         if message: # If the message is not None, add the message to the embed
             c_embed.add_field(name="Message", value=f"`{message}`", inline=False)
 
-        await ctx.followup.send(embed=c_embed)
+        await ctx.followup.send(embed=c_embed) # Send the embed to the user
 
 
 

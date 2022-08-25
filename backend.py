@@ -8,7 +8,7 @@ bot_version = "0.1.0"
 # indents for guilds and channels
 intents = discord.Intents.none()
 prefix = "!"
-categories = ["general", "exam", "general"]
+categories = ["general", "exam", "ptm"]
 receives = ["all", "links", "titles"]
 # Loading config.ini
 config = configparser.ConfigParser()
@@ -171,6 +171,8 @@ async def search(title):
     return info
 
 
+
+# Confirm Button Discord View
 class ConfirmButton(discord.ui.View):  # Confirm Button Class
     def __init__(self, author):
         super().__init__()
@@ -203,3 +205,21 @@ class ConfirmButton(discord.ui.View):  # Confirm Button Class
 
         await interaction.response.edit_message(view=self)
         self.stop()
+
+
+# Delete Button Discord View
+class DeleteButton(discord.ui.View):
+    def __init__(self, msg):
+        super().__init__(timeout=300)
+        self.msg = msg
+
+    # disable the delete button on timeout
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        await self.msg.edit(view=self)
+        self.stop()
+
+    @discord.ui.button(label="Delete", style=discord.ButtonStyle.red)
+    async def button_callback(self, button, interaction): # I have no idea why there are 2 unused variables, removing them breaks the code
+        await self.msg.delete()

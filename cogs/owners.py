@@ -133,7 +133,6 @@ class Owners(commands.Cog):
                 channel = await guild.fetch_channel(int(channel[0]))
 
                 await channel.send(embed=embed, file=file)
-            
 
 
 def setup(client):

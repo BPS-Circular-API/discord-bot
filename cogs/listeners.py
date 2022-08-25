@@ -45,21 +45,11 @@ class Listeners(commands.Cog):
 
     @tasks.loop(seconds=60)
     async def random_status(self):
-        random_number = random.randint(0, 6)
-        if random_number == 0:
-            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(self.client.users)} Users!"))
-        elif random_number == 1:
-            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(self.client.guilds)} Guilds!"))
-        elif random_number == 2:
-            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"/circular help"))
-        elif random_number == 3:
-            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"/circular admin setup"))
-        elif random_number == 4:
-            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"I'm Open Source!"))
-        elif random_number == 5:
-            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"Made by `Raj Dave#3215`"))
-        elif random_number == 6:
-            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f"/circular invite"))
+        rand_int = random.randint(0, 3)
+        activities = [f"{len(self.client.users)} Users!", f"{len(self.client.guilds)} Guilds!", f"/circular help", f"Made by Raj Dave#3215"]
+        types = [discord.ActivityType.watching, discord.ActivityType.watching, discord.ActivityType.playing, discord.ActivityType.playing]
+        await self.client.change_presence(activity=discord.Activity(type=types[rand_int], name=activities[rand_int]))
+
 
 
 
@@ -83,7 +73,6 @@ class Listeners(commands.Cog):
                     log.info(f"{cat} has new circular")
                     self.new_circular_cat = cat # Let's just HOPE that they will not upload multiple circulars to multiple categories within an hour
             await self.notify() # notify each server
-
 
 
 
