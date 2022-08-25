@@ -1,7 +1,7 @@
 import os
 import sqlite3, discord
 from discord.ext import commands
-from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_latest_circular, get_png, search
+from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_latest_circular, get_png, search, owner_ids
 from discord import SlashCommandGroup
 
 category_options = []
@@ -101,13 +101,13 @@ class Commands(commands.Cog):
         embed.add_field(name="Title", value=f"`{title}`", inline=False)
         embed.add_field(name="Download URL", value=link, inline=False)
 
-        print(searched)
-    
         await get_png(link, title)
 
         file = discord.File(f"./{title}.png", filename="image.png")
         embed.set_image(url="attachment://image.png")
+
         await ctx.followup.send(embed=embed, file=file)
+        os.remove(f"./{title}.png")
 
 
 
@@ -117,6 +117,12 @@ class Commands(commands.Cog):
     @admin.command(name="setup", description="Set up the bot to notify the user when a circular is available in a channel.")
     async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
         await ctx.defer()
+        guild = await self.client.fetch_guild(ctx.guild.id)
+        author = await  guild.fetch_member(ctx.author.id)
+        if not author.guild_permissions.administrator:
+            if not author.id in owner_ids:
+                await ctx.followup.send(embed=discord.Embed(title="Error!", description="You do not have permission to use this command!", color=embed_color))
+                return
         log.debug(f"Got a server setup request from {ctx.author.name}")
         self.cur.execute(f"SELECT * FROM notify WHERE guild_id = {ctx.guild.id}")   # Check if the guild is already in the database
         res = self.cur.fetchone()
@@ -152,6 +158,14 @@ class Commands(commands.Cog):
     @admin.command(name="delete", description="Delete the server's circular reminder configuration.")
     async def delete(self, ctx):
         await ctx.defer()
+        # check if user is a server admin
+        guild = await self.client.fetch_guild(ctx.guild.id)
+        author = await  guild.fetch_member(ctx.author.id)
+        if not author.guild_permissions.administrator:
+            if not author.id in owner_ids:
+                await ctx.followup.send(embed=discord.Embed(title="Error!", description="You do not have permission to use this command!", color=embed_color))
+                return
+
         self.cur.execute(f"SELECT * FROM notify WHERE guild_id = {ctx.guild.id}")
         res = self.cur.fetchone()
         if not res:
