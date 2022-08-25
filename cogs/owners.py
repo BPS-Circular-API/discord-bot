@@ -1,6 +1,6 @@
 import discord, sqlite3
 from discord.ext import commands
-from backend import owner_ids, embed_title, embed_footer, embed_color, log
+from backend import owner_ids, embed_title, embed_footer, embed_color, log, owner_guilds
 
 class Owners(commands.Cog):
     def __init__(self, client):
@@ -15,7 +15,7 @@ class Owners(commands.Cog):
         log.info(f"Cog : Owners.py loaded.")
 
 
-    @owners.command(name='reload', description='Reload a cog.')
+    @owners.command(name='reload', description='Reload a cog.', guild_ids=owner_guilds)
     async def reload(self, ctx, cog: str):
         if not ctx.author.id in owner_ids:
             return await ctx.respond("You are not allowed to use this command.")
@@ -26,9 +26,8 @@ class Owners(commands.Cog):
 
 
 
-    @owners.command(name="execsql", description="Execute a SQL query.")
+    @owners.command(name="execsql", description="Execute a SQL query.", guild_ids=owner_guilds)
     async def execsql(self, ctx, query):
-
         if not ctx.author.id in owner_ids:
             return await ctx.respond("You are not allowed to use this command.")
         await ctx.defer()
@@ -49,16 +48,16 @@ class Owners(commands.Cog):
         await ctx.followup.send(embed=embed, ephemeral=True)
 
 
-    @owners.command(name="servers", description="List all servers the bot is in.")
+    @owners.command(name="servers", description="List all servers the bot is in.", guild_ids=owner_guilds)
     async def servers(self, ctx):
         if not ctx.author.id in owner_ids:
             return await ctx.respond("You are not allowed to use this command.")
         await ctx.defer()
-        embed = discord.Embed(title="Servers", description="Here is a list of all servers the bot is in.", color=embed_color).set_footer(text=embed_footer).set_author(name=embed_title)
+        embed = discord.Embed(title="Servers", description=f"I am in `{len(self.client.guilds)}` servers!", color=embed_color).set_footer(text=embed_footer).set_author(name=embed_title)
         for i in self.client.guilds:
-            embed.add_field(name=i.name, value=i.id, inline=False)
+            guild = await self.client.fetch_guild(i.id)
+            embed.add_field(name=guild.name, value=i.id, inline=False)
         await ctx.followup.send(embed=embed, ephemeral=True)
-    
 
 def setup(client):
     client.add_cog(Owners(client))
