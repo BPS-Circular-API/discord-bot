@@ -202,7 +202,10 @@ class Commands(commands.Cog):
 
     @circular.command(name="invite", description="Invite the bot to your server.")
     async def invite(self, ctx):
-        await ctx.respond(embed=discord.Embed(title="Invite", description=f"Use this link to invite the bot to your server:\n https://bpsapi.rajtech.me/r/discord-bot-invite", color=embed_color))
+        embed = discord.Embed(title="Invite", description=f"Use this link to invite the bot to your server:\n https://bpsapi.rajtech.me/r/discord-bot-invite", color=embed_color)
+        embed.set_author(name=embed_title)
+        embed.set_footer(text=embed_footer)
+        await ctx.respond(embed=embed)
 
 
     @circular.command(name="help", description="Shows the help message for the circular commands.")

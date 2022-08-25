@@ -169,3 +169,37 @@ async def search(title):
     info = request.json()
     log.debug(info)
     return info
+
+
+class ConfirmButton(discord.ui.View):  # Confirm Button Class
+    def __init__(self, author):
+        super().__init__()
+        self.value = None
+        self.author = author
+
+
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
+    async def confirm_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
+        if not interaction.user.id == self.author.id:
+            return await interaction.response.send_message("This button is not for you", ephemeral=True)
+
+        self.value = True
+
+        for child in self.children:  # Disable all buttons
+            child.disabled = True
+
+        await interaction.response.edit_message(view=self)
+        self.stop()
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey)
+    async def cancel_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
+        if not interaction.user.id == self.author.id:
+
+            return await interaction.response.send_message("This button is not for you", ephemeral=True)
+        self.value = False
+
+        for child in self.children:
+            child.disabled = True
+
+        await interaction.response.edit_message(view=self)
+        self.stop()

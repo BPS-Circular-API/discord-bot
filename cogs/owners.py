@@ -1,6 +1,9 @@
+import os
+
 import discord, sqlite3
 from discord.ext import commands
-from backend import owner_ids, embed_title, embed_footer, embed_color, log, owner_guilds
+from backend import owner_ids, embed_title, embed_footer, embed_color, log, owner_guilds, get_png, ConfirmButton
+
 
 class Owners(commands.Cog):
     def __init__(self, client):
@@ -58,6 +61,80 @@ class Owners(commands.Cog):
             guild = await self.client.fetch_guild(i.id)
             embed.add_field(name=guild.name, value=i.id, inline=False)
         await ctx.followup.send(embed=embed, ephemeral=True)
+
+
+    @owners.command(name="notify", description="Notify all users in a server.", guild_ids=owner_guilds)
+    async def notify(self, ctx, circular_name: str, url: str,
+                     category: discord.Option(choices=[
+                         discord.OptionChoice("General", value="general"),
+                         discord.OptionChoice("PTM", value="ptm"),
+                         discord.OptionChoice("Exam", value="exam")
+                     ]),
+                     debug_guild = None):
+
+        if not ctx.author.id in owner_ids:
+            return await ctx.respond("You are not allowed to use this command.")
+        await ctx.defer()
+        if debug_guild:
+            log.debug(type(debug_guild))
+            debug_guild = int(debug_guild)
+
+        embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
+        embed.set_footer(text=embed_footer)
+        embed.set_author(name=embed_title)
+
+        await get_png(url, circular_name)
+
+        file = discord.File(f"./{circular_name}.png", filename="image.png")
+        embed.set_image(url="attachment://image.png")
+        os.remove(f"./{circular_name}.png")
+
+        if debug_guild: # If a debug guild is specified, send the message to ONLY that guild.
+            self.cur.execute(f"SELECT message FROM notify WHERE guild_id = {debug_guild}")
+            message = self.cur.fetchone()  # Get the reminder-message for the guild from the DB
+            log.debug(f"Message: {message}")
+            embed.description = message[0]  # Set the description of the embed to the message
+            embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url, inline=False)
+
+            guild = await self.client.fetch_guild(int(debug_guild))
+            self.cur.execute(f"SELECT channel_id FROM notify WHERE guild_id = {guild.id}")
+            channel_id = self.cur.fetchone()[0]  # Get the channel_id for the guild from the DB
+
+            channel = await guild.fetch_channel(int(channel_id))
+            await channel.send(embed=embed, file=file)
+            return await ctx.respond(f"Notified the `{debug_guild}` server.")
+
+        else:
+            button = ConfirmButton(ctx.author)
+            await ctx.followup.send(embed=embed, file=file, view=button)
+            await button.wait()
+
+            if button.value is None:  # Timeout
+                await ctx.respond("Timed out.")
+                return
+
+            elif not button.value:  # Cancel
+                await ctx.respond("Cancelled.")
+                return
+
+
+            self.cur.execute(f"SELECT channel_id FROM notify")
+            channels = self.cur.fetchall()
+            self.cur.execute(f"SELECT guild_id FROM notify")
+            guilds = self.cur.fetchall()
+
+
+            for guild, channel in zip(guilds, channels):
+                self.cur.execute(f"SELECT message FROM notify WHERE guild_id = {guild[0]}")
+                message = self.cur.fetchone()  # Get the reminder-message for the guild from the DB
+                log.debug(f"Message: {message}")
+                embed.description = message[0]  # Set the description of the embed to the message
+                guild = self.client.get_guild(int(guild[0]))
+                channel = await guild.fetch_channel(int(channel[0]))
+
+                await channel.send(embed=embed, file=file)
+            
+
 
 def setup(client):
     client.add_cog(Owners(client))

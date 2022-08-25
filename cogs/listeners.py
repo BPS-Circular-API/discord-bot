@@ -92,13 +92,16 @@ class Listeners(commands.Cog):
         channels = self.cur.fetchall()
         self.cur.execute(f"SELECT guild_id FROM notify")
         guilds = self.cur.fetchall()
+
         embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
+
         link = str(self.cached_latest[self.new_circular_cat]['link'])
         link = link.split(':')
         link = f"{link[0]}:{link[1]}"
         title = self.cached_latest[self.new_circular_cat]['title']
+
         await get_png(link, title)
 
         file = discord.File(f"./{title}.png", filename="image.png")
@@ -107,8 +110,13 @@ class Listeners(commands.Cog):
 
         embed.add_field(name=f"{self.new_circular_cat.capitalize()} | {title}", value=link, inline=False)
         for guild, channel in zip(guilds, channels):
+            self.cur.execute(f"SELECT message FROM notify WHERE guild_id = {guild[0]}")
+            message = self.cur.fetchone()   # Get the reminder-message for the guild from the DB
+            log.debug(f"Message: {message}")
+            embed.description = message[0]  # Set the description of the embed to the message
             guild = self.client.get_guild(int(guild[0]))
             channel = await guild.fetch_channel(int(channel[0]))
+
             await channel.send(embed=embed, file=file)
 
 
