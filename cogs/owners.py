@@ -2,7 +2,8 @@ import os
 
 import discord, sqlite3
 from discord.ext import commands
-from backend import owner_ids, embed_title, embed_footer, embed_color, log, owner_guilds, get_png, ConfirmButton
+from backend import owner_ids, embed_title, embed_footer, embed_color, log, owner_guilds, get_png, ConfirmButton, \
+    DeleteButton
 
 
 class Owners(commands.Cog):
@@ -48,7 +49,9 @@ class Owners(commands.Cog):
                 embed.add_field(name=str(i), value=str(i), inline=False)
         self.con.commit()
         self.con.close()
-        await ctx.followup.send(embed=embed, ephemeral=True)
+        msg = await ctx.followup.send(embed=embed)
+        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
+
 
 
     @owners.command(name="servers", description="List all servers the bot is in.", guild_ids=owner_guilds)
@@ -60,7 +63,9 @@ class Owners(commands.Cog):
         for i in self.client.guilds:
             guild = await self.client.fetch_guild(i.id)
             embed.add_field(name=guild.name, value=i.id, inline=False)
-        await ctx.followup.send(embed=embed, ephemeral=True)
+        msg = await ctx.followup.send(embed=embed)
+        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
+
 
 
     @owners.command(name="notify", description="Notify all users in a server.", guild_ids=owner_guilds)

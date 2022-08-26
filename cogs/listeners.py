@@ -14,11 +14,15 @@ class Listeners(commands.Cog):
         self.cur = self.con.cursor()
         self.new_circular_cat = ""
 
+
+
     @commands.Cog.listener()
     async def on_ready(self):
         log.info(f"Cog : Listeners.py loaded.")
         self.check_for_circular.start()
         self.random_status.start()
+        self.get_member_count.start()
+
 
 
     @commands.Cog.listener()
@@ -46,14 +50,21 @@ class Listeners(commands.Cog):
     @tasks.loop(seconds=60)
     async def random_status(self):
         rand_int = random.randint(0, 3)
-        activities = [f"{len(self.client.users)} Users!", f"{len(self.client.guilds)} Guilds!", f"/circular help", f"Made by Raj Dave#3215"]
+        activities = [f"{member_count} Users!", f"{len(self.client.guilds)} Guilds!", f"/circular help", f"Made by Raj Dave#3215"]
         types = [discord.ActivityType.watching, discord.ActivityType.watching, discord.ActivityType.playing, discord.ActivityType.playing]
         await self.client.change_presence(activity=discord.Activity(type=types[rand_int], name=activities[rand_int]))
 
 
 
-
-
+    @tasks.loop(seconds=3600*24) # Run every 24 hours
+    async def get_member_count(self):
+        # get the member count of every guild and send it to the channel
+        global member_count
+        member_count = 0
+        for guild in self.client.guilds:
+            guild = await self.client.fetch_guild(guild.id, with_counts=True)
+            member_count += guild.approximate_member_count
+        log.debug(f"Member Count: {member_count}")
 
 
 
@@ -109,8 +120,10 @@ class Listeners(commands.Cog):
             await channel.send(embed=embed, file=file)
 
 
+
     @random_status.before_loop
     @check_for_circular.before_loop
+    @get_member_count.before_loop
     async def before_my_task(self):
         await self.client.wait_until_ready()
 
