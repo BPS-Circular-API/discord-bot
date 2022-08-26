@@ -64,7 +64,7 @@ class Commands(commands.Cog):
             embed.add_field(name=title, value=link, inline=False)
 
         msg = await ctx.followup.send(embed=embed)
-        await msg.edit(embed=embed, view=DeleteButton(msg))
+        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
 
 
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
@@ -90,7 +90,7 @@ class Commands(commands.Cog):
         embed.set_image(url="attachment://image.png")
 
         msg = await ctx.followup.send(embed=embed, file=file)
-        await msg.edit(embed=embed, view=DeleteButton(msg))
+        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
         os.remove(f"./{title}.png")
 
 
@@ -115,9 +115,8 @@ class Commands(commands.Cog):
         embed.set_image(url="attachment://image.png")
 
         msg = await ctx.followup.send(embed=embed, file=file)
-        await msg.edit(embed=embed, view=DeleteButton(msg))
+        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
         os.remove(f"./{title}.png") # Delete the image after sending it
-
 
 
 

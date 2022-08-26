@@ -25,6 +25,7 @@ try:
     log_level: str = config.get('main', 'log-level')
     owner_ids: list = config.get('main', 'owner-ids').strip().split(',')
     owner_guilds: list = config.get('main', 'owner-guilds').strip().split(',')
+    base_api_url: str = config.get('main', 'base_api_url')
 
     embed_footer: str = config.get('discord', 'embed_footer')
     embed_color: int = int(config.get('discord', 'embed_color'), base=16)
@@ -68,7 +69,7 @@ client = commands.Bot(command_prefix=prefix, intents=intents, help_command=None,
 
 
 async def get_circular_list(category: str, receive: str = "all") -> list | None:
-    url = "https://bpsapi.rajtech.me/v1/list/"
+    url = base_api_url + "list/"
     if not category in ["ptm", "general", "exam"]:
         return None
     if not receive in ["all", "links", "titles"]:
@@ -83,7 +84,7 @@ async def get_circular_list(category: str, receive: str = "all") -> list | None:
 
 
 async def get_latest_circular(category: str) -> dict | None:
-    url = "https://bpsapi.rajtech.me/v1/latest/"
+    url = base_api_url + "latest/"
     if not category in ["ptm", "general", "exam"]:
         return None
 
@@ -97,7 +98,7 @@ async def get_latest_circular(category: str) -> dict | None:
 
 
 async def get_circular_url(circular_name: str) -> dict | None:
-    url = "https://bpsapi.rajtech.me/v1/search/"
+    url = base_api_url + "search/"
     if not circular_name:
         return None
 
@@ -111,7 +112,7 @@ async def get_circular_url(circular_name: str) -> dict | None:
 
 
 async def get_latest_circular_cached(category: str) -> dict | None:
-    url = "https://bpsapi.rajtech.me/v1/cached-latest/"
+    url = base_api_url + "cached-latest/"
     if not category in ["ptm", "general", "exam", "all"]:
         return None
 
@@ -159,7 +160,7 @@ async def get_png(download_url, file_name: str):
 
 
 async def search(title):
-    url = "https://bpsapi.rajtech.me/v1/search/"
+    url = base_api_url + "search/"
     if not title:
         return None
 
@@ -209,9 +210,11 @@ class ConfirmButton(discord.ui.View):  # Confirm Button Class
 
 # Delete Button Discord View
 class DeleteButton(discord.ui.View):
-    def __init__(self, msg):
+    def __init__(self, ctx, msg):
         super().__init__(timeout=300)
         self.msg = msg
+        self.author = ctx.author
+
 
     # disable the delete button on timeout
     async def on_timeout(self):
@@ -222,4 +225,6 @@ class DeleteButton(discord.ui.View):
 
     @discord.ui.button(label="Delete", style=discord.ButtonStyle.red)
     async def button_callback(self, button, interaction): # I have no idea why there are 2 unused variables, removing them breaks the code
+        if not interaction.user.id == self.author.id:
+            return await interaction.response.send_message("This button is not for you", ephemeral=True)
         await self.msg.delete()
