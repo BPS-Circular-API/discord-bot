@@ -1,7 +1,8 @@
 import os
 import sqlite3, discord
 from discord.ext import commands
-from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_latest_circular, get_png, search, owner_ids, DeleteButton
+from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, \
+    get_latest_circular, get_png, search, owner_ids, DeleteButton, ConfirmButton
 from discord import SlashCommandGroup
 
 category_options = []
@@ -195,7 +196,7 @@ class Commands(commands.Cog):
         self.cur.execute(f"DELETE FROM notify WHERE guild_id = {ctx.guild.id}") # Delete the guild from the database
         self.con.commit()   # Commit the changes to the database
 
-        d_embed = discord.Embed(title="Success!", description="The bot has successfully been set up to remind, in this server.", color=embed_color)
+        d_embed = discord.Embed(title="Success!", description="The reminder has successfully been deleted.", color=embed_color)
         d_embed.set_author(name=embed_title)
         d_embed.set_footer(text=embed_footer)
 
@@ -222,6 +223,64 @@ class Commands(commands.Cog):
         embed.add_field(name="/circular admin setup", value="Set up a channel to remind in, when a new circular is posted", inline=False)
         embed.add_field(name="/circular admin delete", value="Delete the server's circular reminder configuration", inline=False)
         await ctx.followup.send(embed=embed)
+
+
+
+    @circular.command(name="remindme", description="Subscribe to DM reminders for the latest circular.")
+    async def remindme(self, ctx, message: str = None):
+        await ctx.defer()
+
+
+        r_embed = discord.Embed(title="", description="", color=embed_color)
+        r_embed.set_author(name=embed_title)
+        r_embed.set_footer(text=embed_footer)
+
+        guild = await self.client.fetch_guild(ctx.guild.id)
+
+        self.cur.execute(f"SELECT * FROM remind WHERE user_id = {ctx.user.id}")
+        res = self.cur.fetchone()
+        if res:
+            r_embed.title = "Unsubscribe"
+            r_embed.description = "You are already subscribed to reminders. Do you want to unsubscribe?"
+            button = ConfirmButton(ctx.author)
+
+            msg = await ctx.followup.send(embed=r_embed, view=button)
+            await button.wait()
+
+            if button.value is None:  # Timeout
+                await ctx.reply("Timed out.")
+                return
+
+            elif not button.value:  # Cancel
+                await ctx.reply("Cancelled.")
+                return
+
+            self.cur.execute(f"DELETE FROM remind WHERE user_id = {ctx.user.id}")
+            self.con.commit()
+
+            r_embed.title = "Unsubscribed"
+            r_embed.description = "You have been unsubscribed from reminders."
+            log.info(f"{ctx.author.id} in {ctx.guild.id} is un-subscribing from DM reminders.")
+            await msg.edit(embed=r_embed)
+            return
+
+        if message:
+            message = message.replace("<", "").replace(">", "").replace('"', "")
+            self.cur.execute(f"INSERT INTO remind (user_id, message) VALUES ({ctx.user.id}, '{message}');")
+        else:
+            self.cur.execute(f"INSERT INTO remind (user_id) VALUES ({ctx.user.id});")
+        self.con.commit()
+        r_embed.title = "Success!"
+        log.info(f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
+        r_embed.description = "You successfully subscribed to DM reminders! `/circular remindme` to unsubscribe."
+        await ctx.followup.send(embed=r_embed)
+
+
+
+
+
+
+
 
 
 

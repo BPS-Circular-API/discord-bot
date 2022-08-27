@@ -62,7 +62,10 @@ log = colorlogger()
 
 owner_ids = [int(i) for i in owner_ids]
 log.debug(str(owner_ids))
+
+owner_guilds = [int(i) for i in owner_guilds]
 log.debug(str(owner_guilds))
+
 
 client = commands.Bot(command_prefix=prefix, intents=intents, help_command=None, case_insensitive=True)  # Setting prefix
 

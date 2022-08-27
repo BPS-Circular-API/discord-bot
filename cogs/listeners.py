@@ -19,12 +19,15 @@ class Listeners(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         log.info(f"Cog : Listeners.py loaded.")
+        global member_count
+        member_count = -1
         self.check_for_circular.start()
         self.random_status.start()
         self.get_member_count.start()
 
 
 
+    """
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         log.info(f"I just joined a server: {guild.id}")
@@ -45,6 +48,7 @@ class Listeners(commands.Cog):
                 break
             except discord.Forbidden:
                 pass
+    """
 
 
     @tasks.loop(seconds=60)
