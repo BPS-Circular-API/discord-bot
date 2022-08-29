@@ -1,3 +1,4 @@
+import asyncio
 import os
 import random
 import sqlite3, discord
@@ -19,11 +20,10 @@ class Listeners(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         log.info(f"Cog : Listeners.py loaded.")
-        global member_count
-        member_count = -1
-        self.check_for_circular.start()
-        self.random_status.start()
         self.get_member_count.start()
+        self.check_for_circular.start()
+        await asyncio.sleep(2)
+        self.random_status.start()
 
 
 
@@ -92,10 +92,12 @@ class Listeners(commands.Cog):
 
 
     async def notify(self):
-        self.cur.execute(f"SELECT channel_id FROM notify")
+        self.cur.execute(f"SELECT channel_id FROM guild_notify")
         channels = self.cur.fetchall()
-        self.cur.execute(f"SELECT guild_id FROM notify")
+        self.cur.execute(f"SELECT guild_id FROM guild_notify")
         guilds = self.cur.fetchall()
+        self.cur.execute(f"SELECT discord_id FROM dm_notify")
+        users = self.cur.fetchall()
 
         embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
         embed.set_footer(text=embed_footer)
@@ -114,14 +116,30 @@ class Listeners(commands.Cog):
 
         embed.add_field(name=f"{self.new_circular_cat.capitalize()} | {title}", value=link, inline=False)
         for guild, channel in zip(guilds, channels):
-            self.cur.execute(f"SELECT message FROM notify WHERE guild_id = {guild[0]}")
+            self.cur.execute(f"SELECT message FROM guild_notify WHERE guild_id = {guild[0]}")
             message = self.cur.fetchone()   # Get the reminder-message for the guild from the DB
+
             log.debug(f"Message: {message}")
             embed.description = message[0]  # Set the description of the embed to the message
+
             guild = self.client.get_guild(int(guild[0]))
             channel = await guild.fetch_channel(int(channel[0]))
 
             await channel.send(embed=embed, file=file)
+
+        for user in users:
+            user = await self.client.fetch_user(int(user[0]))
+            self.cur.execute(f"SELECT message FROM dm_notify WHERE user_id = {user[0]}")
+
+            message = self.cur.fetchone()  # Get the reminder-message for the guild from the DB
+            log.debug(f"Message: {message}")
+            embed.description = message[0]
+
+            try:
+                await user.send(embed=embed, file=file)
+            except Exception as e:
+                log.error(e)
+
 
 
 

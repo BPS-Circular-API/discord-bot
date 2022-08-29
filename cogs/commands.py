@@ -37,7 +37,7 @@ class Commands(commands.Cog):
     @circular.command(name='list', description='List all circulars in a particular category.')
     async def list(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
-        log.info(f"{ctx.author} in {ctx.guild.name} is requesting a list of circulars in {category}.")
+        log.info(f"{ctx.author.id} in {ctx.guild.id} is requesting a list of circulars in {category}.")
         raw_res = await get_circular_list(category, "all")
 
         titles, unprocessed_links, links = [], [], []   # Define 3 empty lists
@@ -123,7 +123,7 @@ class Commands(commands.Cog):
 
 
     # Admin commands
-    @admin.command(name="setup", description="Set up the bot to notify the user when a circular is available in a channel.")
+    @admin.command(name="setup", description="Set up the bot to guild_notify the user when a circular is available in a channel.")
     async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
         await ctx.defer()
         log.info(f"{ctx.author.id} in {ctx.guild.id} is setting up the bot in {channel.name}.")
@@ -136,7 +136,7 @@ class Commands(commands.Cog):
                 await ctx.followup.send(embed=discord.Embed(title="Error!", description="You do not have permission to use this command!", color=embed_color))
                 return
 
-        self.cur.execute(f"SELECT * FROM notify WHERE guild_id = {ctx.guild.id}")   # Check if the guild is already in the database
+        self.cur.execute(f"SELECT * FROM guild_notify WHERE guild_id = {ctx.guild.id}")   # Check if the guild is already in the database
         res = self.cur.fetchone()
 
         if res: # If the guild is in the database
@@ -152,9 +152,9 @@ class Commands(commands.Cog):
 
         if message: # If the message is not None
             message = message.replace("<", "").replace(">", "").replace('"', "") # Remove the <> and " from the message
-            self.cur.execute(f'INSERT INTO notify (guild_id, channel_id, message) VALUES ({ctx.guild.id}, {channel.id}, "{message}");')
+            self.cur.execute(f'INSERT INTO guild_notify (guild_id, channel_id, message) VALUES ({ctx.guild.id}, {channel.id}, "{message}");')
         else:   # If the message is None
-            self.cur.execute(f"INSERT INTO notify (guild_id, channel_id) VALUES ({ctx.guild.id}, {channel.id});")
+            self.cur.execute(f"INSERT INTO guild_notify (guild_id, channel_id) VALUES ({ctx.guild.id}, {channel.id});")
 
         self.con.commit()   # Commit the changes to the database
 
@@ -183,7 +183,7 @@ class Commands(commands.Cog):
                 await ctx.followup.send(embed=discord.Embed(title="Error!", description="You do not have permission to use this command!", color=embed_color))
                 return
 
-        self.cur.execute(f"SELECT * FROM notify WHERE guild_id = {ctx.guild.id}")   # Check if the guild is already in the database
+        self.cur.execute(f"SELECT * FROM guild_notify WHERE guild_id = {ctx.guild.id}")   # Check if the guild is already in the database
         res = self.cur.fetchone()   # Get the result from the database
 
         if not res: # If the guild is not in the database
@@ -193,7 +193,7 @@ class Commands(commands.Cog):
             await ctx.followup.send(embed=e_embed)
             return
 
-        self.cur.execute(f"DELETE FROM notify WHERE guild_id = {ctx.guild.id}") # Delete the guild from the database
+        self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {ctx.guild.id}") # Delete the guild from the database
         self.con.commit()   # Commit the changes to the database
 
         d_embed = discord.Embed(title="Success!", description="The reminder has successfully been deleted.", color=embed_color)
@@ -237,7 +237,7 @@ class Commands(commands.Cog):
 
         guild = await self.client.fetch_guild(ctx.guild.id)
 
-        self.cur.execute(f"SELECT * FROM remind WHERE user_id = {ctx.user.id}")
+        self.cur.execute(f"SELECT * FROM dm_notify WHERE user_id = {ctx.user.id}")
         res = self.cur.fetchone()
         if res:
             r_embed.title = "Unsubscribe"
@@ -255,7 +255,7 @@ class Commands(commands.Cog):
                 await ctx.reply("Cancelled.")
                 return
 
-            self.cur.execute(f"DELETE FROM remind WHERE user_id = {ctx.user.id}")
+            self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {ctx.user.id}")
             self.con.commit()
 
             r_embed.title = "Unsubscribed"
@@ -266,9 +266,9 @@ class Commands(commands.Cog):
 
         if message:
             message = message.replace("<", "").replace(">", "").replace('"', "")
-            self.cur.execute(f"INSERT INTO remind (user_id, message) VALUES ({ctx.user.id}, '{message}');")
+            self.cur.execute(f"INSERT INTO dm_notify (user_id, message) VALUES ({ctx.user.id}, '{message}');")
         else:
-            self.cur.execute(f"INSERT INTO remind (user_id) VALUES ({ctx.user.id});")
+            self.cur.execute(f"INSERT INTO dm_notify (user_id) VALUES ({ctx.user.id});")
         self.con.commit()
         r_embed.title = "Success!"
         log.info(f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
