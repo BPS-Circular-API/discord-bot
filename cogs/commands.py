@@ -18,7 +18,6 @@ del receives
 
 
 
-
 class Commands(commands.Cog):
     def __init__(self, client):
         self.con = sqlite3.connect('./data/data.db')
@@ -37,7 +36,9 @@ class Commands(commands.Cog):
     @circular.command(name='list', description='List all circulars in a particular category.')
     async def list(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
-        log.info(f"{ctx.author.id} in {ctx.guild.id} is requesting a list of circulars in {category}.")
+        guild = await self.client.fetch_guild(ctx.guild.id)
+        author = await self.client.fetch_user(ctx.author.id)
+        log.info(f"{author.id} in {guild.id} is requesting a list of circulars in {category}.")
         raw_res = await get_circular_list(category, "all")
 
         titles, unprocessed_links, links = [], [], []   # Define 3 empty lists
@@ -71,7 +72,9 @@ class Commands(commands.Cog):
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
     async def latest(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
-        log.info(f"{ctx.author.id} in {ctx.guild.id} is requesting the latest circular in {category}.")
+        guild = await self.client.fetch_guild(ctx.guild.id)
+        author = await self.client.fetch_user(ctx.author.id)
+        log.info(f"{author.id} in {guild.id} is requesting the latest circular in {category}.")
 
         raw_res = await get_latest_circular(category)
         title = raw_res['title']
@@ -98,8 +101,10 @@ class Commands(commands.Cog):
     @circular.command(name="search", description="Searches for a particular circular in a particular category.")
     async def search(self, ctx, circular_title: str):
         await ctx.defer()
+        guild = await self.client.fetch_guild(ctx.guild.id)
+        author = await self.client.fetch_user(ctx.author.id)
 
-        log.info(f"{ctx.author.id} in {ctx.guild.id} is searching for {circular_title}")
+        log.info(f"{author.id} in {guild.id} is searching for {circular_title}")
         searched = await search(circular_title) # Search for the circular from the backend function
         title = searched[0]
         link = searched[1]
@@ -126,17 +131,18 @@ class Commands(commands.Cog):
     @admin.command(name="setup", description="Set up the bot to guild_notify the user when a circular is available in a channel.")
     async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
         await ctx.defer()
-        log.info(f"{ctx.author.id} in {ctx.guild.id} is setting up the bot in {channel.name}.")
-
         guild = await self.client.fetch_guild(ctx.guild.id) # Get the guild from the discord API
         author = await guild.fetch_member(ctx.author.id)   # Get the author from the discord API
+
+        log.info(f"{author.id} in {guild.id} is setting up the bot in {channel.name}.")
+
 
         if not author.guild_permissions.administrator:  # Check if the author has admin permissions
             if not author.id in owner_ids:  # Check if the author is an owner
                 await ctx.followup.send(embed=discord.Embed(title="Error!", description="You do not have permission to use this command!", color=embed_color))
                 return
 
-        self.cur.execute(f"SELECT * FROM guild_notify WHERE guild_id = {ctx.guild.id}")   # Check if the guild is already in the database
+        self.cur.execute(f"SELECT * FROM guild_notify WHERE guild_id = {guild.id}")   # Check if the guild is already in the database
         res = self.cur.fetchone()
 
         if res: # If the guild is in the database
@@ -152,9 +158,9 @@ class Commands(commands.Cog):
 
         if message: # If the message is not None
             message = message.replace("<", "").replace(">", "").replace('"', "") # Remove the <> and " from the message
-            self.cur.execute(f'INSERT INTO guild_notify (guild_id, channel_id, message) VALUES ({ctx.guild.id}, {channel.id}, "{message}");')
+            self.cur.execute(f'INSERT INTO guild_notify (guild_id, channel_id, message) VALUES ({guild.id}, {channel.id}, "{message}");')
         else:   # If the message is None
-            self.cur.execute(f"INSERT INTO guild_notify (guild_id, channel_id) VALUES ({ctx.guild.id}, {channel.id});")
+            self.cur.execute(f"INSERT INTO guild_notify (guild_id, channel_id) VALUES ({guild.id}, {channel.id});")
 
         self.con.commit()   # Commit the changes to the database
 
@@ -167,6 +173,9 @@ class Commands(commands.Cog):
             c_embed.add_field(name="Message", value=f"`{message}`", inline=False)
 
         await ctx.followup.send(embed=c_embed) # Send the embed to the user
+        c_embed.title = "Circular Notification"
+        c_embed.description = "I will now remind you when a circular is available, in this channel!"
+        await channel.send(embed=c_embed)
 
 
 
