@@ -2,8 +2,7 @@ import os
 
 import discord, sqlite3
 from discord.ext import commands
-from backend import owner_ids, embed_title, embed_footer, embed_color, log, owner_guilds, get_png, ConfirmButton, \
-    DeleteButton
+from backend import owner_ids, embed_title, embed_footer, embed_color, log, owner_guilds, get_png, ConfirmButton, DeleteButton, is_bot_owner
 
 
 class Owners(commands.Cog):
@@ -12,13 +11,13 @@ class Owners(commands.Cog):
         self.con = sqlite3.connect('./data/data.db')
         self.cur = self.con.cursor()
 
-    owners = discord.SlashCommandGroup("owners", "Bot owner commands.", guild_ids=owner_guilds)
+    owners = discord.SlashCommandGroup("owners", "Bot owner commands.")
 
     @commands.Cog.listener()
     async def on_ready(self):
         log.info(f"Cog : Owners.py loaded.")
 
-
+    @commands.check_any(is_bot_owner())
     @owners.command(name='reload', description='Reload a cog.')
     async def reload(self, ctx, cog: str):
         if not ctx.author.id in owner_ids:
@@ -29,7 +28,7 @@ class Owners(commands.Cog):
         await ctx.respond(f"Reloaded {cog}.")
 
 
-
+    @commands.check_any(is_bot_owner())
     @owners.command(name="execsql", description="Execute a SQL query.")
     async def execsql(self, ctx, query):
         if not ctx.author.id in owner_ids:
@@ -53,7 +52,7 @@ class Owners(commands.Cog):
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
 
 
-
+    @commands.check_any(is_bot_owner())
     @owners.command(name="servers", description="List all servers the bot is in.")
     async def servers(self, ctx):
         if not ctx.author.id in owner_ids:
@@ -67,7 +66,7 @@ class Owners(commands.Cog):
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
 
 
-
+    @commands.check_any(is_bot_owner())
     @owners.command(name="guild_notify", description="Notify all users in a server.")
     async def guild_notify(self, ctx, circular_name: str, url: str,
                      category: discord.Option(choices=[

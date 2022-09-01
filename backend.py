@@ -175,6 +175,17 @@ async def search(title):
     return info
 
 
+def is_bot_owner():
+    def predicate(ctx):
+        is_staff = False
+        for i in owner_ids:
+            if ctx.author.id == i:
+                is_staff = True
+                break
+        return is_staff
+
+    return commands.check(predicate)
+
 
 # Confirm Button Discord View
 class ConfirmButton(discord.ui.View):  # Confirm Button Class
@@ -231,3 +242,5 @@ class DeleteButton(discord.ui.View):
         if not interaction.user.id == self.author.id:
             return await interaction.response.send_message("This button is not for you", ephemeral=True)
         await self.msg.delete()
+
+
