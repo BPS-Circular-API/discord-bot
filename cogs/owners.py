@@ -2,7 +2,7 @@ import os
 
 import discord, sqlite3
 from discord.ext import commands
-from backend import owner_ids, embed_title, embed_footer, embed_color, log, owner_guilds, get_png, ConfirmButton, DeleteButton, is_bot_owner
+from backend import owner_ids, embed_title, embed_footer, embed_color, log, owner_guilds, get_png, ConfirmButton, DeleteButton
 
 
 class Owners(commands.Cog):
@@ -11,13 +11,13 @@ class Owners(commands.Cog):
         self.con = sqlite3.connect('./data/data.db')
         self.cur = self.con.cursor()
 
-    owners = discord.SlashCommandGroup("owners", "Bot owner commands.")
+    owners = discord.SlashCommandGroup("owners", "Bot owner commands.", guild_ids=owner_guilds)
 
     @commands.Cog.listener()
     async def on_ready(self):
         log.info(f"Cog : Owners.py loaded.")
 
-    @commands.check_any(is_bot_owner())
+
     @owners.command(name='reload', description='Reload a cog.')
     async def reload(self, ctx, cog: str):
         if not ctx.author.id in owner_ids:
@@ -28,7 +28,6 @@ class Owners(commands.Cog):
         await ctx.respond(f"Reloaded {cog}.")
 
 
-    @commands.check_any(is_bot_owner())
     @owners.command(name="execsql", description="Execute a SQL query.")
     async def execsql(self, ctx, query):
         if not ctx.author.id in owner_ids:
@@ -52,7 +51,6 @@ class Owners(commands.Cog):
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
 
 
-    @commands.check_any(is_bot_owner())
     @owners.command(name="servers", description="List all servers the bot is in.")
     async def servers(self, ctx):
         if not ctx.author.id in owner_ids:
@@ -66,7 +64,6 @@ class Owners(commands.Cog):
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
 
 
-    @commands.check_any(is_bot_owner())
     @owners.command(name="guild_notify", description="Notify all users in a server.")
     async def guild_notify(self, ctx, circular_name: str, url: str,
                      category: discord.Option(choices=[
@@ -86,25 +83,24 @@ class Owners(commands.Cog):
         embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
+        embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url,
+                        inline=False)
 
         await get_png(url, circular_name)
-
-        file = discord.File(f"./{circular_name}.png", filename="image.png")
-        embed.set_image(url="attachment://image.png")
-        os.remove(f"./{circular_name}.png")
 
         if debug_guild: # If a debug guild is specified, send the message to ONLY that guild.
             self.cur.execute(f"SELECT message FROM guild_notify WHERE guild_id = {debug_guild}")
             message = self.cur.fetchone()  # Get the reminder-message for the guild from the DB
             log.debug(f"Message: {message}")
             embed.description = message[0]  # Set the description of the embed to the message
-            embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url, inline=False)
 
             guild = await self.client.fetch_guild(int(debug_guild))
             self.cur.execute(f"SELECT channel_id FROM guild_notify WHERE guild_id = {guild.id}")
             channel_id = self.cur.fetchone()[0]  # Get the channel_id for the guild from the DB
 
             channel = await guild.fetch_channel(int(channel_id))
+            file = discord.File(f"./{circular_name}.png", filename="image.png")
+            embed.set_image(url="attachment://image.png")
             await channel.send(embed=embed, file=file)
             return await ctx.respond(f"Notified the `{debug_guild}` server.")
 
@@ -113,14 +109,17 @@ class Owners(commands.Cog):
             message = self.cur.fetchone()  # Get the reminder-message for the user from the DB
             log.debug(f"Message: {message}")
             embed.description = message[0]  # Set the description of the embed to the message
-            embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url, inline=False)
 
             user = await self.client.fetch_user(int(debug_user))
+            file = discord.File(f"./{circular_name}.png", filename="image.png")
+            embed.set_image(url="attachment://image.png")
             await user.send(embed=embed, file=file)
             return await ctx.respond(f"Notified the `{debug_user}` user.")
 
         else:
             button = ConfirmButton(ctx.author)
+            file = discord.File(f"./{circular_name}.png", filename="image.png")
+            embed.set_image(url="attachment://image.png")
             await ctx.followup.send(embed=embed, file=file, view=button)
             await button.wait()
 
@@ -132,22 +131,79 @@ class Owners(commands.Cog):
                 await ctx.respond("Cancelled.")
                 return
 
+            self.cur.execute("SELECT * FROM guild_notify")
+            guild_notify = self.cur.fetchall()
+            guilds = [x[0] for x in guild_notify]
+            channels = [x[1] for x in guild_notify]
+            messages = [x[2] for x in guild_notify]
 
-            self.cur.execute(f"SELECT channel_id FROM guild_notify")
-            channels = self.cur.fetchall()
-            self.cur.execute(f"SELECT guild_id FROM guild_notify")
-            guilds = self.cur.fetchall()
+            self.cur.execute(f"SELECT * FROM dm_notify")
+            users = self.cur.fetchall()
+            user_id = [x[0] for x in users]
+            user_message = [x[1] for x in users]
+            del users, guild_notify
 
+            embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
+            embed.set_footer(text=embed_footer)
+            embed.set_author(name=embed_title)
 
-            for guild, channel in zip(guilds, channels):
-                self.cur.execute(f"SELECT message FROM guild_notify WHERE guild_id = {guild[0]}")
-                message = self.cur.fetchone()  # Get the reminder-message for the guild from the DB
+            await get_png(url, circular_name)
+
+            error_embed = discord.Embed(title=f"Error!",
+                                        description=f"Please make sure that I have the permission to send messages in the channel you set for notifications.",
+                                        color=embed_color)
+            error_embed.set_footer(text=embed_footer)
+            error_embed.set_author(name=embed_title)
+
+            embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url, inline=False)
+            for guild, channel, message in zip(guilds, channels, messages):
+
+                file = discord.File(f"./{circular_name}.png", filename="image.png")
+                embed.set_image(url="attachment://image.png")
+
                 log.debug(f"Message: {message}")
-                embed.description = message[0]  # Set the description of the embed to the message
-                guild = self.client.get_guild(int(guild[0]))
-                channel = await guild.fetch_channel(int(channel[0]))
+                embed.description = message  # Set the description of the embed to the message
 
-                await channel.send(embed=embed, file=file)
+                guild = self.client.get_guild(int(guild))
+                channel = await guild.fetch_channel(int(channel))
+
+                try:
+                    await channel.send(embed=embed, file=file)
+
+                except discord.Forbidden:
+                    for _channel in guild.text_channels:
+                        try:
+                            await _channel.send(embed=error_embed)
+                            await _channel.send(embed=embed, file=file)
+                            log.info(f"Sent Circular Embed and Error Embed to Fallback Channel in {guild.id} | {_channel.id}")
+                            break
+
+                        except Exception as e:
+                            log.debug(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
+
+
+                except Exception as e:
+                    log.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden.")
+                    log.error(e)
+
+            for user, message in zip(user_id, user_message):
+                file = discord.File(f"./{circular_name}.png", filename="image.png")
+                embed.set_image(url="attachment://image.png")
+
+                user = await self.client.fetch_user(int(user))
+
+                log.debug(f"Message: {message}")
+                embed.description = message
+
+                try:
+                    await user.send(embed=embed, file=file)
+                    log.info(f"Successfully sent Circular in DMs to {user.name}#{user.descriminator} | {user.id}")
+                except Exception as e:
+                    log.error(f"Couldn't send Circular Embed to User: {user.id}")
+                    log.error(e)
+
+            os.remove(f"./{circular_name}.png")
+
 
 
 def setup(client):
