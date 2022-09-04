@@ -92,12 +92,17 @@ class Listeners(commands.Cog):
 
 
     async def notify(self):
-        self.cur.execute(f"SELECT channel_id FROM guild_notify")
-        channels = self.cur.fetchall()
-        self.cur.execute(f"SELECT guild_id FROM guild_notify")
-        guilds = self.cur.fetchall()
-        self.cur.execute(f"SELECT discord_id FROM dm_notify")
+        self.cur.execute("SELECT * FROM guild_notify")
+        guild_notify = self.cur.fetchall()
+        guilds = [x[0] for x in guild_notify]
+        channels = [x[1] for x in guild_notify]
+        messages = [x[2] for x in guild_notify]
+
+        self.cur.execute(f"SELECT * FROM dm_notify")
         users = self.cur.fetchall()
+        user_id = [x[0] for x in users]
+        user_message = [x[1] for x in users]
+        del users, guild_notify
 
         embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
         embed.set_footer(text=embed_footer)
@@ -110,35 +115,63 @@ class Listeners(commands.Cog):
 
         await get_png(link, title)
 
-        file = discord.File(f"./{title}.png", filename="image.png")
-        embed.set_image(url="attachment://image.png")
-        os.remove(f"./{title}.png")
+        error_embed = discord.Embed(title=f"Error!", description=f"Please make sure that I have the permission to send messages in the channel you set for notifications.", color=embed_color)
+        error_embed.set_footer(text=embed_footer)
+        error_embed.set_author(name=embed_title)
+
 
         embed.add_field(name=f"{self.new_circular_cat.capitalize()} | {title}", value=link, inline=False)
-        for guild, channel in zip(guilds, channels):
-            self.cur.execute(f"SELECT message FROM guild_notify WHERE guild_id = {guild[0]}")
-            message = self.cur.fetchone()   # Get the reminder-message for the guild from the DB
+        for guild, channel, message in zip(guilds, channels, messages):
+
+            file = discord.File(f"./{title}.png", filename="image.png")
+            embed.set_image(url="attachment://image.png")
 
             log.debug(f"Message: {message}")
-            embed.description = message[0]  # Set the description of the embed to the message
+            embed.description = message  # Set the description of the embed to the message
 
-            guild = self.client.get_guild(int(guild[0]))
-            channel = await guild.fetch_channel(int(channel[0]))
+            guild = self.client.get_guild(int(guild))
+            channel = await guild.fetch_channel(int(channel))
 
-            await channel.send(embed=embed, file=file)
+            try:
+                await channel.send(embed=embed, file=file)
 
-        for user in users:
-            user = await self.client.fetch_user(int(user[0]))
-            self.cur.execute(f"SELECT message FROM dm_notify WHERE user_id = {user[0]}")
+            except discord.Forbidden:
+                for _channel in guild.text_channels:
+                    try:
+                        await _channel.send(embed=error_embed)
+                        await _channel.send(embed=embed, file=file)
+                        log.info(f"Sent Circular Embed and Error Embed to Fallback Channel in {guild.id} | {_channel.id}")
+                        break
 
-            message = self.cur.fetchone()  # Get the reminder-message for the guild from the DB
+                    except Exception as e:
+                        log.debug(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
+
+
+            except Exception as e:
+                log.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden.")
+                log.error(e)
+
+
+
+        for user, message in zip(user_id, user_message):
+            file = discord.File(f"./{title}.png", filename="image.png")
+            embed.set_image(url="attachment://image.png")
+
+            user = await self.client.fetch_user(int(user))
+
             log.debug(f"Message: {message}")
-            embed.description = message[0]
+            embed.description = message
 
             try:
                 await user.send(embed=embed, file=file)
+                log.info(f"Successfully sent Circular in DMs to {user.name}#{user.descriminator} | {user.id}")
             except Exception as e:
+                log.error(f"Couldn't send Circular Embed to User: {user.id}")
                 log.error(e)
+
+
+        os.remove(f"./{title}.png")
+
 
 
 
