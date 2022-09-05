@@ -174,7 +174,7 @@ class Commands(commands.Cog):
 
         await ctx.followup.send(embed=c_embed) # Send the embed to the user
         c_embed.title = "Circular Notification"
-        c_embed.description = "I will now remind you when a circular is available, in this channel!"
+        c_embed.description = "I will now remind when a circular is available, in this channel!"
         await channel.send(embed=c_embed)
 
 
@@ -239,12 +239,9 @@ class Commands(commands.Cog):
     async def remindme(self, ctx, message: str = None):
         await ctx.defer()
 
-
         r_embed = discord.Embed(title="", description="", color=embed_color)
         r_embed.set_author(name=embed_title)
         r_embed.set_footer(text=embed_footer)
-
-        guild = await self.client.fetch_guild(ctx.guild.id)
 
         self.cur.execute(f"SELECT * FROM dm_notify WHERE user_id = {ctx.user.id}")
         res = self.cur.fetchone()
@@ -283,12 +280,6 @@ class Commands(commands.Cog):
         log.info(f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
         r_embed.description = "You successfully subscribed to DM reminders! `/circular remindme` to unsubscribe."
         await ctx.followup.send(embed=r_embed)
-
-
-
-
-
-
 
 
 

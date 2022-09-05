@@ -1,6 +1,4 @@
-import os
-
-import discord, sqlite3
+import discord, sqlite3, os
 from discord.ext import commands
 from backend import owner_ids, embed_title, embed_footer, embed_color, log, owner_guilds, get_png, ConfirmButton, DeleteButton
 
