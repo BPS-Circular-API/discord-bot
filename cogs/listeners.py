@@ -62,7 +62,6 @@ class Listeners(commands.Cog):
 
     @tasks.loop(seconds=3600*24) # Run every 24 hours
     async def get_member_count(self):
-        # get the member count of every guild and send it to the channel
         global member_count
         member_count = 0
         for guild in self.client.guilds:
@@ -92,81 +91,81 @@ class Listeners(commands.Cog):
 
 
     async def notify(self):
-        self.cur.execute("SELECT * FROM guild_notify")
+        self.cur.execute("SELECT * FROM guild_notify")  # Get all the guilds that have enabled notifications
         guild_notify = self.cur.fetchall()
         guilds = [x[0] for x in guild_notify]
         channels = [x[1] for x in guild_notify]
         messages = [x[2] for x in guild_notify]
 
-        self.cur.execute(f"SELECT * FROM dm_notify")
+        self.cur.execute(f"SELECT * FROM dm_notify")    # Get the DM notify list
         users = self.cur.fetchall()
         user_id = [x[0] for x in users]
         user_message = [x[1] for x in users]
-        del users, guild_notify
+        del users, guild_notify # Delete the variables to save memory
 
         embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
 
-        link = str(self.cached_latest[self.new_circular_cat]['link'])
-        link = link.split(':')
-        link = f"{link[0]}:{link[1]}"
-        title = self.cached_latest[self.new_circular_cat]['title']
+        # Remove redundant part of URL
+        link = str(self.cached_latest[self.new_circular_cat]['link'])   # Get the link of the new circular
+        link = link.split(':')  # Split the link by :
+        link = f"{link[0]}:{link[1]}"  # Get the first two parts of the link
+        title = self.cached_latest[self.new_circular_cat]['title']  # Get the title of the new circular
 
-        await get_png(link, title)
+        await get_png(link, title)  # Get the PNG of the circular
 
         error_embed = discord.Embed(title=f"Error!", description=f"Please make sure that I have the permission to send messages in the channel you set for notifications.", color=embed_color)
-        error_embed.set_footer(text=embed_footer)
-        error_embed.set_author(name=embed_title)
+        error_embed.set_footer(text=embed_footer)   # Set the footer
+        error_embed.set_author(name=embed_title)    # Set the author
 
 
-        embed.add_field(name=f"{self.new_circular_cat.capitalize()} | {title}", value=link, inline=False)
-        for guild, channel, message in zip(guilds, channels, messages):
+        embed.add_field(name=f"{self.new_circular_cat.capitalize()} | {title}", value=link, inline=False)   # Add the field
+        for guild, channel, message in zip(guilds, channels, messages): # For each guild in the database
 
-            file = discord.File(f"./{title}.png", filename="image.png")
-            embed.set_image(url="attachment://image.png")
+            file = discord.File(f"./{title}.png", filename="image.png") # Send the image as an attachment
+            embed.set_image(url="attachment://image.png")   # Set the image to the attachment
 
             log.debug(f"Message: {message}")
             embed.description = message  # Set the description of the embed to the message
 
-            guild = self.client.get_guild(int(guild))
-            channel = await guild.fetch_channel(int(channel))
+            guild = self.client.get_guild(int(guild))   # Get the guild object
+            channel = await guild.fetch_channel(int(channel))   # Get the channel object
 
-            try:
-                await channel.send(embed=embed, file=file)
+            try:    # Try to send the message
+                await channel.send(embed=embed, file=file)  # Send the embed
                 log.info(f"Sent Circular Embed to {guild.id} | {channel.id}")
 
-            except discord.Forbidden:
-                for _channel in guild.text_channels:
-                    try:
-                        await _channel.send(embed=error_embed)
-                        await _channel.send(embed=embed, file=file)
+            except discord.Forbidden:   # If the bot doesn't have permission to send messages in the channel
+                for _channel in guild.text_channels:    # Find a channel where it can send messages
+                    try:    # Try to send the error embed
+                        await _channel.send(embed=error_embed)  # Send the error embed
+                        await _channel.send(embed=embed, file=file) # Send the circular embed
                         log.info(f"Sent Circular Embed and Error Embed to Fallback Channel in {guild.id} | {_channel.id}")
-                        break
+                        break   # Break the loop
 
-                    except Exception as e:
+                    except Exception as e:  # If it can't send the error embed
                         log.debug(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
 
-
-            except Exception as e:
+            except Exception as e:  # If it can't send the circular embed
                 log.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden.")
                 log.error(e)
 
 
 
-        for user, message in zip(user_id, user_message):
-            file = discord.File(f"./{title}.png", filename="image.png")
-            embed.set_image(url="attachment://image.png")
+        for user, message in zip(user_id, user_message):    # For each user in the database
+            file = discord.File(f"./{title}.png", filename="image.png") # Get the image
+            embed.set_image(url="attachment://image.png")   # Set the image of the embed to the image of the circular
 
-            user = await self.client.fetch_user(int(user))
+            user = await self.client.fetch_user(int(user))  # Get the user object
 
             log.debug(f"Message: {message}")
             embed.description = message
 
-            try:
-                await user.send(embed=embed, file=file)
+            try:    # Try to send the embed to the user
+                await user.send(embed=embed, file=file) # Send the embed to the user
                 log.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
-            except Exception as e:
+            except Exception as e:  # If the user has DMs disabled
                 log.error(f"Couldn't send Circular Embed to User: {user.id}")
                 log.error(e)
 

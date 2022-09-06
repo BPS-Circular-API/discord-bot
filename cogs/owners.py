@@ -62,8 +62,8 @@ class Owners(commands.Cog):
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
 
 
-    @owners.command(name="guild_notify", description="Notify all users in a server.")
-    async def guild_notify(self, ctx, circular_name: str, url: str,
+    @owners.command(name="manual_notify", description="Notify all users in a server.")
+    async def manual_notify(self, ctx, circular_name: str, url: str,
                      category: discord.Option(choices=[
                          discord.OptionChoice("General", value="general"),
                          discord.OptionChoice("PTM", value="ptm"),
@@ -71,55 +71,60 @@ class Owners(commands.Cog):
                      ]),
                      debug_guild = None, debug_user = None):
 
-        if not ctx.author.id in owner_ids:
+        if not ctx.author.id in owner_ids:  # Check if the user is a bot owner
             return await ctx.respond("You are not allowed to use this command.")
         await ctx.defer()
-        if debug_guild:
-            log.debug(type(debug_guild))
-            debug_guild = int(debug_guild)
 
-        embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
-        embed.set_footer(text=embed_footer)
-        embed.set_author(name=embed_title)
-        embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url,
-                        inline=False)
+        embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)  # Create the embed
+        embed.set_footer(text=embed_footer) # Set the footer
+        embed.set_author(name=embed_title)  # Set the author
+        embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url, inline=False) # Add the circular name and url field
 
-        await get_png(url, circular_name)
+        await get_png(url, circular_name)   # Get the png from the url
 
         if debug_guild: # If a debug guild is specified, send the message to ONLY that guild.
-            self.cur.execute(f"SELECT message FROM guild_notify WHERE guild_id = {debug_guild}")
+            self.cur.execute(f"SELECT message FROM guild_notify WHERE guild_id = {debug_guild}")    # Get the server message from the database
             message = self.cur.fetchone()  # Get the reminder-message for the guild from the DB
             log.debug(f"Message: {message}")
+
+            if not message: # If the message is not found
+                message = "A new circular is out!"  # Set the message to the default message
             embed.description = message[0]  # Set the description of the embed to the message
 
-            guild = await self.client.fetch_guild(int(debug_guild))
+            guild = await self.client.fetch_guild(int(debug_guild)) # Get the guild object
             self.cur.execute(f"SELECT channel_id FROM guild_notify WHERE guild_id = {guild.id}")
             channel_id = self.cur.fetchone()[0]  # Get the channel_id for the guild from the DB
 
-            channel = await guild.fetch_channel(int(channel_id))
-            file = discord.File(f"./{circular_name}.png", filename="image.png")
-            embed.set_image(url="attachment://image.png")
-            await channel.send(embed=embed, file=file)
-            return await ctx.respond(f"Notified the `{debug_guild}` server.")
+            channel = await guild.fetch_channel(int(channel_id))    # Get the channel object
+            file = discord.File(f"./{circular_name}.png", filename="image.png") # Create the file object
+            embed.set_image(url="attachment://image.png")   # Set the image of the embed to the file
+
+            await channel.send(embed=embed, file=file)  # Send the embed
+            return await ctx.respond(f"Notified the `{debug_guild}` server.")   # Respond to the user and return
 
         elif debug_user: # If a debug user is specified, send the message to ONLY that user.
             self.cur.execute(f"SELECT message FROM remind WHERE user_id = {debug_user}")
             message = self.cur.fetchone()  # Get the reminder-message for the user from the DB
             log.debug(f"Message: {message}")
+
+            if not message: # If the message is not found
+                message = "A new circular is out!"  # Set the message to the default message
             embed.description = message[0]  # Set the description of the embed to the message
 
-            user = await self.client.fetch_user(int(debug_user))
-            file = discord.File(f"./{circular_name}.png", filename="image.png")
-            embed.set_image(url="attachment://image.png")
-            await user.send(embed=embed, file=file)
-            return await ctx.respond(f"Notified the `{debug_user}` user.")
+            user = await self.client.fetch_user(int(debug_user))    # Get the user object
+            file = discord.File(f"./{circular_name}.png", filename="image.png") # Create the file object
+            embed.set_image(url="attachment://image.png")   # Set the image of the embed to the file
+
+            await user.send(embed=embed, file=file) # Send the embed
+            return await ctx.respond(f"Notified the `{debug_user}` user.")  # Respond to the user and return
 
         else:
-            button = ConfirmButton(ctx.author)
-            file = discord.File(f"./{circular_name}.png", filename="image.png")
-            embed.set_image(url="attachment://image.png")
-            await ctx.followup.send(embed=embed, file=file, view=button)
-            await button.wait()
+            button = ConfirmButton(ctx.author)  # Create a ConfirmButton object
+            file = discord.File(f"./{circular_name}.png", filename="image.png") # Create the file object
+            embed.set_image(url="attachment://image.png")   # Set the image of the embed to the file
+
+            await ctx.followup.send(embed=embed, file=file, view=button)    # Send the embed to the user for confirmation
+            await button.wait() # Wait for the user to confirm
 
             if button.value is None:  # Timeout
                 await ctx.respond("Timed out.")
@@ -129,23 +134,23 @@ class Owners(commands.Cog):
                 await ctx.respond("Cancelled.")
                 return
 
-            self.cur.execute("SELECT * FROM guild_notify")
+            self.cur.execute("SELECT * FROM guild_notify")  # Get all the guilds from the database
             guild_notify = self.cur.fetchall()
             guilds = [x[0] for x in guild_notify]
             channels = [x[1] for x in guild_notify]
             messages = [x[2] for x in guild_notify]
 
-            self.cur.execute(f"SELECT * FROM dm_notify")
+            self.cur.execute(f"SELECT * FROM dm_notify")    # Get all the users from the database
             users = self.cur.fetchall()
             user_id = [x[0] for x in users]
             user_message = [x[1] for x in users]
-            del users, guild_notify
+            del users, guild_notify # Delete the variables to free up memory
 
-            embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
-            embed.set_footer(text=embed_footer)
-            embed.set_author(name=embed_title)
+            embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)  # Create the embed
+            embed.set_footer(text=embed_footer) # Set the footer
+            embed.set_author(name=embed_title)  # Set the author
 
-            await get_png(url, circular_name)
+            await get_png(url, circular_name)   # Get the png from the url
 
             error_embed = discord.Embed(title=f"Error!",
                                         description=f"Please make sure that I have the permission to send messages in the channel you set for notifications.",
@@ -154,54 +159,53 @@ class Owners(commands.Cog):
             error_embed.set_author(name=embed_title)
             embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url, inline=False)
 
-            for guild, channel, message in zip(guilds, channels, messages):
+            for guild, channel, message in zip(guilds, channels, messages): # For every guild in the database
 
-                file = discord.File(f"./{circular_name}.png", filename="image.png")
-                embed.set_image(url="attachment://image.png")
+                file = discord.File(f"./{circular_name}.png", filename="image.png") # Create the file object
+                embed.set_image(url="attachment://image.png")   # Set the image of the embed to the file
 
                 log.debug(f"Message: {message}")
                 embed.description = message  # Set the description of the embed to the message
 
-                guild = self.client.get_guild(int(guild))
-                channel = await guild.fetch_channel(int(channel))
+                guild = self.client.get_guild(int(guild))   # Get the guild object
+                channel = await guild.fetch_channel(int(channel))   # Get the channel object
 
-                try:
-                    await channel.send(embed=embed, file=file)
+                try:    # Try to send the message
+                    await channel.send(embed=embed, file=file)  # Send the embed
                     log.info(f"Sent Circular Embed to {guild.id} | {channel.id}")
 
-                except discord.Forbidden:
-                    for _channel in guild.text_channels:
-                        try:
-                            await _channel.send(embed=error_embed)
-                            await _channel.send(embed=embed, file=file)
+                except discord.Forbidden:   # If the bot doesn't have permission to send messages in the channel
+                    for _channel in guild.text_channels:    # For every channel in the guild
+                        try:    # Try to send the message
+                            await _channel.send(embed=error_embed)  # Send the error embed
+                            await _channel.send(embed=embed, file=file) # Send the embed
                             log.info(f"Sent Circular Embed and Error Embed to Fallback Channel in {guild.id} | {_channel.id}")
-                            break
+                            break   # Break out of the loop
 
-                        except Exception as e:
+                        except Exception as e:  # If the bot doesn't have permission to send messages in any channel
                             log.debug(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
 
-
-                except Exception as e:
+                except Exception as e:  # If the bot cannot send the message for some other reason
                     log.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden.")
                     log.error(e)
 
-            for user, message in zip(user_id, user_message):
-                file = discord.File(f"./{circular_name}.png", filename="image.png")
-                embed.set_image(url="attachment://image.png")
+            for user, message in zip(user_id, user_message):    # For every user in the database
+                file = discord.File(f"./{circular_name}.png", filename="image.png") # Create the file object
+                embed.set_image(url="attachment://image.png")   # Set the image of the embed to the file
 
-                user = await self.client.fetch_user(int(user))
+                user = await self.client.fetch_user(int(user))  # Get the user object
 
                 log.debug(f"Message: {message}")
-                embed.description = message
+                embed.description = message # Set the description of the embed to the message
 
-                try:
-                    await user.send(embed=embed, file=file)
+                try:    # Try to send the message
+                    await user.send(embed=embed, file=file) # Send the embed
                     log.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
-                except Exception as e:
+                except Exception as e:  # If the bot cannot send the message in DMs
                     log.error(f"Couldn't send Circular Embed to User: {user.id}")
                     log.error(e)
 
-            os.remove(f"./{circular_name}.png")
+            os.remove(f"./{circular_name}.png") # Remove the png file
 
 
 

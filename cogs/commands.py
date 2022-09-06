@@ -36,10 +36,11 @@ class Commands(commands.Cog):
     @circular.command(name='list', description='List all circulars in a particular category.')
     async def list(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
-        guild = await self.client.fetch_guild(ctx.guild.id)
-        author = await self.client.fetch_user(ctx.author.id)
+
+        guild = await self.client.fetch_guild(ctx.guild.id) # Fetch the guild object
+        author = await self.client.fetch_user(ctx.author.id)    # Fetch the user object
         log.info(f"{author.id} in {guild.id} is requesting a list of circulars in {category}.")
-        raw_res = await get_circular_list(category, "all")
+        raw_res = await get_circular_list(category, "all")  # Get the list of circulars from API
 
         titles, unprocessed_links, links = [], [], []   # Define 3 empty lists
         loop_int = 1    # The variable which will be used to add numbers into the embed
@@ -51,77 +52,82 @@ class Commands(commands.Cog):
             loop_int += 1
 
         # Remove the redundant download url parameter after ?download=xxxx
-        for link in unprocessed_links:
-            link = link.split(':')
-            link = f"{link[0]}:{link[1]}"
-            links.append(link)
+        for link in unprocessed_links:  # Loop through the unprocessed links
+            link = link.split(':')  # Split the link by :
+            link = f"{link[0]}:{link[1]}"   # Join the first 2 parts of the link
+            links.append(link)  # Add the link to the list
 
-        del unprocessed_links
-        embed = discord.Embed(title=f"Here is the result getting the `{category.capitalize()}` circulars!", color=embed_color)
-        embed.set_footer(text=embed_footer)
-        embed.set_author(name=embed_title)
+        del unprocessed_links   # Delete the unprocessed links list
+        embed = discord.Embed(title=f"Here is the result getting the `{category.capitalize()}` circulars!", color=embed_color)  # Create the embed
+        embed.set_footer(text=embed_footer) # Set the footer
+        embed.set_author(name=embed_title)  # Set the author
 
 
-        for title, link in zip(titles, links):
-            embed.add_field(name=title, value=link, inline=False)
+        for title, link in zip(titles, links):  # Loop through the titles and links
+            embed.add_field(name=title, value=link, inline=False)   # Add a field to the embed
 
-        msg = await ctx.followup.send(embed=embed)
-        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
+        msg = await ctx.followup.send(embed=embed)  # Send the embed
+        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))    # Edit the embed and add the delete button
 
 
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
     async def latest(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
-        guild = await self.client.fetch_guild(ctx.guild.id)
-        author = await self.client.fetch_user(ctx.author.id)
+
+        guild = await self.client.fetch_guild(ctx.guild.id) # Fetch the guild object
+        author = await self.client.fetch_user(ctx.author.id)    # Fetch the user object
         log.info(f"{author.id} in {guild.id} is requesting the latest circular in {category}.")
 
-        raw_res = await get_latest_circular(category)
-        title = raw_res['title']
-        link = raw_res['link']
-        link = link.split(':')
-        link = f"{link[0]}:{link[1]}"
+        raw_res = await get_latest_circular(category)   # Get the latest circular from API
+        title = raw_res['title']    # Get the title
+        link = raw_res['link']  # Get the link
+        link = link.split(':')  # Split the link by :
+        link = f"{link[0]}:{link[1]}"   # Join the first 2 parts of the link
 
-        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color)
-        embed.set_author(name=embed_title)
-        embed.add_field(name="Title", value=f"`{title}`", inline=False)
-        embed.add_field(name="Download URL", value=link, inline=False)
-        embed.set_footer(text=embed_footer)
+        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color)    # Create the embed
+        embed.set_author(name=embed_title)  # Set the author
+        embed.add_field(name="Title", value=f"`{title}`", inline=False)  # Add the title field
+        embed.add_field(name="Download URL", value=link, inline=False)  # Add the download url field
+        embed.set_footer(text=embed_footer) # Set the footer
 
-        await get_png(link, title)
+        await get_png(link, title)  # Get the png file from the download url
 
-        file = discord.File(f"./{title}.png", filename="image.png")
-        embed.set_image(url="attachment://image.png")
+        file = discord.File(f"./{title}.png", filename="image.png") # Create the file object
+        embed.set_image(url="attachment://image.png")   # Set the image to the embed
 
-        msg = await ctx.followup.send(embed=embed, file=file)
-        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
-        os.remove(f"./{title}.png")
+        msg = await ctx.followup.send(embed=embed, file=file)   # Send the embed
+        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))    # Edit the embed and add the delete button
+        os.remove(f"./{title}.png") # Remove the png file
+
 
 
     @circular.command(name="search", description="Searches for a particular circular in a particular category.")
     async def search(self, ctx, circular_title: str):
         await ctx.defer()
-        guild = await self.client.fetch_guild(ctx.guild.id)
-        author = await self.client.fetch_user(ctx.author.id)
+
+        guild = await self.client.fetch_guild(ctx.guild.id) # Fetch the guild object
+        author = await self.client.fetch_user(ctx.author.id)    # Fetch the user object
 
         log.info(f"{author.id} in {guild.id} is searching for {circular_title}")
         searched = await search(circular_title) # Search for the circular from the backend function
-        title = searched[0]
-        link = searched[1]
+
+        title = searched[0] # Get the title
+        link = searched[1]  # Get the link
 
         embed = discord.Embed(title="Circular Search", color=embed_color)   # Create an embed
-        embed.set_author(name=embed_title)
-        embed.set_footer(text=embed_footer)
+        embed.set_author(name=embed_title)  # Set the author
+        embed.set_footer(text=embed_footer) # Set the footer
         embed.add_field(name="Title", value=f"`{title}`", inline=False)
         embed.add_field(name="Download URL", value=link, inline=False)
 
-        await get_png(link, title)  # Download the circular image from the link (backend function)
+        await get_png(link, title)  # Get the png file from the download url
 
-        file = discord.File(f"./{title}.png", filename="image.png")
-        embed.set_image(url="attachment://image.png")
+        file = discord.File(f"./{title}.png", filename="image.png") # Create the file object
+        embed.set_image(url="attachment://image.png")   # Set the image to the embed
 
-        msg = await ctx.followup.send(embed=embed, file=file)
-        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
+        msg = await ctx.followup.send(embed=embed, file=file)   # Send the embed
+        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))    # Edit the embed and add the delete button
+
         os.remove(f"./{title}.png") # Delete the image after sending it
 
 
@@ -131,11 +137,11 @@ class Commands(commands.Cog):
     @admin.command(name="setup", description="Set up the bot to guild_notify the user when a circular is available in a channel.")
     async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
         await ctx.defer()
-        guild = await self.client.fetch_guild(ctx.guild.id) # Get the guild from the discord API
-        author = await guild.fetch_member(ctx.author.id)   # Get the author from the discord API
+
+        guild = await self.client.fetch_guild(ctx.guild.id) # Fetch the guild object
+        author = await guild.fetch_member(ctx.author.id)   # Fetch the member object
 
         log.info(f"{author.id} in {guild.id} is setting up the bot in {channel.name}.")
-
 
         if not author.guild_permissions.administrator:  # Check if the author has admin permissions
             if not author.id in owner_ids:  # Check if the author is an owner
@@ -239,46 +245,48 @@ class Commands(commands.Cog):
     async def remindme(self, ctx, message: str = None):
         await ctx.defer()
 
-        r_embed = discord.Embed(title="", description="", color=embed_color)
+        r_embed = discord.Embed(title="", description="", color=embed_color)    # Create the embed
         r_embed.set_author(name=embed_title)
         r_embed.set_footer(text=embed_footer)
 
         self.cur.execute(f"SELECT * FROM dm_notify WHERE user_id = {ctx.user.id}")
         res = self.cur.fetchone()
-        if res:
-            r_embed.title = "Unsubscribe"
+        if res: # If the user is already in the database
+            r_embed.title = "Unsubscribe"   # Set the title to Unsubscribe
             r_embed.description = "You are already subscribed to reminders. Do you want to unsubscribe?"
             button = ConfirmButton(ctx.author)
 
-            msg = await ctx.followup.send(embed=r_embed, view=button)
-            await button.wait()
+            msg = await ctx.followup.send(embed=r_embed, view=button)   # Send the embed and the button to the user
+            await button.wait() # Wait for the user to click the button
 
             if button.value is None:  # Timeout
-                await ctx.reply("Timed out.")
+                await ctx.followup.send("Timed out.")
                 return
 
             elif not button.value:  # Cancel
-                await ctx.reply("Cancelled.")
+                await ctx.followup.send("Cancelled.")
                 return
 
-            self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {ctx.user.id}")
-            self.con.commit()
+            self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {ctx.user.id}")    # Delete the user from the database
+            self.con.commit()   # Commit the changes to the database
 
             r_embed.title = "Unsubscribed"
             r_embed.description = "You have been unsubscribed from reminders."
             log.info(f"{ctx.author.id} in {ctx.guild.id} is un-subscribing from DM reminders.")
-            await msg.edit(embed=r_embed)
+            await msg.edit(embed=r_embed)   # Edit the message to show that the user has been unsubscribed
             return
 
-        if message:
-            message = message.replace("<", "").replace(">", "").replace('"', "")
-            self.cur.execute(f"INSERT INTO dm_notify (user_id, message) VALUES ({ctx.user.id}, '{message}');")
-        else:
+        if message: # If the message is not None, add the message to the embed
+            message = message.replace("<", "").replace(">", "").replace('"', "")    # Remove the <, > and " from the message
+            self.cur.execute(f"INSERT INTO dm_notify (user_id, message) VALUES ({ctx.user.id}, '{message}');")  # Add the user to the database
+        else:   # If the message is None, add the default message to the embed
             self.cur.execute(f"INSERT INTO dm_notify (user_id) VALUES ({ctx.user.id});")
         self.con.commit()
+
         r_embed.title = "Success!"
         log.info(f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
         r_embed.description = "You successfully subscribed to DM reminders! `/circular remindme` to unsubscribe."
+
         await ctx.followup.send(embed=r_embed)
 
 
