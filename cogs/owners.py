@@ -152,8 +152,8 @@ class Owners(commands.Cog):
                                         color=embed_color)
             error_embed.set_footer(text=embed_footer)
             error_embed.set_author(name=embed_title)
-
             embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url, inline=False)
+
             for guild, channel, message in zip(guilds, channels, messages):
 
                 file = discord.File(f"./{circular_name}.png", filename="image.png")
@@ -167,6 +167,7 @@ class Owners(commands.Cog):
 
                 try:
                     await channel.send(embed=embed, file=file)
+                    log.info(f"Sent Circular Embed to {guild.id} | {channel.id}")
 
                 except discord.Forbidden:
                     for _channel in guild.text_channels:
@@ -195,7 +196,7 @@ class Owners(commands.Cog):
 
                 try:
                     await user.send(embed=embed, file=file)
-                    log.info(f"Successfully sent Circular in DMs to {user.name}#{user.descriminator} | {user.id}")
+                    log.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
                 except Exception as e:
                     log.error(f"Couldn't send Circular Embed to User: {user.id}")
                     log.error(e)

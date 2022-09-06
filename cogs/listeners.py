@@ -134,6 +134,7 @@ class Listeners(commands.Cog):
 
             try:
                 await channel.send(embed=embed, file=file)
+                log.info(f"Sent Circular Embed to {guild.id} | {channel.id}")
 
             except discord.Forbidden:
                 for _channel in guild.text_channels:
@@ -164,7 +165,7 @@ class Listeners(commands.Cog):
 
             try:
                 await user.send(embed=embed, file=file)
-                log.info(f"Successfully sent Circular in DMs to {user.name}#{user.descriminator} | {user.id}")
+                log.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
             except Exception as e:
                 log.error(f"Couldn't send Circular Embed to User: {user.id}")
                 log.error(e)
