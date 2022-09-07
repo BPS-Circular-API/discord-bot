@@ -1,7 +1,5 @@
-import configparser, discord, logging, requests, os
-
+import configparser, discord, logging, requests
 from discord.ext import commands
-import pypdfium2 as pdfium
 
 
 bot_version = "0.1.0"
@@ -136,28 +134,16 @@ async def get_latest_circular_cached(category: str) -> dict | None:
     return info
 
 
-async def get_png(download_url, file_name: str):
-    windows_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36'}
-    pdf_file = requests.get(download_url, headers=windows_headers)
+async def get_png(download_url):
+    url = base_api_url + "getpng/"
 
-    with open(f"./{file_name}.pdf", "wb") as f:
-        f.write(pdf_file.content)
+    payload = {'url': download_url}
 
-    pdf = pdfium.PdfDocument(f"./{file_name}.pdf")
-    page = pdf[0]
-    pil_image = page.render_topil(
-        scale=2,
-        rotation=0,
-        crop=(0, 0, 0, 0),
-        colour=(255, 255, 255, 255),
-        annotations=True,
-        greyscale=False,
-        optimise_mode=pdfium.OptimiseMode.NONE,
-    )
-    pil_image.save(f"./{file_name}.png")
-    os.remove(f"./{file_name}.pdf")
+    request = requests.get(url, json=payload)
+    info = request.json()
+    log.debug(info)
 
-    return f"./{file_name}.png"
+    return info
 
 
 

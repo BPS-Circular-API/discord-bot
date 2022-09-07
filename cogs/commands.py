@@ -1,4 +1,3 @@
-import os
 import sqlite3, discord
 from discord.ext import commands
 from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, \
@@ -90,14 +89,11 @@ class Commands(commands.Cog):
         embed.add_field(name="Download URL", value=link, inline=False)  # Add the download url field
         embed.set_footer(text=embed_footer) # Set the footer
 
-        await get_png(link, title)  # Get the png file from the download url
+        png_url = await get_png(link)  # Get the png file from the download url
+        embed.set_image(url=png_url)   # Set the image to the embed
 
-        file = discord.File(f"./{title}.png", filename="image.png") # Create the file object
-        embed.set_image(url="attachment://image.png")   # Set the image to the embed
-
-        msg = await ctx.followup.send(embed=embed, file=file)   # Send the embed
+        msg = await ctx.followup.send(embed=embed)   # Send the embed
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))    # Edit the embed and add the delete button
-        os.remove(f"./{title}.png") # Remove the png file
 
 
 
@@ -120,15 +116,12 @@ class Commands(commands.Cog):
         embed.add_field(name="Title", value=f"`{title}`", inline=False)
         embed.add_field(name="Download URL", value=link, inline=False)
 
-        await get_png(link, title)  # Get the png file from the download url
+        png_url = await get_png(link)  # Get the png file from the download url
+        embed.set_image(url=png_url)   # Set the image to the embed
 
-        file = discord.File(f"./{title}.png", filename="image.png") # Create the file object
-        embed.set_image(url="attachment://image.png")   # Set the image to the embed
-
-        msg = await ctx.followup.send(embed=embed, file=file)   # Send the embed
+        msg = await ctx.followup.send(embed=embed)   # Send the embed
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))    # Edit the embed and add the delete button
 
-        os.remove(f"./{title}.png") # Delete the image after sending it
 
 
 

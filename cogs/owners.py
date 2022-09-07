@@ -1,4 +1,4 @@
-import discord, sqlite3, os
+import discord, sqlite3
 from discord.ext import commands
 from backend import owner_ids, embed_title, embed_footer, embed_color, log, owner_guilds, get_png, ConfirmButton, DeleteButton
 
@@ -62,8 +62,8 @@ class Owners(commands.Cog):
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
 
 
-    @owners.command(name="manual_notify", description="Notify all users in a server.")
-    async def manual_notify(self, ctx, circular_name: str, url: str,
+    @owners.command(name="manualnotify", description="Notify all users in a server.")
+    async def send_manual_notification(self, ctx, circular_name: str, url: str,
                      category: discord.Option(choices=[
                          discord.OptionChoice("General", value="general"),
                          discord.OptionChoice("PTM", value="ptm"),
@@ -80,7 +80,8 @@ class Owners(commands.Cog):
         embed.set_author(name=embed_title)  # Set the author
         embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url, inline=False) # Add the circular name and url field
 
-        await get_png(url, circular_name)   # Get the png from the url
+        png_url = await get_png(url)   # Get the png from the url
+        embed.set_image(url=png_url)  # Set the image of the embed to the file
 
         if debug_guild: # If a debug guild is specified, send the message to ONLY that guild.
             self.cur.execute(f"SELECT message FROM guild_notify WHERE guild_id = {debug_guild}")    # Get the server message from the database
@@ -96,10 +97,8 @@ class Owners(commands.Cog):
             channel_id = self.cur.fetchone()[0]  # Get the channel_id for the guild from the DB
 
             channel = await guild.fetch_channel(int(channel_id))    # Get the channel object
-            file = discord.File(f"./{circular_name}.png", filename="image.png") # Create the file object
-            embed.set_image(url="attachment://image.png")   # Set the image of the embed to the file
 
-            await channel.send(embed=embed, file=file)  # Send the embed
+            await channel.send(embed=embed)  # Send the embed
             return await ctx.respond(f"Notified the `{debug_guild}` server.")   # Respond to the user and return
 
         elif debug_user: # If a debug user is specified, send the message to ONLY that user.
@@ -112,18 +111,14 @@ class Owners(commands.Cog):
             embed.description = message[0]  # Set the description of the embed to the message
 
             user = await self.client.fetch_user(int(debug_user))    # Get the user object
-            file = discord.File(f"./{circular_name}.png", filename="image.png") # Create the file object
-            embed.set_image(url="attachment://image.png")   # Set the image of the embed to the file
 
-            await user.send(embed=embed, file=file) # Send the embed
+            await user.send(embed=embed) # Send the embed
             return await ctx.respond(f"Notified the `{debug_user}` user.")  # Respond to the user and return
 
         else:
             button = ConfirmButton(ctx.author)  # Create a ConfirmButton object
-            file = discord.File(f"./{circular_name}.png", filename="image.png") # Create the file object
-            embed.set_image(url="attachment://image.png")   # Set the image of the embed to the file
 
-            await ctx.followup.send(embed=embed, file=file, view=button)    # Send the embed to the user for confirmation
+            await ctx.followup.send(embed=embed, view=button)    # Send the embed to the user for confirmation
             await button.wait() # Wait for the user to confirm
 
             if button.value is None:  # Timeout
@@ -150,7 +145,7 @@ class Owners(commands.Cog):
             embed.set_footer(text=embed_footer) # Set the footer
             embed.set_author(name=embed_title)  # Set the author
 
-            await get_png(url, circular_name)   # Get the png from the url
+            png_url = await get_png(url)   # Get the png from the url
 
             error_embed = discord.Embed(title=f"Error!",
                                         description=f"Please make sure that I have the permission to send messages in the channel you set for notifications.",
@@ -158,11 +153,10 @@ class Owners(commands.Cog):
             error_embed.set_footer(text=embed_footer)
             error_embed.set_author(name=embed_title)
             embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url, inline=False)
+            embed.set_image(url=png_url)  # Set the image of the embed to the file
 
             for guild, channel, message in zip(guilds, channels, messages): # For every guild in the database
 
-                file = discord.File(f"./{circular_name}.png", filename="image.png") # Create the file object
-                embed.set_image(url="attachment://image.png")   # Set the image of the embed to the file
 
                 log.debug(f"Message: {message}")
                 embed.description = message  # Set the description of the embed to the message
@@ -171,14 +165,14 @@ class Owners(commands.Cog):
                 channel = await guild.fetch_channel(int(channel))   # Get the channel object
 
                 try:    # Try to send the message
-                    await channel.send(embed=embed, file=file)  # Send the embed
+                    await channel.send(embed=embed)  # Send the embed
                     log.info(f"Sent Circular Embed to {guild.id} | {channel.id}")
 
                 except discord.Forbidden:   # If the bot doesn't have permission to send messages in the channel
                     for _channel in guild.text_channels:    # For every channel in the guild
                         try:    # Try to send the message
                             await _channel.send(embed=error_embed)  # Send the error embed
-                            await _channel.send(embed=embed, file=file) # Send the embed
+                            await _channel.send(embed=embed) # Send the embed
                             log.info(f"Sent Circular Embed and Error Embed to Fallback Channel in {guild.id} | {_channel.id}")
                             break   # Break out of the loop
 
@@ -190,22 +184,18 @@ class Owners(commands.Cog):
                     log.error(e)
 
             for user, message in zip(user_id, user_message):    # For every user in the database
-                file = discord.File(f"./{circular_name}.png", filename="image.png") # Create the file object
-                embed.set_image(url="attachment://image.png")   # Set the image of the embed to the file
-
                 user = await self.client.fetch_user(int(user))  # Get the user object
 
                 log.debug(f"Message: {message}")
                 embed.description = message # Set the description of the embed to the message
 
                 try:    # Try to send the message
-                    await user.send(embed=embed, file=file) # Send the embed
+                    await user.send(embed=embed) # Send the embed
                     log.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
                 except Exception as e:  # If the bot cannot send the message in DMs
                     log.error(f"Couldn't send Circular Embed to User: {user.id}")
                     log.error(e)
 
-            os.remove(f"./{circular_name}.png") # Remove the png file
 
 
 
