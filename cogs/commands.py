@@ -1,4 +1,6 @@
 import sqlite3, discord
+
+import discord.ext.pages
 from discord.ext import commands
 from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, \
     get_latest_circular, get_png, search, owner_ids, DeleteButton, ConfirmButton
@@ -32,6 +34,8 @@ class Commands(commands.Cog):
     circular = SlashCommandGroup("circular", "Circular related commands.")
     admin = circular.create_subgroup("admin", "Admin commands for the bot")
 
+
+
     @circular.command(name='list', description='List all circulars in a particular category.')
     async def list(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
@@ -61,12 +65,27 @@ class Commands(commands.Cog):
         embed.set_footer(text=embed_footer) # Set the footer
         embed.set_author(name=embed_title)  # Set the author
 
+        page_list = []  # Create an empty list
 
+
+        count = 0
         for title, link in zip(titles, links):  # Loop through the titles and links
             embed.add_field(name=title, value=link, inline=False)   # Add a field to the embed
+            count += 1
+            if count % 10 == 0:
+                embed.title = f"Here is the result getting the `{category.capitalize()}` circulars! (Page {int(count/10)})"
+                # make a copy of the embed and add it to the page list
+                page_list.append(embed.copy())
+                embed.clear_fields()
 
-        msg = await ctx.followup.send(embed=embed)  # Send the embed
-        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))    # Edit the embed and add the delete button
+        log.debug(page_list)
+
+
+        paginator = discord.ext.pages.Paginator(
+            pages=page_list, disable_on_timeout=True, timeout=30
+        )
+        await paginator.respond(ctx.interaction, ephemeral=False)
+
 
 
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
