@@ -161,8 +161,28 @@ class Owners(commands.Cog):
                 log.debug(f"Message: {message}")
                 embed.description = message  # Set the description of the embed to the message
 
-                guild = self.client.get_guild(int(guild))   # Get the guild object
+                guild = self.client.fetch_guild(int(guild))   # Get the guild object
                 channel = await guild.fetch_channel(int(channel))   # Get the channel object
+
+                try:
+                    guild = self.client.fetch_guild(int(guild))  # Get the guild object
+                    channel = await guild.fetch_channel(int(channel))  # Get the channel object
+                except discord.NotFound:
+                    log.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
+                    self.cur.execute(
+                        f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
+                    self.con.commit()
+                    continue
+                except discord.Forbidden:
+                    log.warning(
+                        f"Could not get channel. Guild: {guild}, Channel: {channel}. Seems like I was kicked from the server.")
+                    self.cur.execute(
+                        f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
+                    self.con.commit()
+                    continue
+                except Exception as e:
+                    log.error(f"Error: {e}")
+                    continue
 
                 try:    # Try to send the message
                     await channel.send(embed=embed)  # Send the embed

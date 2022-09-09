@@ -24,9 +24,20 @@ class Listeners(commands.Cog):
         await asyncio.sleep(2)
         self.random_status.start()
 
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if (not message.author.bot) & (self.client.user.mentioned_in(message)) & (message.reference is None):
+            embed = discord.Embed(title="Mention Message", description="Hello! Thanks for using this bot.", color=embed_color)
+            embed.set_footer(text=embed_footer)
+            embed.set_author(name=embed_title)
+            embed.add_field(name="Prefix", value="This bot uses slash commands, which are prefixed with `/circular`", inline=False)
+            embed.add_field(name="For help", value="Use `/circular help` to get a list of all the commands.", inline=False)
+            await message.reply(embed=embed)
+
 
 
     """
+    # This code is commented out since I'm trying to make an intent-less bot and this requires the members intent
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         log.info(f"I just joined a server: {guild.id}")
@@ -125,9 +136,22 @@ class Listeners(commands.Cog):
 
             log.debug(f"Message: {message}")
             embed.description = message  # Set the description of the embed to the message
-
-            guild = self.client.get_guild(int(guild))   # Get the guild object
-            channel = await guild.fetch_channel(int(channel))   # Get the channel object
+            try:
+                guild = self.client.fetch_guild(int(guild))   # Get the guild object
+                channel = await guild.fetch_channel(int(channel))   # Get the channel object
+            except discord.NotFound:
+                log.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
+                self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
+                self.con.commit()
+                continue
+            except discord.Forbidden:
+                log.warning(f"Could not get channel. Guild: {guild}, Channel: {channel}. Seems like I was kicked from the server.")
+                self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
+                self.con.commit()
+                continue
+            except Exception as e:
+                log.error(f"Error: {e}")
+                continue
 
             try:    # Try to send the message
                 await channel.send(embed=embed)  # Send the embed

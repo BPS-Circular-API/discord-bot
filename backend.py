@@ -1,13 +1,9 @@
 import configparser, discord, logging, requests
 from discord.ext import commands
 
-
-bot_version = "0.1.0"
-# indents for guilds and channels
-intents = discord.Intents.none()
-prefix = "!"
 categories = ["general", "exam", "ptm"]
 receives = ["all", "links", "titles"]
+
 # Loading config.ini
 config = configparser.ConfigParser()
 
@@ -32,6 +28,8 @@ try:
 
 except Exception as err:
     print("Error reading the config.ini file. Error: " + str(err))
+    owner_guilds = []
+    owner_ids = []
     exit()
 
 
@@ -44,8 +42,8 @@ def colorlogger(name='moonball'):
         logging.getLogger(logger).disabled = True
     logger = logging.getLogger(name)
     stream = logging.StreamHandler()
-    LogFormat = "%(reset)s%(log_color)s%(levelname)-8s%(reset)s | %(log_color)s%(message)s"
-    stream.setFormatter(ColoredFormatter(LogFormat))
+    log_format = "%(reset)s%(log_color)s%(levelname)-8s%(reset)s | %(log_color)s%(message)s"
+    stream.setFormatter(ColoredFormatter(log_format))
     logger.addHandler(stream)
     # Set logger level
     if log_level.upper() in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
@@ -65,7 +63,7 @@ owner_guilds = [int(i) for i in owner_guilds]
 log.debug(str(owner_guilds))
 
 
-client = commands.Bot(command_prefix=prefix, intents=intents, help_command=None, case_insensitive=True)  # Setting prefix
+client = commands.Bot(help_command=None)  # Setting prefix
 
 
 
