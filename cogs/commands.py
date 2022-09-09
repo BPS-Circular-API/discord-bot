@@ -61,7 +61,7 @@ class Commands(commands.Cog):
             links.append(link)  # Add the link to the list
 
         del unprocessed_links   # Delete the unprocessed links list
-        embed = discord.Embed(title=f"Here is the result getting the `{category.capitalize()}` circulars!", color=embed_color)  # Create the embed
+        embed = discord.Embed(color=embed_color)  # Create the embed
         embed.set_footer(text=embed_footer) # Set the footer
         embed.set_author(name=embed_title)  # Set the author
 
@@ -72,17 +72,17 @@ class Commands(commands.Cog):
         for title, link in zip(titles, links):  # Loop through the titles and links
             embed.add_field(name=title, value=link, inline=False)   # Add a field to the embed
             count += 1
-            if count % 10 == 0:
-                embed.title = f"Here is the result getting the `{category.capitalize()}` circulars! (Page {int(count/10)})"
-                # make a copy of the embed and add it to the page list
-                page_list.append(embed.copy())
-                embed.clear_fields()
+            if count % 10 == 0: # If the count is divisible by 10 (It has reached 10 fields)
+                embed.title = f"Here is the result getting the `{category.capitalize()}` circulars!"  # Set the title of the embed
+                embed.description = f"Page {int(count/10)}"  # Set the description of the embed
+                page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
+                embed.clear_fields()    # Clear the fields of the embed
 
         log.debug(page_list)
 
 
         paginator = discord.ext.pages.Paginator(
-            pages=page_list, disable_on_timeout=True, timeout=30
+            pages=page_list, disable_on_timeout=True, timeout=60
         )
         await paginator.respond(ctx.interaction, ephemeral=False)
 
@@ -127,7 +127,8 @@ class Commands(commands.Cog):
         searched = await search(circular_title) # Search for the circular from the backend function
 
         title = searched[0] # Get the title
-        link = searched[1]  # Get the link
+        link = searched[1].split(':')  # Split the link by :
+        link = f"{link[0]}:{link[1]}"  # Join the first 2 parts of the link
 
         embed = discord.Embed(title="Circular Search", color=embed_color)   # Create an embed
         embed.set_author(name=embed_title)  # Set the author
@@ -140,8 +141,6 @@ class Commands(commands.Cog):
 
         msg = await ctx.followup.send(embed=embed)   # Send the embed
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))    # Edit the embed and add the delete button
-
-
 
 
 
@@ -230,14 +229,23 @@ class Commands(commands.Cog):
         await ctx.followup.send(embed=d_embed)
 
 
+
     @circular.command(name="invite", description="Invite the bot to your server.")
     async def invite(self, ctx):
-        embed = discord.Embed(title="Invite", description=f"Use this link to invite the bot to your server:\n https://bpsapi.rajtech.me/r/discord-bot-invite", color=embed_color)
+        embed = discord.Embed(title="Invite", description=f"Click the below button to add the bot to your server. Alternatively you can use this URL too.\n https://bpsapi.rajtech.me/r/discord-bot-invite", color=embed_color)
         embed.set_author(name=embed_title)
         embed.set_footer(text=embed_footer)
-        await ctx.respond(embed=embed)
+        class InviteButton(discord.ui.Button):
+            def __init__(self):
+                super().__init__(label="Invite", url="https://discord.com/api/oauth2/authorize?client_id=1009533262533767258&permissions=16&scope=bot%20applications.commands", style=discord.ButtonStyle.link)
+        view = discord.ui.View()
+        view.add_item(InviteButton())
+        await ctx.respond(embed=embed, view=view)
+
+        # await ctx.respond(embed=embed)
 
 
+    @commands.slash_command(name="help", description="Shows the help menu.")
     @circular.command(name="help", description="Shows the help message for the circular commands.")
     async def help(self, ctx):
         await ctx.defer()
