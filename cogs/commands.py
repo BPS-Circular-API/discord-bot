@@ -1,3 +1,4 @@
+import math
 import sqlite3, discord
 
 import discord.ext.pages
@@ -64,19 +65,24 @@ class Commands(commands.Cog):
         embed = discord.Embed(color=embed_color)  # Create the embed
         embed.set_footer(text=embed_footer) # Set the footer
         embed.set_author(name=embed_title)  # Set the author
+        embed.title = f"Here is the result getting the `{category.capitalize()}` circulars!"  # Set the title of the embed
 
         page_list = []  # Create an empty list
-
 
         count = 0
         for title, link in zip(titles, links):  # Loop through the titles and links
             embed.add_field(name=title, value=link, inline=False)   # Add a field to the embed
             count += 1
             if count % 10 == 0: # If the count is divisible by 10 (It has reached 10 fields)
-                embed.title = f"Here is the result getting the `{category.capitalize()}` circulars!"  # Set the title of the embed
+                log.debug(count)
                 embed.description = f"Page {int(count/10)}"  # Set the description of the embed
                 page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
                 embed.clear_fields()    # Clear the fields of the embed
+            if count == len(titles):
+                log.debug(count)
+                embed.description = f"Page {int(math.ceil(count / 10))}"  # Set the description of the embed
+                page_list.append(embed.copy())
+                embed.clear_fields()
 
         log.debug(page_list)
 

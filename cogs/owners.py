@@ -169,15 +169,12 @@ class Owners(commands.Cog):
                     channel = await guild.fetch_channel(int(channel))  # Get the channel object
                 except discord.NotFound:
                     log.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
-                    self.cur.execute(
-                        f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
+                    self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
                     self.con.commit()
                     continue
                 except discord.Forbidden:
-                    log.warning(
-                        f"Could not get channel. Guild: {guild}, Channel: {channel}. Seems like I was kicked from the server.")
-                    self.cur.execute(
-                        f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
+                    log.warning(f"Could not get channel. Guild: {guild}, Channel: {channel}. Seems like I was kicked from the server.")
+                    self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
                     self.con.commit()
                     continue
                 except Exception as e:
