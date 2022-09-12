@@ -31,7 +31,7 @@ class Listeners(commands.Cog):
             embed.set_footer(text=embed_footer)
             embed.set_author(name=embed_title)
             embed.add_field(name="Prefix", value="This bot uses slash commands, which are prefixed with `/circular`", inline=False)
-            embed.add_field(name="For help", value="Use `/circular help` to get a list of all the commands.", inline=False)
+            embed.add_field(name="For help", value="Use </help:1017654494009491476>  to get a list of all the commands.", inline=False)
             await message.reply(embed=embed)
 
 
@@ -64,8 +64,8 @@ class Listeners(commands.Cog):
     @tasks.loop(seconds=60)
     async def random_status(self):
         rand_int = random.randint(0, 3)
-        activities = [f"{member_count} Users!", f"{len(self.client.guilds)} Guilds!", f"/circular help", f"Made by Raj Dave#3215"]
-        types = [discord.ActivityType.watching, discord.ActivityType.watching, discord.ActivityType.playing, discord.ActivityType.playing]
+        activities = (f"{member_count} Users!", f"{len(self.client.guilds)} Guilds!", f"/circular help", f"Made by Raj Dave#3215")
+        types = (discord.ActivityType.watching, discord.ActivityType.watching, discord.ActivityType.playing, discord.ActivityType.playing)
         await self.client.change_presence(activity=discord.Activity(type=types[rand_int], name=activities[rand_int]))
 
 
@@ -83,7 +83,7 @@ class Listeners(commands.Cog):
 
     @tasks.loop(seconds=3600)
     async def check_for_circular(self):
-        categories = ["ptm", "general", "exam"]
+        categories = ("ptm", "general", "exam")
         if self.old_cached_latest == {}:    # If the bot just started and there is no older cached
             self.old_cached_latest = await get_latest_circular_cached("all")
         else:   # If cached exists
@@ -104,14 +104,14 @@ class Listeners(commands.Cog):
         self.cur.execute("SELECT * FROM guild_notify")  # Get all the guilds that have enabled notifications
         guild_notify = self.cur.fetchall()
 
-        guilds = [x[0] for x in guild_notify]
-        channels = [x[1] for x in guild_notify]
-        messages = [x[2] for x in guild_notify]
+        guilds = (x[0] for x in guild_notify)
+        channels = (x[1] for x in guild_notify)
+        messages = (x[2] for x in guild_notify)
 
         self.cur.execute(f"SELECT * FROM dm_notify")    # Get the DM notify list
         users = self.cur.fetchall()
-        user_id = [x[0] for x in users]
-        user_message = [x[1] for x in users]
+        user_id = (x[0] for x in users)
+        user_message = (x[1] for x in users)
         del users, guild_notify # Delete the variables to save memory
 
         embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)

@@ -17,8 +17,8 @@ except Exception as e:
 try:
     discord_token: str = config.get('secret', 'discord-token')
     log_level: str = config.get('main', 'log-level')
-    owner_ids: list = config.get('main', 'owner-ids').strip().split(',')
-    owner_guilds: list = config.get('main', 'owner-guilds').strip().split(',')
+    owner_ids = config.get('main', 'owner-ids').strip().split(',')
+    owner_guilds = config.get('main', 'owner-guilds').strip().split(',')
     base_api_url: str = config.get('main', 'base_api_url')
 
     embed_footer: str = config.get('discord', 'embed_footer')
@@ -56,10 +56,10 @@ def colorlogger(name='moonball'):
 log = colorlogger()
 
 
-owner_ids = [int(i) for i in owner_ids]
+owner_ids = (int(i) for i in owner_ids)
 log.debug(str(owner_ids))
 
-owner_guilds = [int(i) for i in owner_guilds]
+owner_guilds = (int(i) for i in owner_guilds)
 log.debug(str(owner_guilds))
 
 
