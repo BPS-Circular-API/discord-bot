@@ -1,3 +1,5 @@
+import math
+
 import discord, sqlite3
 from discord.ext import commands
 from backend import owner_ids, embed_title, embed_footer, embed_color, log, owner_guilds, get_png, ConfirmButton, DeleteButton
@@ -9,7 +11,9 @@ class Owners(commands.Cog):
         self.con = sqlite3.connect('./data/data.db')
         self.cur = self.con.cursor()
 
+
     owners = discord.SlashCommandGroup("owners", "Bot owner commands.", guild_ids=owner_guilds)
+
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -24,6 +28,7 @@ class Owners(commands.Cog):
         self.client.unload_extension(f"cogs.{cog}")
         self.client.load_extension(f"cogs.{cog}")
         await ctx.respond(f"Reloaded {cog}.")
+
 
 
     @owners.command(name="execsql", description="Execute a SQL query.")
@@ -49,17 +54,37 @@ class Owners(commands.Cog):
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
 
 
+
     @owners.command(name="servers", description="List all servers the bot is in.")
     async def servers(self, ctx):
         if not ctx.author.id in owner_ids:
             return await ctx.respond("You are not allowed to use this command.")
         await ctx.defer()
         embed = discord.Embed(title="Servers", description=f"I am in `{len(self.client.guilds)}` servers!", color=embed_color).set_footer(text=embed_footer).set_author(name=embed_title)
+        count = 0
+        page_list = []
         for i in self.client.guilds:
             guild = await self.client.fetch_guild(i.id)
             embed.add_field(name=guild.name, value=i.id, inline=False)
-        msg = await ctx.followup.send(embed=embed)
-        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
+            count += 1
+            if count % 10 == 0: # If the count is divisible by 10 (It has reached 10 fields)
+                log.debug(count)
+                embed.description = f"Page {int(count/10)}"  # Set the description of the embed
+                page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
+                embed.clear_fields()    # Clear the fields of the embed
+            if count == len(self.client.guilds):
+                log.debug(count)
+                embed.description = f"Page {int(math.ceil(count / 10))}"  # Set the description of the embed
+                page_list.append(embed.copy())
+                embed.clear_fields()
+
+        log.debug(page_list)
+
+        paginator = discord.ext.pages.Paginator(
+            pages=page_list, disable_on_timeout=True, timeout=60
+        )
+        await paginator.respond(ctx.interaction, ephemeral=True)
+
 
 
     @owners.command(name="manualnotify", description="Notify all users in a server.")
@@ -89,7 +114,7 @@ class Owners(commands.Cog):
             log.debug(f"Message: {message}")
 
             if not message: # If the message is not found
-                message = "A new circular is out!"  # Set the message to the default message
+                message[0] = "A new circular is out!"  # Set the message to the default message
             embed.description = message[0]  # Set the description of the embed to the message
 
             guild = await self.client.fetch_guild(int(debug_guild)) # Get the guild object
