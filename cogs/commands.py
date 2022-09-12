@@ -100,7 +100,7 @@ class Commands(commands.Cog):
 
         guild = await self.client.fetch_guild(ctx.guild.id) # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)    # Fetch the user object
-        log.info(f"{author.id} in {guild.id} is requesting the latest circular in {category}.")
+        log.info(f"{author.id} in {guild.id} is requesting the latest circular of category {category}.")
 
         raw_res = await get_latest_circular(category)   # Get the latest circular from API
         title = raw_res['title']    # Get the title
@@ -258,11 +258,13 @@ class Commands(commands.Cog):
         embed = discord.Embed(title="Circular Commands", description="Here is the list of commands for the circulars.", color=embed_color)
         embed.set_author(name=embed_title)
         embed.set_footer(text=embed_footer)
-        embed.add_field(name="/circular list", value="List all circulars in a particular category.", inline=False)
-        embed.add_field(name="/circular latest", value="Sends the latest circular, the download URL and a the preview of a particular category.", inline=False)
-        embed.add_field(name="/circular search", value="Searches for a circular from input and gives preview and circular details", inline=False)
-        embed.add_field(name="/circular admin setup", value="Set up a channel to remind in, when a new circular is posted", inline=False)
-        embed.add_field(name="/circular admin delete", value="Delete the server's circular reminder configuration", inline=False)
+        embed.add_field(name="</circular list:1010911588703817808>", value="List all circulars in a particular category.", inline=False)
+        embed.add_field(name="</circular latest:1010911588703817808>", value="Sends the latest circular, the download URL and a the preview of a particular category.", inline=False)
+        embed.add_field(name="</circular search:1010911588703817808>", value="Searches for a circular from input and gives preview and circular details", inline=False)
+        embed.add_field(name="</circular remindme:1010911588703817808>", value="Remind you in DMs whenever a new circular is posted.", inline=False)
+        embed.add_field(name="</circular admin setup:1010911588703817808>", value="Set up a channel to remind in, when a new circular is posted", inline=False)
+        embed.add_field(name="</circular admin delete:1010911588703817808>", value="Delete the server's circular reminder configuration", inline=False)
+        embed.add_field(name="</circular invite:1010911588703817808>", value="Invite the bot to your server", inline=False)
         await ctx.followup.send(embed=embed)
 
 
