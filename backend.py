@@ -56,11 +56,11 @@ def colorlogger(name='moonball'):
 log = colorlogger()
 
 
-owner_ids = (int(i) for i in owner_ids)
-log.debug(str(owner_ids))
+owner_ids = [int(i) for i in owner_ids]
+log.debug(owner_ids)
 
-owner_guilds = (int(i) for i in owner_guilds)
-log.debug(str(owner_guilds))
+owner_guilds = [int(i) for i in owner_guilds]
+log.debug(owner_guilds)
 
 
 client = commands.Bot(help_command=None)  # Setting prefix
