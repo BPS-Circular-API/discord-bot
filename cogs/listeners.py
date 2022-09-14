@@ -104,14 +104,14 @@ class Listeners(commands.Cog):
         self.cur.execute("SELECT * FROM guild_notify")  # Get all the guilds that have enabled notifications
         guild_notify = self.cur.fetchall()
 
-        guilds = (x[0] for x in guild_notify)
-        channels = (x[1] for x in guild_notify)
-        messages = (x[2] for x in guild_notify)
+        guilds = [x[0] for x in guild_notify]
+        channels = [x[1] for x in guild_notify]
+        messages = [x[2] for x in guild_notify]
 
         self.cur.execute(f"SELECT * FROM dm_notify")    # Get the DM notify list
         users = self.cur.fetchall()
-        user_id = (x[0] for x in users)
-        user_message = (x[1] for x in users)
+        user_id = [x[0] for x in users]
+        user_message = [x[1] for x in users]
         del users, guild_notify # Delete the variables to save memory
 
         embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
@@ -137,8 +137,8 @@ class Listeners(commands.Cog):
             log.debug(f"Message: {message}")
             embed.description = message  # Set the description of the embed to the message
             try:
-                guild = self.client.fetch_guild(int(guild))   # Get the guild object
-                channel = await guild.fetch_channel(int(channel))   # Get the channel object
+                guild = await self.client.fetch_guild(int(guild))  # Get the guild object
+                channel = await guild.fetch_channel(int(channel))  # Get the channel object
             except discord.NotFound:
                 log.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
                 self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
@@ -186,8 +186,6 @@ class Listeners(commands.Cog):
             except Exception as e:  # If the user has DMs disabled
                 log.error(f"Couldn't send Circular Embed to User: {user.id}")
                 log.error(e)
-
-
 
 
 
