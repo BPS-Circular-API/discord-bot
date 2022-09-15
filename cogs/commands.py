@@ -3,8 +3,7 @@ import sqlite3, discord
 
 import discord.ext.pages
 from discord.ext import commands
-from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, \
-    get_latest_circular, get_png, search, owner_ids, DeleteButton, ConfirmButton
+from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_png, search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular_cached
 from discord import SlashCommandGroup
 
 category_options = []
@@ -102,7 +101,7 @@ class Commands(commands.Cog):
         author = await self.client.fetch_user(ctx.author.id)    # Fetch the user object
         log.info(f"{author.id} in {guild.id} is requesting the latest circular of category {category}.")
 
-        raw_res = await get_latest_circular(category)   # Get the latest circular from API
+        raw_res = await get_latest_circular_cached(category)   # Get the latest circular from API
         title = raw_res['title']    # Get the title
         link = raw_res['link']  # Get the link
         link = link.split(':')  # Split the link by :

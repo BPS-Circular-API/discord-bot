@@ -133,7 +133,7 @@ async def get_latest_circular_cached(category: str) -> dict | None:
 
 
 async def get_png(download_url):
-    url = base_api_url + "getpng/"
+    url = base_api_url + "getpng"
 
     payload = {'url': download_url}
 

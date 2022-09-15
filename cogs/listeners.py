@@ -2,7 +2,7 @@ import asyncio
 import random
 import sqlite3, discord
 from discord.ext import commands, tasks
-from backend import log, get_latest_circular_cached, embed_color, embed_footer, embed_title, get_png
+from backend import log, get_latest_circular, embed_color, embed_footer, embed_title, get_png
 
 
 class Listeners(commands.Cog):
@@ -85,11 +85,11 @@ class Listeners(commands.Cog):
     async def check_for_circular(self):
         categories = ("ptm", "general", "exam")
         if self.old_cached_latest == {}:    # If the bot just started and there is no older cached
-            self.old_cached_latest = await get_latest_circular_cached("all")
+            self.old_cached_latest = await get_latest_circular("all")
         else:   # If cached exists
             self.old_cached_latest = self.cached_latest
 
-        self.cached_latest = await get_latest_circular_cached("all")
+        self.cached_latest = await get_latest_circular("all")
         if self.cached_latest != self.old_cached_latest:    # If the cached circular list is different from the current one
             log.info("There's a new circular posted!")
             for cat in categories:  # Check which category has a new circular
