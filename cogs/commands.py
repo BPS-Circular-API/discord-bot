@@ -95,7 +95,7 @@ class Commands(commands.Cog):
 
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
     async def latest(self, ctx, category: discord.Option(choices=category_options)):
-        await ctx.defer()
+        await ctx.defer()   # Defer the interaction
 
         guild = await self.client.fetch_guild(ctx.guild.id) # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)    # Fetch the user object

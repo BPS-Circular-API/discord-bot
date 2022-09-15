@@ -160,14 +160,16 @@ class Owners(commands.Cog):
 
             self.cur.execute("SELECT * FROM guild_notify")  # Get all the guilds from the database
             guild_notify = self.cur.fetchall()
-            guilds = [x[0] for x in guild_notify]
-            channels = [x[1] for x in guild_notify]
-            messages = [x[2] for x in guild_notify]
+
+            guilds = [x[0] for x in guild_notify]   # Get all the guild_id s from the database
+            channels = [x[1] for x in guild_notify] # Get all the channel_id s from the database
+            messages = [x[2] for x in guild_notify] # Get all the messages from the database
 
             self.cur.execute(f"SELECT * FROM dm_notify")    # Get all the users from the database
-            users = self.cur.fetchall()
-            user_id = [x[0] for x in users]
-            user_message = [x[1] for x in users]
+            users = self.cur.fetchall() # Get all the user_id s from the database
+
+            user_id = [x[0] for x in users] # Get all the user_id s from the database
+            user_message = [x[1] for x in users]    # Get all the messages from the database
             del users, guild_notify # Delete the variables to free up memory
 
             embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)  # Create the embed
@@ -184,42 +186,49 @@ class Owners(commands.Cog):
             embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url, inline=False)
             embed.set_image(url=png_url)  # Set the image of the embed to the file
 
-            if send_only_to:
-                if send_only_to == "dms":
+            if send_only_to:    # If it has been specified to send the notifications to only servers/dms
+                if send_only_to == "dms":   # Send notifications to dms
+
                     for user, message in zip(user_id, user_message):  # For each user in the database
                         user = await self.client.fetch_user(int(user))  # Get the user object
 
                         log.debug(f"Message: {message}")
-                        embed.description = message
+                        embed.description = message # Set the description of the embed to the message
 
                         try:  # Try to send the embed to the user
                             await user.send(embed=embed)  # Send the embed to the user
-                            log.info(
-                                f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+                            log.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+                        except discord.Forbidden:   # If the bot is not allowed to send messages to the user
+                            log.error(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+                            # self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")
+                            # self.con.commit()
+
                         except Exception as e:  # If the user has DMs disabled
-                            log.error(f"Couldn't send Circular Embed to User: {user.id}")
+                            log.error(f"Couldn't send Circular Embed to User (not discord.Forbidden): {user.id}")
                             log.error(e)
 
 
-                elif send_only_to == "servers":
+                elif send_only_to == "servers": # Send notifications to servers
+
                     for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
                         log.debug(f"Message: {message}")
                         embed.description = message  # Set the description of the embed to the message
-                        try:
+
+                        try:    # Try to send the embed to the guild
                             guild = await self.client.fetch_guild(int(guild))  # Get the guild object
                             channel = await guild.fetch_channel(int(channel))  # Get the channel object
-                        except discord.NotFound:
+                        except discord.NotFound:    # If the guild/channel is not found (deleted)
                             log.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
                             self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
                             self.con.commit()
                             continue
-                        except discord.Forbidden:
+                        except discord.Forbidden:   # If the bot can not get the guild/channel
                             log.warning(f"Could not get channel. Guild: {guild}, Channel: {channel}. Seems like I was kicked from the server.")
                             self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
                             self.con.commit()
                             continue
-                        except Exception as e:
+                        except Exception as e:  # If there is some other error
                             log.error(f"Error: {e}")
                             continue
 
@@ -229,6 +238,7 @@ class Owners(commands.Cog):
 
                         except discord.Forbidden:  # If the bot doesn't have permission to send messages in the channel
                             for _channel in guild.text_channels:  # Find a channel where it can send messages
+
                                 try:  # Try to send the error embed
                                     await _channel.send(embed=error_embed)  # Send the error embed
                                     await _channel.send(embed=embed)  # Send the circular embed
@@ -243,27 +253,28 @@ class Owners(commands.Cog):
                             log.error(e)
 
             else:
-                exit()
-
-
                 for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
                     log.debug(f"Message: {message}")
                     embed.description = message  # Set the description of the embed to the message
-                    try:
+
+                    try:    # Try to get the guild and channel
                         guild = await self.client.fetch_guild(int(guild))  # Get the guild object
                         channel = guild.get_channel(int(channel))  # Get the channel object
-                    except discord.NotFound:
+
+                    except discord.NotFound:    # If the guild/channel is not found (deleted)
                         log.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
                         self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
                         self.con.commit()
                         continue
-                    except discord.Forbidden:
+
+                    except discord.Forbidden:   # If the bot can not get the guild/channel
                         log.warning(f"Could not get channel. Guild: {guild}, Channel: {channel}. Seems like I was kicked from the server.")
                         self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
                         self.con.commit()
                         continue
-                    except Exception as e:
+
+                    except Exception as e:  # If there is some other error
                         log.error(f"Error: {e}")
                         continue
 

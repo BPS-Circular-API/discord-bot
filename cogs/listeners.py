@@ -110,6 +110,7 @@ class Listeners(commands.Cog):
 
         self.cur.execute(f"SELECT * FROM dm_notify")    # Get the DM notify list
         users = self.cur.fetchall()
+
         user_id = [x[0] for x in users]
         user_message = [x[1] for x in users]
         del users, guild_notify # Delete the variables to save memory
@@ -136,20 +137,24 @@ class Listeners(commands.Cog):
 
             log.debug(f"Message: {message}")
             embed.description = message  # Set the description of the embed to the message
-            try:
+
+            try:    # Try to get the channel and guild
                 guild = await self.client.fetch_guild(int(guild))  # Get the guild object
                 channel = await guild.fetch_channel(int(channel))  # Get the channel object
-            except discord.NotFound:
+
+            except discord.NotFound:    # If the channel or guild is not found (deleted)
                 log.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
                 self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
                 self.con.commit()
                 continue
-            except discord.Forbidden:
+
+            except discord.Forbidden:   # If the bot can not get the channel or guild
                 log.warning(f"Could not get channel. Guild: {guild}, Channel: {channel}. Seems like I was kicked from the server.")
                 self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
                 self.con.commit()
                 continue
-            except Exception as e:
+
+            except Exception as e:  # If there is any other error
                 log.error(f"Error: {e}")
                 continue
 
@@ -159,6 +164,7 @@ class Listeners(commands.Cog):
 
             except discord.Forbidden:   # If the bot doesn't have permission to send messages in the channel
                 for _channel in guild.text_channels:    # Find a channel where it can send messages
+
                     try:    # Try to send the error embed
                         await _channel.send(embed=error_embed)  # Send the error embed
                         await _channel.send(embed=embed) # Send the circular embed
