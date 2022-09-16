@@ -260,7 +260,7 @@ class Owners(commands.Cog):
 
                     try:    # Try to get the guild and channel
                         guild = await self.client.fetch_guild(int(guild))  # Get the guild object
-                        channel = guild.get_channel(int(channel))  # Get the channel object
+                        channel = await guild.fetch_channel(int(channel))  # Get the channel object
 
                     except discord.NotFound:    # If the guild/channel is not found (deleted)
                         log.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
@@ -306,6 +306,12 @@ class Owners(commands.Cog):
                     try:  # Try to send the embed to the user
                         await user.send(embed=embed)  # Send the embed to the user
                         log.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+                    except discord.Forbidden:  # If the user has DMs disabled
+                        log.warning(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
+                        # delete the user from the database
+                        self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")
+                        self.con.commit()
+                        log.info(f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
                     except Exception as e:  # If the user has DMs disabled
                         log.error(f"Couldn't send Circular Embed to User: {user.id}")
                         log.error(e)

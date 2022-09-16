@@ -84,13 +84,21 @@ async def get_circular_list(category: str, receive: str = "all") -> list | None:
 
 async def get_latest_circular(category: str) -> dict | None:
     url = base_api_url + "latest/"
-    if not category in ["ptm", "general", "exam"]:
+    if not category in ["ptm", "general", "exam", "all"]:
         return None
 
-    payload = {'category': category}
+    if category == "all":
+        info = {}
+        for i in categories:
+            payload = {'category': i}
+            request = requests.get(url, json=payload)
+            res = request.json()
+            info[i] = res
+    else:
+        payload = {'category': category}
+        request = requests.get(url, json=payload)
+        info = request.json()
 
-    request = requests.get(url, json=payload)
-    info = request.json()
     log.debug(info)
     return info
 

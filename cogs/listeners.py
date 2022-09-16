@@ -83,6 +83,7 @@ class Listeners(commands.Cog):
 
     @tasks.loop(seconds=3600)
     async def check_for_circular(self):
+        log.info("Check for circular started")
         categories = ("ptm", "general", "exam")
         if self.old_cached_latest == {}:    # If the bot just started and there is no older cached
             self.old_cached_latest = await get_latest_circular("all")
@@ -90,6 +91,8 @@ class Listeners(commands.Cog):
             self.old_cached_latest = self.cached_latest
 
         self.cached_latest = await get_latest_circular("all")
+        log.debug(self.cached_latest)
+
         if self.cached_latest != self.old_cached_latest:    # If the cached circular list is different from the current one
             log.info("There's a new circular posted!")
             for cat in categories:  # Check which category has a new circular
@@ -189,6 +192,12 @@ class Listeners(commands.Cog):
             try:    # Try to send the embed to the user
                 await user.send(embed=embed) # Send the embed to the user
                 log.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+            except discord.Forbidden:   # If the user has DMs disabled
+                log.warning(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
+                # delete the user from the database
+                self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")
+                self.con.commit()
+                log.info(f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
             except Exception as e:  # If the user has DMs disabled
                 log.error(f"Couldn't send Circular Embed to User: {user.id}")
                 log.error(e)
