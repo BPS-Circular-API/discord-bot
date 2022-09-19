@@ -45,22 +45,15 @@ class Commands(commands.Cog):
         log.info(f"{author.id} in {guild.id} is requesting a list of circulars in {category}.")
         raw_res = await get_circular_list(category, "all")  # Get the list of circulars from API
 
-        titles, unprocessed_links, links = [], [], []   # Define 3 empty lists
+        titles, links = [], []   # Define 3 empty lists
         loop_int = 1    # The variable which will be used to add numbers into the embed
 
         # Loop through the raw API output
         for item in raw_res:
             titles.append(f"**{loop_int}**. `{item['title']}`")  # Add the title to the list
-            unprocessed_links.append(f"{item['link']}") # Add the link to the list
+            links.append(f"{item['link']}") # Add the link to the list
             loop_int += 1
 
-        # Remove the redundant download url parameter after ?download=xxxx
-        for link in unprocessed_links:  # Loop through the unprocessed links
-            link = link.split(':')  # Split the link by :
-            link = f"{link[0]}:{link[1]}"   # Join the first 2 parts of the link
-            links.append(link)  # Add the link to the list
-
-        del unprocessed_links   # Delete the unprocessed links list
         embed = discord.Embed(color=embed_color)  # Create the embed
         embed.set_footer(text=embed_footer) # Set the footer
         embed.set_author(name=embed_title)  # Set the author
@@ -104,8 +97,6 @@ class Commands(commands.Cog):
         raw_res = await get_latest_circular_cached(category)   # Get the latest circular from API
         title = raw_res['title']    # Get the title
         link = raw_res['link']  # Get the link
-        link = link.split(':')  # Split the link by :
-        link = f"{link[0]}:{link[1]}"   # Join the first 2 parts of the link
 
         embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color)    # Create the embed
         embed.set_author(name=embed_title)  # Set the author
@@ -132,8 +123,7 @@ class Commands(commands.Cog):
         searched = await search(circular_title) # Search for the circular from the backend function
 
         title = searched[0] # Get the title
-        link = searched[1].split(':')  # Split the link by :
-        link = f"{link[0]}:{link[1]}"  # Join the first 2 parts of the link
+        link = searched[1]  # Get the link
 
         embed = discord.Embed(title="Circular Search", color=embed_color)   # Create an embed
         embed.set_author(name=embed_title)  # Set the author

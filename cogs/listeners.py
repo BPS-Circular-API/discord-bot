@@ -124,8 +124,6 @@ class Listeners(commands.Cog):
 
         # Remove redundant part of URL
         link = str(self.cached_latest[self.new_circular_cat]['link'])   # Get the link of the new circular
-        link = link.split(':')  # Split the link by :
-        link = f"{link[0]}:{link[1]}"  # Get the first two parts of the link
         title = self.cached_latest[self.new_circular_cat]['title']  # Get the title of the new circular
 
         png_url = await get_png(link)  # Get the PNG of the circular
