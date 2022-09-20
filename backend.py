@@ -67,19 +67,17 @@ client = commands.Bot(help_command=None)  # Setting prefix
 
 
 
-async def get_circular_list(category: str, receive: str = "all") -> list | None:
-    url = base_api_url + "list/"
+async def get_circular_list(category: str) -> list | None:
+    url = base_api_url + "list"
     if not category in ["ptm", "general", "exam"]:
         return None
-    if not receive in ["all", "links", "titles"]:
-        return None
 
-    payload = {'category': category, "receive": receive}
+    payload = {'category': category}
 
     request = requests.get(url, json=payload)
     info = request.json()
     log.debug(info)
-    return info
+    return info['data']
 
 
 async def get_latest_circular(category: str) -> dict | None:
@@ -93,11 +91,11 @@ async def get_latest_circular(category: str) -> dict | None:
             payload = {'category': i}
             request = requests.get(url, json=payload)
             res = request.json()
-            info[i] = res
+            info[i] = res['data']
     else:
         payload = {'category': category}
         request = requests.get(url, json=payload)
-        info = request.json()
+        info = request.json()['data']
 
     log.debug(info)
     return info
@@ -114,7 +112,7 @@ async def get_circular_url(circular_name: str) -> dict | None:
     request = requests.get(url, json=payload)
     info = request.json()
     log.debug(info)
-    return info
+    return info['data']
 
 
 
@@ -130,11 +128,11 @@ async def get_latest_circular_cached(category: str) -> dict | None:
             payload = {'category': i}
             request = requests.get(url, json=payload)
             res = request.json()
-            info[i] = res
+            info[i] = res['data']
     else:
         payload = {'category': category}
         request = requests.get(url, json=payload)
-        info = request.json()
+        info = request.json()['data']
 
     log.debug(info)
     return info
@@ -149,7 +147,7 @@ async def get_png(download_url):
     info = request.json()
     log.debug(info)
 
-    return info
+    return str(info['data'])
 
 
 
@@ -164,7 +162,7 @@ async def search(title):
     request = requests.get(url, json=payload)
     info = request.json()
     log.debug(info)
-    return info
+    return info['data']
 
 
 

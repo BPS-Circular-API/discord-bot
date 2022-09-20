@@ -126,8 +126,7 @@ class Listeners(commands.Cog):
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
 
-        # Remove redundant part of URL
-        link = str(self.cached_latest[self.new_circular_cat]['link'])   # Get the link of the new circular
+        link = self.cached_latest[self.new_circular_cat]['link']   # Get the link of the new circular
         title = self.cached_latest[self.new_circular_cat]['title']  # Get the title of the new circular
 
         png_url = await get_png(link)  # Get the PNG of the circular

@@ -43,12 +43,14 @@ class Commands(commands.Cog):
         guild = await self.client.fetch_guild(ctx.guild.id) # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)    # Fetch the user object
         log.info(f"{author.id} in {guild.id} is requesting a list of circulars in {category}.")
-        raw_res = await get_circular_list(category, "all")  # Get the list of circulars from API
+        raw_res = await get_circular_list(category)  # Get the list of circulars from API
 
         titles, links = [], []   # Define 3 empty lists
         loop_int = 1    # The variable which will be used to add numbers into the embed
 
         # Loop through the raw API output
+        log.debug("raw res")
+        log.debug(raw_res)
         for item in raw_res:
             titles.append(f"**{loop_int}**. `{item['title']}`")  # Add the title to the list
             links.append(f"{item['link']}") # Add the link to the list
