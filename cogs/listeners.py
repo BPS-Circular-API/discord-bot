@@ -32,8 +32,12 @@ class Listeners(commands.Cog):
             embed.set_author(name=embed_title)
             embed.add_field(name="Prefix", value="This bot uses slash commands, which are prefixed with `/circular`", inline=False)
             embed.add_field(name="For help", value="Use </help:1017654494009491476>  to get a list of all the commands.", inline=False)
-            await message.reply(embed=embed)
-
+            try:
+                await message.reply(embed=embed)
+            except discord.Forbidden:
+                log.warning(f"Missing permissions to send mention message in {message.channel.id} in {message.guild.id}")
+            except Exception as e:
+                log.error(f"Error sending mention message in {message.channel.id} in {message.guild.id} : {e}")
 
 
     """
