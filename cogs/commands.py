@@ -49,8 +49,6 @@ class Commands(commands.Cog):
         loop_int = 1    # The variable which will be used to add numbers into the embed
 
         # Loop through the raw API output
-        log.debug("raw res")
-        log.debug(raw_res)
         for item in raw_res:
             titles.append(f"**{loop_int}**. `{item['title']}`")  # Add the title to the list
             links.append(f"{item['link']}") # Add the link to the list
@@ -187,8 +185,8 @@ class Commands(commands.Cog):
             c_embed.add_field(name="Message", value=f"`{message}`", inline=False)
 
         await ctx.followup.send(embed=c_embed) # Send the embed to the user
-        c_embed.title = "Circular Notification"
-        c_embed.description = "I will now remind when a circular is available, in this channel!"
+        c_embed.title = "Circular Notification Setup!" # Change the title of the embed
+        c_embed.description = "I will now send a notification in this channel, when a circular is available!"   # Change the description of the embed
         await channel.send(embed=c_embed)
 
 
@@ -226,7 +224,7 @@ class Commands(commands.Cog):
         await ctx.followup.send(embed=d_embed)
 
 
-
+    @commands.slash_command(name="invite", description="Get the invite link for the bot.")
     @circular.command(name="invite", description="Invite the bot to your server.")
     async def invite(self, ctx):
         embed = discord.Embed(title="Invite", description=f"Click the below button to add the bot to your server. Alternatively you can use this URL too.\n https://bpsapi.rajtech.me/r/discord-bot-invite", color=embed_color)
@@ -238,8 +236,6 @@ class Commands(commands.Cog):
         view = discord.ui.View()
         view.add_item(InviteButton())
         await ctx.respond(embed=embed, view=view)
-
-        # await ctx.respond(embed=embed)
 
 
     @commands.slash_command(name="help", description="Shows the help menu.")
@@ -302,7 +298,7 @@ class Commands(commands.Cog):
             self.cur.execute(f"INSERT INTO dm_notify (user_id) VALUES ({ctx.user.id});")
         self.con.commit()
 
-        r_embed.title = "Success!"
+        r_embed.title = "Success!"  # Set the title to Success
         log.info(f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
         r_embed.description = "You successfully subscribed to DM reminders! `/circular remindme` to unsubscribe."
 
