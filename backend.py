@@ -28,14 +28,13 @@ try:
 
 except Exception as err:
     print("Error reading the config.ini file. Error: " + str(err))
-    owner_guilds = []
-    owner_ids = []
+    owner_guilds = owner_ids = []
     exit()
 
 
 
 # Initializing the logger
-def colorlogger(name='moonball'):
+def colorlogger(name='bps-circular-bot'):
     from colorlog import ColoredFormatter
     # disabler loggers
     for logger in logging.Logger.manager.loggerDict:
@@ -81,7 +80,7 @@ async def get_circular_list(category: str) -> list | None:
 
 
 async def get_latest_circular(category: str) -> dict | None:
-    url = base_api_url + "latest/"
+    url = base_api_url + "latest"
     if not category in ["ptm", "general", "exam", "all"]:
         return None
 
@@ -103,7 +102,7 @@ async def get_latest_circular(category: str) -> dict | None:
 
 
 async def get_circular_url(circular_name: str) -> dict | None:
-    url = base_api_url + "search/"
+    url = base_api_url + "search"
     if not circular_name:
         return None
 
@@ -117,7 +116,7 @@ async def get_circular_url(circular_name: str) -> dict | None:
 
 
 async def get_latest_circular_cached(category: str) -> dict | None:
-    url = base_api_url + "cached-latest/"
+    url = base_api_url + "cached-latest"
     if not category in ["ptm", "general", "exam", "all"]:
         return None
 
@@ -153,7 +152,7 @@ async def get_png(download_url):
 
 
 async def search(title):
-    url = base_api_url + "search/"
+    url = base_api_url + "search"
     if not title:
         return None
 
