@@ -55,10 +55,10 @@ def colorlogger(name='bps-circular-bot'):
 log = colorlogger()
 
 
-owner_ids = [int(i) for i in owner_ids]
+owner_ids = tuple([int(i) for i in owner_ids])
 log.debug(owner_ids)
 
-owner_guilds = [int(i) for i in owner_guilds]
+owner_guilds = tuple([int(i) for i in owner_guilds])
 log.debug(owner_guilds)
 
 
@@ -66,7 +66,7 @@ client = commands.Bot(help_command=None)  # Setting prefix
 
 
 
-async def get_circular_list(category: str) -> list | None:
+async def get_circular_list(category: str) -> tuple | None:
     url = base_api_url + "list"
     if not category in ["ptm", "general", "exam"]:
         return None
@@ -74,15 +74,13 @@ async def get_circular_list(category: str) -> list | None:
     payload = {'category': category}
 
     request = requests.get(url, json=payload)
-    info = request.json()
-    log.debug(info)
-    return info['data']
+    log.debug(request.json())
+    return tuple(request.json()['data'])
 
 
-async def get_latest_circular(category: str) -> dict | None:
-    url = base_api_url + "latest"
-    if not category in ["ptm", "general", "exam", "all"]:
-        return None
+
+async def get_latest_circular(category: str, cached=False) -> dict | None:
+    url = base_api_url + "latest" if not cached else base_api_url + "cached-latest"
 
     if category == "all":
         info = {}
@@ -91,78 +89,62 @@ async def get_latest_circular(category: str) -> dict | None:
             request = requests.get(url, json=payload)
             res = request.json()
             info[i] = res['data']
-    else:
+    elif category in ['ptm', 'general', 'exam']:
         payload = {'category': category}
         request = requests.get(url, json=payload)
         info = request.json()['data']
+    else:
+        return
 
     log.debug(info)
+    if request.text == "Internal Server Error":
+        log.error("The API returned 500 Internal Server Error. Please check the API logs.")
+        return
     return info
 
 
 
 async def get_circular_url(circular_name: str) -> dict | None:
     url = base_api_url + "search"
-    if not circular_name:
-        return None
 
     payload = {'title': circular_name}
 
     request = requests.get(url, json=payload)
-    info = request.json()
-    log.debug(info)
-    return info['data']
+    log.debug(request.json())
+
+    if request.text == "Internal Server Error":
+        log.error("The API returned 500 Internal Server Error. Please check the API logs.")
+        return
+    return request.json()['data']
 
 
 
-async def get_latest_circular_cached(category: str) -> dict | None:
-    url = base_api_url + "cached-latest"
-    if not category in ["ptm", "general", "exam", "all"]:
-        return None
-
-
-    if category == "all":
-        info = {}
-        for i in categories:
-            payload = {'category': i}
-            request = requests.get(url, json=payload)
-            res = request.json()
-            info[i] = res['data']
-    else:
-        payload = {'category': category}
-        request = requests.get(url, json=payload)
-        info = request.json()['data']
-
-    log.debug(info)
-    return info
-
-
-async def get_png(download_url):
+async def get_png(download_url: str) -> str | None:
     url = base_api_url + "getpng"
-
     payload = {'url': download_url}
 
     request = requests.get(url, json=payload)
-    info = request.json()
-    log.debug(info)
+    log.debug(request.json())
 
-    return str(info['data'])
+    if request.text == "Internal Server Error":
+        log.error("The API returned 500 Internal Server Error. Please check the API logs.")
+        return
+    return str(request.json()['data'])
 
 
 
-
-async def search(title):
+async def search(title:  str) -> tuple | None:
     url = base_api_url + "search"
-    if not title:
-        return None
 
     payload = {'title': title}
 
     request = requests.get(url, json=payload)
-    info = request.json()
-    log.debug(info)
-    return info['data']
+    log.debug(request.json())
 
+    if request.text == "Internal Server Error":
+        log.error("The API returned 500 Internal Server Error. Please check the API logs.")
+        return
+    return tuple(request.json()['data'])
 
 
 
@@ -221,5 +203,3 @@ class DeleteButton(discord.ui.View):
         if not interaction.user.id == self.author.id:
             return await interaction.response.send_message("This button is not for you", ephemeral=True)
         await self.msg.delete()
-
-

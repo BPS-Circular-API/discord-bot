@@ -19,9 +19,17 @@ class Listeners(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         log.info(f"Cog : Listeners.py loaded.")
+
+        global member_count
+        member_count = -1
+
         self.get_member_count.start()
         self.check_for_circular.start()
-        await asyncio.sleep(2)
+
+        while not member_count > -1:
+            await asyncio.sleep(1)
+
+        log.info(f"I am in {len(self.client.guilds)} guilds. They have {member_count} members.")
         self.random_status.start()
 
     @commands.Cog.listener()
@@ -76,11 +84,12 @@ class Listeners(commands.Cog):
 
     @tasks.loop(seconds=3600*24) # Run every 24 hours
     async def get_member_count(self):
-        global member_count
-        member_count = 0
+        _member_count = 0
         for guild in self.client.guilds:
             guild = await self.client.fetch_guild(guild.id, with_counts=True)
-            member_count += guild.approximate_member_count
+            _member_count += guild.approximate_member_count
+        global member_count
+        member_count = _member_count
         log.debug(f"Member Count: {member_count}")
 
 
