@@ -9,6 +9,8 @@ from discord import SlashCommandGroup
 if log.level == 10:
     import time
     debug_mode = True
+else:
+    debug_mode = False
 
 category_options = []
 for i in categories:
