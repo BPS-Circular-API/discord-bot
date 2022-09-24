@@ -44,6 +44,9 @@ class Commands(commands.Cog):
     async def list(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
 
+        if debug_mode:
+            start = time.time()
+
         guild = await self.client.fetch_guild(ctx.guild.id) # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)    # Fetch the user object
         log.info(f"{author.id} in {guild.id} is requesting a list of circulars in {category}.")
@@ -87,12 +90,18 @@ class Commands(commands.Cog):
             pages=page_list, disable_on_timeout=True, timeout=60
         )
         await paginator.respond(ctx.interaction, ephemeral=False)
+        if debug_mode:
+            # noinspection PyUnboundLocalVariable
+            log.debug(f"Search took {round(time.time() - start, 2)} seconds.")
 
 
 
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
     async def latest(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()   # Defer the interaction
+
+        if debug_mode:
+            start = time.time()
 
         guild = await self.client.fetch_guild(ctx.guild.id) # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)    # Fetch the user object
@@ -113,14 +122,19 @@ class Commands(commands.Cog):
 
         msg = await ctx.followup.send(embed=embed)   # Send the embed
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))    # Edit the embed and add the delete button
+        if debug_mode:
+            # noinspection PyUnboundLocalVariable
+            log.debug(f"Search took {round(time.time() - start, 2)} seconds.")
 
 
 
     @circular.command(name="search", description="Searches for a particular circular in a particular category.")
     async def search(self, ctx, circular_title: str):
         # check log level
-
         await ctx.defer()
+
+        if debug_mode:
+            start = time.time()
 
         guild = await self.client.fetch_guild(ctx.guild.id) # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)    # Fetch the user object
@@ -149,6 +163,9 @@ class Commands(commands.Cog):
 
         msg = await ctx.followup.send(embed=embed)   # Send the embed
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))    # Edit the embed and add the delete button
+        if debug_mode:
+            # noinspection PyUnboundLocalVariable
+            log.debug(f"Search took {round(time.time() - start, 2)} seconds.")
 
 
 
