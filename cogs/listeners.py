@@ -32,6 +32,8 @@ class Listeners(commands.Cog):
         log.info(f"I am in {len(self.client.guilds)} guilds. They have {member_count} members.")
         self.random_status.start()
 
+
+
     @commands.Cog.listener()
     async def on_message(self, message):
         if (not message.author.bot) & (self.client.user.mentioned_in(message)) & (message.reference is None):

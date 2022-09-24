@@ -104,20 +104,6 @@ async def get_latest_circular(category: str, cached=False) -> dict | None:
 
 
 
-async def get_circular_url(circular_name: str) -> dict | None:
-    url = base_api_url + "search"
-
-    payload = {'title': circular_name}
-
-    request = requests.get(url, json=payload)
-    log.debug(request.json())
-
-    if request.text == "Internal Server Error":
-        log.error("The API returned 500 Internal Server Error. Please check the API logs.")
-        return
-    return request.json()['data']
-
-
 
 async def get_png(download_url: str) -> str | None:
     url = base_api_url + "getpng"
@@ -133,7 +119,7 @@ async def get_png(download_url: str) -> str | None:
 
 
 
-async def search(title:  str) -> tuple | None:
+async def search(title:  str) -> dict | None:
     url = base_api_url + "search"
 
     payload = {'title': title}
@@ -144,7 +130,7 @@ async def search(title:  str) -> tuple | None:
     if request.text == "Internal Server Error":
         log.error("The API returned 500 Internal Server Error. Please check the API logs.")
         return
-    return tuple(request.json()['data'])
+    return request.json()['data']
 
 
 

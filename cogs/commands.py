@@ -6,6 +6,10 @@ from discord.ext import commands
 from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_png, search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular
 from discord import SlashCommandGroup
 
+if log.level == 10:
+    import time
+    debug_mode = True
+
 category_options = []
 for i in categories:
     category_options.append(discord.OptionChoice(i.capitalize().strip(), value=i.strip().lower()))
@@ -114,6 +118,8 @@ class Commands(commands.Cog):
 
     @circular.command(name="search", description="Searches for a particular circular in a particular category.")
     async def search(self, ctx, circular_title: str):
+        # check log level
+
         await ctx.defer()
 
         guild = await self.client.fetch_guild(ctx.guild.id) # Fetch the guild object
@@ -122,12 +128,19 @@ class Commands(commands.Cog):
         log.info(f"{author.id} in {guild.id} is searching for {circular_title}")
         searched = await search(circular_title) # Search for the circular from the backend function
 
-        title = searched[0] # Get the title
-        link = searched[1]  # Get the link
-
-        embed = discord.Embed(title="Circular Search", color=embed_color)   # Create an embed
+        embed = discord.Embed(title="Circular Search", color=embed_color)  # Create an embed
         embed.set_author(name=embed_title)  # Set the author
-        embed.set_footer(text=embed_footer) # Set the footer
+        embed.set_footer(text=embed_footer)  # Set the footer
+
+        if searched is None:
+            embed.add_field(name="Error", value="No circular found with that title. Maybe specify better search terms, or find the circular you wanted from `/circular list`", inline=False)
+            await ctx.followup.send(embed=embed)
+            return
+
+        title = searched['title'] # Get the title
+        link = searched['link']  # Get the link
+
+
         embed.add_field(name="Title", value=f"`{title}`", inline=False)
         embed.add_field(name="Download URL", value=link, inline=False)
 
