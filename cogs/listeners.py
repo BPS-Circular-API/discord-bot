@@ -1,8 +1,10 @@
 import asyncio
+import datetime
 import random
+import shutil
 import sqlite3, discord
 from discord.ext import commands, tasks
-from backend import log, get_latest_circular, embed_color, embed_footer, embed_title, get_png
+from backend import log, get_latest_circular, embed_color, embed_footer, embed_title, get_png, backup_interval
 
 
 class Listeners(commands.Cog):
@@ -31,7 +33,6 @@ class Listeners(commands.Cog):
 
         log.info(f"I am in {len(self.client.guilds)} guilds. They have {member_count} members.")
         self.random_status.start()
-
 
 
     @commands.Cog.listener()

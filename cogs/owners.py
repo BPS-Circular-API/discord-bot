@@ -72,12 +72,15 @@ class Owners(commands.Cog):
                 embed.description = f"Page {int(count/10)}"  # Set the description of the embed
                 page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
                 embed.clear_fields()    # Clear the fields of the embed
-            if count == len(self.client.guilds):
+            elif count == len(self.client.guilds):
                 log.debug(count)
                 embed.description = f"Page {int(math.ceil(count / 10))}"  # Set the description of the embed
                 page_list.append(embed.copy())
                 embed.clear_fields()
 
+        if len(page_list[-1].fields) == 0:
+            page_list.pop()
+        log.debug(page_list)
         log.debug(page_list)
 
         paginator = discord.ext.pages.Paginator(
@@ -95,7 +98,7 @@ class Owners(commands.Cog):
                          discord.OptionChoice("Exam", value="exam")
                      ]),
                      send_only_to: discord.Option(choices=[
-                         discord.OptionChoice("DMs", value="DMs"),
+                         discord.OptionChoice("DMs", value="dms"),
                          discord.OptionChoice("Servers", value="servers"),
                      ]) = None,
                      debug_guild = None, debug_user = None):

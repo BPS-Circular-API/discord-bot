@@ -79,17 +79,20 @@ class Commands(commands.Cog):
                 embed.description = f"Page {int(count/10)}"  # Set the description of the embed
                 page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
                 embed.clear_fields()    # Clear the fields of the embed
-            if count == len(titles):
+            elif count == len(titles):
                 log.debug(count)
                 embed.description = f"Page {int(math.ceil(count / 10))}"  # Set the description of the embed
                 page_list.append(embed.copy())
                 embed.clear_fields()
 
+        # Remove the last element of the list if it is empty
+        if len(page_list[-1].fields) == 0:
+            page_list.pop()
         log.debug(page_list)
 
 
         paginator = discord.ext.pages.Paginator(
-            pages=page_list, disable_on_timeout=True, timeout=60
+            pages=page_list, disable_on_timeout=True, timeout=120
         )
         await paginator.respond(ctx.interaction, ephemeral=False)
         if debug_mode:
@@ -332,7 +335,7 @@ class Commands(commands.Cog):
 
         r_embed.title = "Success!"  # Set the title to Success
         log.info(f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
-        r_embed.description = "You successfully subscribed to DM reminders! `/circular remindme` to unsubscribe."
+        r_embed.description = "You successfully subscribed to DM reminders! </circular remindme:1010911588703817808> to unsubscribe."
 
         await ctx.followup.send(embed=r_embed)
 
