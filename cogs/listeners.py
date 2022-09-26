@@ -22,11 +22,19 @@ class Listeners(commands.Cog):
     async def on_ready(self):
         log.info(f"Cog : Listeners.py loaded.")
 
+        if not self.backup.is_running():
+            if backup_interval >= 0.5:
+                self.backup.start()
+
         global member_count
         member_count = -1
 
         self.get_member_count.start()
-        self.check_for_circular.start()
+        if not self.get_member_count.is_running():
+            self.get_member_count.start()
+
+        if not self.check_for_circular.is_running():
+            self.check_for_circular.start()
 
         while not member_count > -1:
             await asyncio.sleep(1)
@@ -216,10 +224,25 @@ class Listeners(commands.Cog):
                 log.error(e)
 
 
+    @tasks.loop(minutes=backup_interval*60)
+    async def backup(self):
+        self.con.commit()
+        self.con.close()
+
+        now = datetime.datetime.now()
+        date_time = now.strftime("%d-%m-%Y-%H-%M")
+        shutil.copyfile("./data/data.db", f"./data/backups/data-{date_time}.db")
+
+        log.info("Backed up data.db")
+        # open db
+        self.con = sqlite3.connect("data.db")
+        self.cur = self.con.cursor()
+
 
 
     @random_status.before_loop
     @check_for_circular.before_loop
+    @backup.before_loop
     @get_member_count.before_loop
     async def before_my_task(self):
         await self.client.wait_until_ready()
