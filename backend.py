@@ -1,4 +1,6 @@
 import configparser, discord, logging, requests
+import pickle
+
 from discord.ext import commands
 
 categories = ["general", "exam", "ptm"]
@@ -137,6 +139,17 @@ async def search(title:  str) -> dict | None:
         return
     return request.json()['data']
 
+
+def get_cached():
+    # get dict from data/temp.pickle
+    with open("./data/temp.pickle", "rb") as f:
+        return pickle.load(f)
+
+
+def set_cached(obj):
+    # set dict to data/temp.pickle
+    with open("./data/temp.pickle", "wb") as f:
+        pickle.dump(obj, f)
 
 
 # Confirm Button Discord View
