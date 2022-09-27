@@ -4,7 +4,7 @@ import random
 import shutil
 import sqlite3, discord
 from discord.ext import commands, tasks
-from backend import log, get_latest_circular, embed_color, embed_footer, embed_title, get_png, backup_interval
+from backend import log, get_latest_circular, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton
 
 
 class Listeners(commands.Cog):
@@ -44,19 +44,20 @@ class Listeners(commands.Cog):
 
 
     @commands.Cog.listener()
-    async def on_message(self, message):
-        if (not message.author.bot) & (self.client.user.mentioned_in(message)) & (message.reference is None):
+    async def on_message(self, ctx):
+        if (not ctx.author.bot) & (self.client.user.mentioned_in(ctx)) & (ctx.reference is None):
             embed = discord.Embed(title="Mention Message", description="Hello! Thanks for using this bot.", color=embed_color)
             embed.set_footer(text=embed_footer)
             embed.set_author(name=embed_title)
             embed.add_field(name="Prefix", value="This bot uses slash commands, which are prefixed with `/circular`", inline=False)
             embed.add_field(name="For help", value="Use </help:1017654494009491476>  to get a list of all the commands.", inline=False)
             try:
-                await message.reply(embed=embed)
+                msg = await ctx.reply(embed=embed)
+                await msg.edit(embed=embed, view=DeleteButton(ctx.author, msg, author_only=False))
             except discord.Forbidden:
-                log.warning(f"Missing permissions to send mention message in {message.channel.id} in {message.guild.id}")
+                log.warning(f"Missing permissions to send mention message in {ctx.channel.id} in {ctx.guild.id}")
             except Exception as e:
-                log.error(f"Error sending mention message in {message.channel.id} in {message.guild.id} : {e}")
+                log.error(f"Error sending mention message in {ctx.channel.id} in {ctx.guild.id} : {e}")
 
 
     """

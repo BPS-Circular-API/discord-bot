@@ -93,7 +93,11 @@ async def get_latest_circular(category: str, cached=False) -> dict | None:
     elif category in ['ptm', 'general', 'exam']:
         payload = {'category': category}
         request = requests.get(url, json=payload)
-        info = request.json()['data']
+        try:
+            info = request.json()['data']
+        except Exception as err:
+            log.error(f"Error in get_latest_circular: {err}")
+            return
     else:
         return
 
@@ -142,11 +146,10 @@ class ConfirmButton(discord.ui.View):  # Confirm Button Class
         self.value = None
         self.author = author
 
-
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
     async def confirm_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
         if not interaction.user.id == self.author.id:
-            return await interaction.response.send_message("This button is not for you", ephemeral=True)
+             return await interaction.response.send_message("This button is not for you", ephemeral=True)
 
         self.value = True
 
@@ -159,8 +162,8 @@ class ConfirmButton(discord.ui.View):  # Confirm Button Class
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey)
     async def cancel_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
         if not interaction.user.id == self.author.id:
-
             return await interaction.response.send_message("This button is not for you", ephemeral=True)
+
         self.value = False
 
         for child in self.children:
@@ -172,10 +175,11 @@ class ConfirmButton(discord.ui.View):  # Confirm Button Class
 
 # Delete Button Discord View
 class DeleteButton(discord.ui.View):
-    def __init__(self, ctx, msg):
+    def __init__(self, ctx, msg, author_only=True):
         super().__init__(timeout=300)
         self.msg = msg
         self.author = ctx.author
+        self.author_only = author_only
 
 
     # disable the delete button on timeout
@@ -186,7 +190,8 @@ class DeleteButton(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label="Delete", style=discord.ButtonStyle.red)
-    async def button_callback(self, button, interaction): # I have no idea why there are 2 unused variables, removing them breaks the code
-        if not interaction.user.id == self.author.id:
-            return await interaction.response.send_message("This button is not for you", ephemeral=True)
+    async def button_callback(self, button, interaction): # Don't remove the unused argument, it's used by py-cord
+        if self.author_only:
+            if not interaction.user.id == self.author.id:
+                return await interaction.response.send_message("This button is not for you", ephemeral=True)
         await self.msg.delete()
