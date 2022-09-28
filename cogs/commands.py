@@ -75,12 +75,12 @@ class Commands(commands.Cog):
             embed.add_field(name=title, value=link, inline=False)   # Add a field to the embed
             count += 1
             if count % 10 == 0: # If the count is divisible by 10 (It has reached 10 fields)
-                log.debug(count)
+                log.debug('[Commands] | ', count)
                 embed.description = f"Page {int(count/10)}"  # Set the description of the embed
                 page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
                 embed.clear_fields()    # Clear the fields of the embed
             elif count == len(titles):
-                log.debug(count)
+                log.debug('[Commands] | ', count)
                 embed.description = f"Page {int(math.ceil(count / 10))}"  # Set the description of the embed
                 page_list.append(embed.copy())
                 embed.clear_fields()
@@ -88,8 +88,7 @@ class Commands(commands.Cog):
         # Remove the last element of the list if it is empty
         if len(page_list[-1].fields) == 0:
             page_list.pop()
-        log.debug(page_list)
-
+        log.debug('[Commands] | ', page_list)
 
         paginator = discord.ext.pages.Paginator(
             pages=page_list, disable_on_timeout=True, timeout=120
@@ -97,7 +96,7 @@ class Commands(commands.Cog):
         await paginator.respond(ctx.interaction, ephemeral=False)
         if debug_mode:
             # noinspection PyUnboundLocalVariable
-            log.debug(f"Search took {round(time.time() - start, 2)} seconds.")
+            log.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
 
 
@@ -129,7 +128,7 @@ class Commands(commands.Cog):
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))    # Edit the embed and add the delete button
         if debug_mode:
             # noinspection PyUnboundLocalVariable
-            log.debug(f"Search took {round(time.time() - start, 2)} seconds.")
+            log.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
 
 
@@ -170,7 +169,7 @@ class Commands(commands.Cog):
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))    # Edit the embed and add the delete button
         if debug_mode:
             # noinspection PyUnboundLocalVariable
-            log.debug(f"Search took {round(time.time() - start, 2)} seconds.")
+            log.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
 
 
@@ -194,7 +193,7 @@ class Commands(commands.Cog):
         res = self.cur.fetchone()
 
         if res: # If the guild is in the database
-            log.debug(res)
+            log.debug('[Commands] | ', res)
             e_embed = discord.Embed(title="Server Setup", description=f"The server has an already existing reminder configuration!", color=embed_color)
             e_embed.set_author(name=embed_title)
             e_embed.set_footer(text=embed_footer)

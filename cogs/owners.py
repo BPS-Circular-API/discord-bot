@@ -68,20 +68,19 @@ class Owners(commands.Cog):
             embed.add_field(name=guild.name, value=i.id, inline=False)
             count += 1
             if count % 10 == 0: # If the count is divisible by 10 (It has reached 10 fields)
-                log.debug(count)
+                log.debug("[Owners] | ", count)
                 embed.description = f"Page {int(count/10)}"  # Set the description of the embed
                 page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
                 embed.clear_fields()    # Clear the fields of the embed
             elif count == len(self.client.guilds):
-                log.debug(count)
+                log.debug("[Owners] | ", count)
                 embed.description = f"Page {int(math.ceil(count / 10))}"  # Set the description of the embed
                 page_list.append(embed.copy())
                 embed.clear_fields()
 
         if len(page_list[-1].fields) == 0:
             page_list.pop()
-        log.debug(page_list)
-        log.debug(page_list)
+        log.debug('[Owners] |', page_list)
 
         paginator = discord.ext.pages.Paginator(
             pages=page_list, disable_on_timeout=True, timeout=60
@@ -118,7 +117,7 @@ class Owners(commands.Cog):
         if debug_guild: # If a debug guild is specified, send the message to ONLY that guild.
             self.cur.execute(f"SELECT message FROM guild_notify WHERE guild_id = {debug_guild}")    # Get the server message from the database
             message = self.cur.fetchone()  # Get the reminder-message for the guild from the DB
-            log.debug(f"Message: {message}")
+            log.debug(f"[Owners] | Message: {message}")
 
             if not message: # If the message is not found
                 message[0] = "A new circular is out!"  # Set the message to the default message
@@ -136,7 +135,7 @@ class Owners(commands.Cog):
         elif debug_user: # If a debug user is specified, send the message to ONLY that user.
             self.cur.execute(f"SELECT message FROM remind WHERE user_id = {debug_user}")
             message = self.cur.fetchone()  # Get the reminder-message for the user from the DB
-            log.debug(f"Message: {message}")
+            log.debug(f"[Owners] | Message: {message}")
 
             if not message: # If the message is not found
                 message = "A new circular is out!"  # Set the message to the default message
@@ -195,7 +194,7 @@ class Owners(commands.Cog):
                     for user, message in zip(user_id, user_message):  # For each user in the database
                         user = await self.client.fetch_user(int(user))  # Get the user object
 
-                        log.debug(f"Message: {message}")
+                        log.debug(f"[Owners] | Message: {message}")
                         embed.description = message # Set the description of the embed to the message
 
                         try:  # Try to send the embed to the user
@@ -215,7 +214,7 @@ class Owners(commands.Cog):
 
                     for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
-                        log.debug(f"Message: {message}")
+                        log.debug(f"[Owners] | Message: {message}")
                         embed.description = message  # Set the description of the embed to the message
 
                         try:    # Try to send the embed to the guild
@@ -249,7 +248,7 @@ class Owners(commands.Cog):
                                     break  # Break the loop
 
                                 except Exception as e:  # If it can't send the error embed
-                                    log.debug(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
+                                    log.debug(f"[Owners] | Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
 
                         except Exception as e:  # If it can't send the circular embed
                             log.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden.")
@@ -258,7 +257,7 @@ class Owners(commands.Cog):
             else:
                 for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
-                    log.debug(f"Message: {message}")
+                    log.debug(f"[Owners] | Message: {message}")
                     embed.description = message  # Set the description of the embed to the message
 
                     try:    # Try to get the guild and channel
@@ -294,7 +293,7 @@ class Owners(commands.Cog):
                                 break  # Break the loop
 
                             except Exception as e:  # If it can't send the error embed
-                                log.debug(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
+                                log.debug(f"[Owners] | Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
 
                     except Exception as e:  # If it can't send the circular embed
                         log.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden.")
@@ -303,7 +302,7 @@ class Owners(commands.Cog):
                 for user, message in zip(user_id, user_message):  # For each user in the database
                     user = await self.client.fetch_user(int(user))  # Get the user object
 
-                    log.debug(f"Message: {message}")
+                    log.debug(f"[Owners] | Message: {message}")
                     embed.description = message
 
                     try:  # Try to send the embed to the user
