@@ -1,17 +1,15 @@
+import os
 import sqlite3, discord, shutil, random, datetime, asyncio
 from discord.ext import commands, tasks
-from backend import log, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, get_cached, set_cached, get_circular_list
+from backend import log, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, get_cached, set_cached, get_circular_list, amount_to_cache
 
 
 class Listeners(commands.Cog):
     def __init__(self, client):
-        self.cached_latest = {}
-        self.old_cached = {}
         self.client = client
-        self.new_circular_cat = ""
-        self.new_circular_obj = {}
         self.con = sqlite3.connect('./data/data.db')
         self.cur = self.con.cursor()
+        self.amount_to_cache = amount_to_cache
 
 
 
@@ -99,7 +97,7 @@ class Listeners(commands.Cog):
             _member_count += guild.approximate_member_count
         global member_count
         member_count = _member_count
-        log.debug(f"Member Count: {member_count}")
+        log.debug(f"[Listeners] | Member Count: {member_count}")
 
 
 
@@ -108,64 +106,81 @@ class Listeners(commands.Cog):
         log.info("Check for circular started")
         categories = ("ptm", "general", "exam")
         final_dict = {"general": [], "ptm": [], "exam": []}
-        try:
-            self.old_cached = dict(get_cached())
-            if self.old_cached == {}:
-                log.info("Cached is empty, setting it to the latest circular")
+        new_circular_categories = []
+        new_circular_objects = []
 
-                for item in categories:
-                    res = await get_circular_list(item)
-                    # get first 5 items of res
-                    final_dict[item] = [res[i] for i in range(5)]
+        if self.amount_to_cache < 1:
+            self.amount_to_cache = 1
 
-                self.old_cached = final_dict
-            else:
-                log.info("Cached is not empty, checking for new circulars")
 
-        except Exception as e:
+        try:    # Try to get the cached data and make it a dict
+            old_cached = dict(get_cached())
+
+        except Exception as e:  # If it can't be gotten/can't be made into a dict (is None)
             log.error(f"Error getting cached circulars : {e}")
             for item in categories:
                 res = await get_circular_list(item)
                 final_dict[item] = [res[i] for i in range(5)]
 
             set_cached(final_dict)
-            self.old_cached = final_dict
-        set_cached(final_dict)
+            return
+
+
+        if old_cached == {}:
+            log.info("Cached is empty, setting it to the latest circular")
+
+            for item in categories:
+                res = await get_circular_list(item)
+                # get first 5 items of res
+                final_dict[item] = [res[i] for i in range(self.amount_to_cache)]
+
+            set_cached(final_dict)
+            return
+
+
+        else:
+            log.info("Cache is not empty, checking for new circulars")
+
 
         for item in categories:
             res = await get_circular_list(item)
-            final_dict[item] = [res[i] for i in range(5)]
+            final_dict[item] = [res[i] for i in range(self.amount_to_cache)]
 
-        log.debug(final_dict)
-        log.debug(self.old_cached)
-        if final_dict != self.old_cached:
+        set_cached(final_dict)
+
+        log.debug('[Listeners] | ', final_dict)
+        log.debug('[Listeners] | ', old_cached)
+        # TODO: Make it check if the lengths are same (if user changed amount_to_cache), before comparing the contents.
+        if final_dict != old_cached:    # If the old and new dict are not the same
             log.info("There's a new circular posted!")
-            for cat in categories:  # Check which category has a new circular
-                if final_dict[cat] != self.old_cached[cat]:
-                    self.new_circular_cat = cat
+            # for cat in categories:  # Check which category has a new circular
+            #     if final_dict[cat] != old_cached[cat]:
+            #         new_circular_categories.append(cat)
+            #
+            #         log.info(f"{cat} has new circular") # todo fix it detecting only one category
 
-                    log.info(f"{cat} has new circular")
+            for circular_cat in categories:
+                for i in range(len(final_dict[circular_cat])):
+                    if final_dict[circular_cat][i] not in old_cached[circular_cat]:
+                        new_circular_categories.append(circular_cat)
+                        new_circular_objects.append(final_dict[circular_cat][i])
 
-                    for i in range(len(final_dict[cat])):
-                        if final_dict[cat][i] not in self.old_cached[cat]:
-                            self.new_circular_obj = final_dict[cat][i]
-                            break
+            log.info(f"New circular: {new_circular_objects}")
 
-            log.info(f"New circular: {self.new_circular_obj}")
-            await self.notify()
+            for i in range(len(new_circular_objects)):
+                await self.notify(new_circular_categories[i], new_circular_objects[i])
 
 
 
         else:
             log.info("No new circulars")
 
-        set_cached(final_dict)
 
 
 
-
-
-    async def notify(self):
+    async def notify(self, _circular_category, _circular_obj):
+        log.info("notify")
+        return
         self.cur.execute("SELECT * FROM guild_notify")  # Get all the guilds that have enabled notifications
         guild_notify = self.cur.fetchall()
 
@@ -184,8 +199,8 @@ class Listeners(commands.Cog):
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
 
-        link = self.new_circular_obj['link']   # Get the link of the new circular
-        title = self.new_circular_obj['title']  # Get the title of the new circular
+        link = _circular_obj['link']   # Get the link of the new circular
+        title = _circular_obj['title']  # Get the title of the new circular
 
         png_url = await get_png(link)  # Get the PNG of the circular
 
@@ -194,10 +209,10 @@ class Listeners(commands.Cog):
         error_embed.set_author(name=embed_title)    # Set the author
         embed.set_image(url=png_url)  # Set the image to the attachment
 
-        embed.add_field(name=f"{self.new_circular_cat.capitalize()} | {title}", value=link, inline=False)   # Add the field
+        embed.add_field(name=f"{_circular_category.capitalize()} | {title}", value=link, inline=False)   # Add the field
         for guild, channel, message in zip(guilds, channels, messages): # For each guild in the database
 
-            log.debug(f"Message: {message}")
+            log.debug(f"[Listeners] | Message: {message}")
             embed.description = message  # Set the description of the embed to the message
 
             try:    # Try to get the channel and guild
@@ -234,7 +249,7 @@ class Listeners(commands.Cog):
                         break   # Break the loop
 
                     except Exception as e:  # If it can't send the error embed
-                        log.debug(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
+                        log.warning(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
 
             except Exception as e:  # If it can't send the circular embed
                 log.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden.")
@@ -245,18 +260,21 @@ class Listeners(commands.Cog):
         for user, message in zip(user_id, user_message):    # For each user in the database
             user = await self.client.fetch_user(int(user))  # Get the user object
 
-            log.debug(f"Message: {message}")
+            log.debug(f"[Listeners] | Message: {message}")
             embed.description = message
 
             try:    # Try to send the embed to the user
                 await user.send(embed=embed) # Send the embed to the user
                 log.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+
             except discord.Forbidden:   # If the user has DMs disabled
                 log.warning(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
-                # delete the user from the database
+
+                # Delete the user from the database
                 self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")
                 self.con.commit()
                 log.info(f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
+
             except Exception as e:  # If the user has DMs disabled
                 log.error(f"Couldn't send Circular Embed to User: {user.id}")
                 log.error(e)
@@ -264,15 +282,20 @@ class Listeners(commands.Cog):
 
     @tasks.loop(minutes=backup_interval*60)
     async def backup(self):
+        # Close the DB
         self.con.commit()
         self.con.close()
 
         now = datetime.datetime.now()
         date_time = now.strftime("%d-%m-%Y-%H-%M")
-        shutil.copyfile("./data/data.db", f"./data/backups/data-{date_time}.db")
 
+        if not os.path.exists('./data/backups/'):   # If the directory does not exist
+            os.mkdir("./data/backups/")
+
+        shutil.copyfile("./data/data.db", f"./data/backups/data-{date_time}.db")    # Copy the current file to the new directory
         log.info("Backed up data.db")
-        # open db
+
+        # open DB
         self.con = sqlite3.connect("data.db")
         self.cur = self.con.cursor()
 
