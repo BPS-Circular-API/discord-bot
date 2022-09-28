@@ -1,5 +1,4 @@
-import configparser, discord, logging, requests
-import pickle
+import configparser, discord, logging, requests, pickle
 
 from discord.ext import commands
 
