@@ -179,8 +179,7 @@ class Listeners(commands.Cog):
 
 
     async def notify(self, _circular_category, _circular_obj):
-        log.info("notify")
-        return
+
         self.cur.execute("SELECT * FROM guild_notify")  # Get all the guilds that have enabled notifications
         guild_notify = self.cur.fetchall()
 
