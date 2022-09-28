@@ -1,20 +1,17 @@
-import asyncio
-import datetime
-import random
-import shutil
-import sqlite3, discord
+import sqlite3, discord, shutil, random, datetime, asyncio
 from discord.ext import commands, tasks
-from backend import log, get_latest_circular, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton
+from backend import log, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, get_cached, set_cached, get_circular_list
 
 
 class Listeners(commands.Cog):
     def __init__(self, client):
         self.cached_latest = {}
-        self.old_cached_latest = {}
+        self.old_cached = {}
         self.client = client
+        self.new_circular_cat = ""
+        self.new_circular_obj = {}
         self.con = sqlite3.connect('./data/data.db')
         self.cur = self.con.cursor()
-        self.new_circular_cat = ""
 
 
 
@@ -110,21 +107,61 @@ class Listeners(commands.Cog):
     async def check_for_circular(self):
         log.info("Check for circular started")
         categories = ("ptm", "general", "exam")
-        if self.old_cached_latest == {}:    # If the bot just started and there is no older cached
-            self.old_cached_latest = await get_latest_circular("all")
-        else:   # If cached exists
-            self.old_cached_latest = self.cached_latest
+        final_dict = {"general": [], "ptm": [], "exam": []}
+        try:
+            self.old_cached = dict(get_cached())
+            if self.old_cached == {}:
+                log.info("Cached is empty, setting it to the latest circular")
 
-        self.cached_latest = await get_latest_circular("all")
-        log.debug(self.cached_latest)
+                for item in categories:
+                    res = await get_circular_list(item)
+                    # get first 5 items of res
+                    final_dict[item] = [res[i] for i in range(5)]
 
-        if self.cached_latest != self.old_cached_latest:    # If the cached circular list is different from the current one
+                self.old_cached = final_dict
+            else:
+                log.info("Cached is not empty, checking for new circulars")
+
+        except Exception as e:
+            log.error(f"Error getting cached circulars : {e}")
+            for item in categories:
+                res = await get_circular_list(item)
+                final_dict[item] = [res[i] for i in range(5)]
+
+            set_cached(final_dict)
+            self.old_cached = final_dict
+        set_cached(final_dict)
+
+        for item in categories:
+            res = await get_circular_list(item)
+            final_dict[item] = [res[i] for i in range(5)]
+
+        log.debug(final_dict)
+        log.debug(self.old_cached)
+        if final_dict != self.old_cached:
             log.info("There's a new circular posted!")
             for cat in categories:  # Check which category has a new circular
-                if self.cached_latest[cat] != self.old_cached_latest[cat]:
+                if final_dict[cat] != self.old_cached[cat]:
+                    self.new_circular_cat = cat
+
                     log.info(f"{cat} has new circular")
-                    self.new_circular_cat = cat # Let's just HOPE that they will not upload multiple circulars to multiple categories within an hour
-            await self.notify() # notify each server
+
+                    for i in range(len(final_dict[cat])):
+                        if final_dict[cat][i] not in self.old_cached[cat]:
+                            self.new_circular_obj = final_dict[cat][i]
+                            break
+
+            log.info(f"New circular: {self.new_circular_obj}")
+            await self.notify()
+
+
+
+        else:
+            log.info("No new circulars")
+
+        set_cached(final_dict)
+
+
 
 
 
@@ -147,8 +184,8 @@ class Listeners(commands.Cog):
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
 
-        link = self.cached_latest[self.new_circular_cat]['link']   # Get the link of the new circular
-        title = self.cached_latest[self.new_circular_cat]['title']  # Get the title of the new circular
+        link = self.new_circular_obj['link']   # Get the link of the new circular
+        title = self.new_circular_obj['title']  # Get the title of the new circular
 
         png_url = await get_png(link)  # Get the PNG of the circular
 
