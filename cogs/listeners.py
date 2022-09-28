@@ -100,6 +100,13 @@ class Listeners(commands.Cog):
         log.debug(f"[Listeners] | Member Count: {member_count}")
 
 
+    async def get_circulars(self, _cats, final_dict):
+        for item in _cats:
+            res = await get_circular_list(item)
+            final_dict[item] = [res[i] for i in range(self.amount_to_cache)]
+
+        set_cached(final_dict)
+
 
     @tasks.loop(seconds=3600)
     async def check_for_circular(self):
@@ -108,6 +115,9 @@ class Listeners(commands.Cog):
         final_dict = {"general": [], "ptm": [], "exam": []}
         new_circular_categories = []
         new_circular_objects = []
+
+
+
 
         if self.amount_to_cache < 1:
             self.amount_to_cache = 1
@@ -118,9 +128,7 @@ class Listeners(commands.Cog):
 
         except Exception as e:  # If it can't be gotten/can't be made into a dict (is None)
             log.error(f"Error getting cached circulars : {e}")
-            for item in categories:
-                res = await get_circular_list(item)
-                final_dict[item] = [res[i] for i in range(5)]
+            await self.get_circulars(categories, final_dict)
 
             set_cached(final_dict)
             return
@@ -128,36 +136,31 @@ class Listeners(commands.Cog):
 
         if old_cached == {}:
             log.info("Cached is empty, setting it to the latest circular")
-
-            for item in categories:
-                res = await get_circular_list(item)
-                # get first 5 items of res
-                final_dict[item] = [res[i] for i in range(self.amount_to_cache)]
-
-            set_cached(final_dict)
+            await self.get_circulars(categories, final_dict)
             return
-
-
         else:
             log.info("Cache is not empty, checking for new circulars")
+
+
 
 
         for item in categories:
             res = await get_circular_list(item)
             final_dict[item] = [res[i] for i in range(self.amount_to_cache)]
 
-        set_cached(final_dict)
+        await self.get_circulars(categories, final_dict)
 
-        log.debug('[Listeners] | ', final_dict)
-        log.debug('[Listeners] | ', old_cached)
-        # TODO: Make it check if the lengths are same (if user changed amount_to_cache), before comparing the contents.
+        log.debug('[Listeners] | ' + str(final_dict))
+        log.debug('[Listeners] | ' + str(old_cached))
+
+        for cat in categories:
+            if not len(final_dict[cat]) == len(old_cached[cat]):
+                await self.get_circulars(categories, final_dict)
+                log.info("The length of the circulars in a category is different, updating cache")
+                return
+
         if final_dict != old_cached:    # If the old and new dict are not the same
             log.info("There's a new circular posted!")
-            # for cat in categories:  # Check which category has a new circular
-            #     if final_dict[cat] != old_cached[cat]:
-            #         new_circular_categories.append(cat)
-            #
-            #         log.info(f"{cat} has new circular") # todo fix it detecting only one category
 
             for circular_cat in categories:
                 for i in range(len(final_dict[circular_cat])):
@@ -171,7 +174,6 @@ class Listeners(commands.Cog):
                 await self.notify(new_circular_categories[i], new_circular_objects[i])
 
 
-
         else:
             log.info("No new circulars")
 
@@ -179,7 +181,6 @@ class Listeners(commands.Cog):
 
 
     async def notify(self, _circular_category, _circular_obj):
-
         self.cur.execute("SELECT * FROM guild_notify")  # Get all the guilds that have enabled notifications
         guild_notify = self.cur.fetchall()
 
