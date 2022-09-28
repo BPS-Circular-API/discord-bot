@@ -53,7 +53,7 @@ class Listeners(commands.Cog):
             embed.add_field(name="For help", value="Use </help:1017654494009491476>  to get a list of all the commands.", inline=False)
             try:
                 msg = await ctx.reply(embed=embed)
-                await msg.edit(embed=embed, view=DeleteButton(ctx.author, msg, author_only=False))
+                await msg.edit(embed=embed, view=DeleteButton(ctx, msg, author_only=False))
             except discord.Forbidden:
                 log.warning(f"Missing permissions to send mention message in {ctx.channel.id} in {ctx.guild.id}")
             except Exception as e:
