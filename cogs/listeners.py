@@ -139,7 +139,7 @@ class Listeners(commands.Cog):
             await self.get_circulars(categories, final_dict)
             return
         else:
-            log.info("Cache is not empty, checking for new circulars")
+            log.debug("Cache is not empty, checking for new circulars")
 
 
 
