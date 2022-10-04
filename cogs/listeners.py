@@ -296,7 +296,7 @@ class Listeners(commands.Cog):
         log.info("Backed up data.db")
 
         # open DB
-        self.con = sqlite3.connect("data.db")
+        self.con = sqlite3.connect("./data/data.db")
         self.cur = self.con.cursor()
 
 

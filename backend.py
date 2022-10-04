@@ -97,16 +97,16 @@ async def get_latest_circular(category: str, cached=False) -> dict | None:
         request = requests.get(url, json=payload)
         try:
             info = request.json()['data']
-        except Exception as err:
-            log.error(f"Error in get_latest_circular: {err}")
+        except Exception as errr:
+            log.error(f"Error in get_latest_circular: {errr}")
+            return
+        if request.text == "Internal Server Error":
+            log.error("The API returned 500 Internal Server Error. Please check the API logs.")
             return
     else:
         return
 
     log.debug(info)
-    if request.text == "Internal Server Error":
-        log.error("The API returned 500 Internal Server Error. Please check the API logs.")
-        return
     return info
 
 
