@@ -77,7 +77,7 @@ async def get_circular_list(category: str) -> tuple | None:
 
     request = requests.get(url, params=params)
     log.debug(request.json())
-    if int(request.json()['http_code']) == 500:
+    if int(request.json()['http_status']) == 500:
         log.error("The API returned 500 Internal Server Error. Please check the API logs.")
         return
     return tuple(request.json()['data'])
@@ -102,7 +102,7 @@ async def get_latest_circular(category: str, cached=False) -> dict | None:
         except Exception as errr:
             log.error(f"Error in get_latest_circular: {errr}")
             return
-        if int(request.json()['http_code']) == 500:
+        if int(request.json()['http_status']) == 500:
             log.error("The API returned 500 Internal Server Error. Please check the API logs.")
             return
     else:
@@ -121,7 +121,7 @@ async def get_png(download_url: str) -> str | None:
     request = requests.get(url, params=params)
     log.debug(request.json())
 
-    if int(request.json()['http_code']) == 500:
+    if int(request.json()['http_status']) == 500:
         log.error("The API returned 500 Internal Server Error. Please check the API logs.")
         return
     return str(request.json()['data'])
@@ -136,7 +136,7 @@ async def search(title:  str) -> dict | None:
     request = requests.get(url, params=params)
     log.debug(request.json())
 
-    if int(request.json()['http_code']) == 500:
+    if int(request.json()['http_status']) == 500:
         log.error("The API returned 500 Internal Server Error. Please check the API logs.")
         return
     return request.json()['data']
