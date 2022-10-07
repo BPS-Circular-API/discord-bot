@@ -74,9 +74,9 @@ async def get_circular_list(category: str) -> tuple | None:
     if not category in ["ptm", "general", "exam"]:
         return None
 
-    payload = {'category': category}
+    params = {'category': category}
 
-    request = requests.get(url, json=payload)
+    request = requests.get(url, params=params)
     log.debug(request.json())
     return tuple(request.json()['data'])
 
@@ -88,13 +88,13 @@ async def get_latest_circular(category: str, cached=False) -> dict | None:
     if category == "all":
         info = {}
         for i in categories:
-            payload = {'category': i}
-            request = requests.get(url, json=payload)
+            params = {'category': i}
+            request = requests.get(url, params=params)
             res = request.json()
             info[i] = res['data']
     elif category in ['ptm', 'general', 'exam']:
-        payload = {'category': category}
-        request = requests.get(url, json=payload)
+        params = {'category': category}
+        request = requests.get(url, params=params)
         try:
             info = request.json()['data']
         except Exception as errr:
@@ -114,9 +114,9 @@ async def get_latest_circular(category: str, cached=False) -> dict | None:
 
 async def get_png(download_url: str) -> str | None:
     url = base_api_url + "getpng"
-    payload = {'url': download_url}
+    params = {'url': download_url}
 
-    request = requests.get(url, json=payload)
+    request = requests.get(url, params=params)
     log.debug(request.json())
 
     if request.text == "Internal Server Error":
@@ -129,9 +129,9 @@ async def get_png(download_url: str) -> str | None:
 async def search(title:  str) -> dict | None:
     url = base_api_url + "search"
 
-    payload = {'title': title}
+    params = {'title': title}
 
-    request = requests.get(url, json=payload)
+    request = requests.get(url, params=params)
     log.debug(request.json())
 
     if request.text == "Internal Server Error":
