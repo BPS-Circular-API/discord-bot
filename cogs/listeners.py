@@ -110,18 +110,14 @@ class Listeners(commands.Cog):
 
     @tasks.loop(seconds=3600)
     async def check_for_circular(self):
-        log.info("Check for circular started")
+
         categories = ("ptm", "general", "exam")
         final_dict = {"general": [], "ptm": [], "exam": []}
         new_circular_categories = []
         new_circular_objects = []
 
-
-
-
         if self.amount_to_cache < 1:
             self.amount_to_cache = 1
-
 
         try:    # Try to get the cached data and make it a dict
             old_cached = dict(get_cached())
@@ -140,8 +136,6 @@ class Listeners(commands.Cog):
             return
         else:
             log.debug("Cache is not empty, checking for new circulars")
-
-
 
 
         for item in categories:
@@ -168,11 +162,11 @@ class Listeners(commands.Cog):
                         new_circular_categories.append(circular_cat)
                         new_circular_objects.append(final_dict[circular_cat][i])
 
-            log.info(f"New circular: {new_circular_objects}")
+            log.info(f"{len(new_circular_objects)} new circular(s) found")
+            log.debug(new_circular_objects)
 
             for i in range(len(new_circular_objects)):
                 await self.notify(new_circular_categories[i], new_circular_objects[i])
-
 
         else:
             log.info("No new circulars")
@@ -201,6 +195,18 @@ class Listeners(commands.Cog):
 
         link = _circular_obj['link']   # Get the link of the new circular
         title = _circular_obj['title']  # Get the title of the new circular
+        notify_log = {
+            "guild": {
+                "id": [],
+                "channel": [],
+            },
+
+            "dm": {
+                "id": [],
+                "name": [],
+            }
+        }
+
 
         png_url = await get_png(link)  # Get the PNG of the circular
 
@@ -237,7 +243,9 @@ class Listeners(commands.Cog):
 
             try:    # Try to send the message
                 await channel.send(embed=embed)  # Send the embed
-                log.info(f"Sent Circular Embed to {guild.id} | {channel.id}")
+                log.debug(f"Sent Circular Embed to {guild.id} | {channel.id}")
+                notify_log['guild']['id'].append(guild.id)    # Add the guild to the list of notified guilds
+                notify_log['guild']['channel'].append(channel.id)  # Add the channel to the list of notified channels
 
             except discord.Forbidden:   # If the bot doesn't have permission to send messages in the channel
                 for _channel in guild.text_channels:    # Find a channel where it can send messages
@@ -245,30 +253,46 @@ class Listeners(commands.Cog):
                     try:    # Try to send the error embed
                         await _channel.send(embed=error_embed)  # Send the error embed
                         await _channel.send(embed=embed) # Send the circular embed
-                        log.info(f"Sent Circular Embed and Error Embed to Fallback Channel in {guild.id} | {_channel.id}")
+                        log.warning(f"Could not send message to {channel.id} in {guild.id}. Sent to {channel.id} instead.")
                         break   # Break the loop
 
                     except Exception as e:  # If it can't send the error embed
-                        log.warning(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
+                        log.error(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
 
             except Exception as e:  # If it can't send the circular embed
-                log.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden.")
-                log.error(e)
+                log.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden." + str(e))
+
 
 
 
         for user, message in zip(user_id, user_message):    # For each user in the database
-            user = await self.client.fetch_user(int(user))  # Get the user object
+
+            try:    # Try to get the user
+                user = await self.client.fetch_user(int(user))  # Get the user object
+
+            except discord.NotFound:    # If the user is not found (deleted)
+                log.warning(f"User not found. User: {user}")
+                self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user}")  # Delete the user from the database
+                self.con.commit()
+                continue
+
+            except Exception as e:  # If there is any other error
+                log.error(f"Could get fetch a user {user}. Error: {e}")
+                continue
+
 
             log.debug(f"[Listeners] | Message: {message}")
             embed.description = message
 
             try:    # Try to send the embed to the user
                 await user.send(embed=embed) # Send the embed to the user
-                log.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+                log.debug(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+
+                notify_log['dm']['id'].append(user.id)    # Add the user to the list of notified users
+                notify_log['dm']['name'].append(f"{user.name}#{user.discriminator}")    # Add the user's name to the list of notified users
 
             except discord.Forbidden:   # If the user has DMs disabled
-                log.warning(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
+                log.error(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
 
                 # Delete the user from the database
                 self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")
@@ -278,6 +302,13 @@ class Listeners(commands.Cog):
             except Exception as e:  # If the user has DMs disabled
                 log.error(f"Couldn't send Circular Embed to User: {user.id}")
                 log.error(e)
+
+        log.info(f"Notified {len(guilds_notified)} guilds and {len(users_notified)} users about the new circular.")
+        log.info(f"Guilds: {notify_log['guild']['id'].join(', ')}")
+        log.info(f"Users: {notify_log['dm']['name'].join(', ')}")
+
+        log.debug(notify_log)
+
 
 
     @tasks.loop(minutes=backup_interval*60)
