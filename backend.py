@@ -1,4 +1,4 @@
-import configparser, discord, logging, requests, pickle
+import configparser, discord, logging, requests, pickle, sys
 from discord.ext import commands
 from colorlog import ColoredFormatter
 
@@ -9,11 +9,26 @@ receives = ["all", "links", "titles"]
 config = configparser.ConfigParser()
 
 try:
-   config.read('data/config.ini')
+    config.read('data/config.ini')
 except Exception as e:
     print("Error reading the config.ini file. Error: " + str(e))
     exit()
 
+
+# Initializing the logger
+def colorlogger(name='bps-circular-bot'):
+    # disabler loggers
+    for logger in logging.Logger.manager.loggerDict:
+        logging.getLogger(logger).disabled = True
+    logger = logging.getLogger(name)
+    stream = logging.StreamHandler()
+    log_format = "%(reset)s%(log_color)s%(levelname)-8s%(reset)s | %(log_color)s%(message)s"
+    stream.setFormatter(ColoredFormatter(log_format))
+    logger.addHandler(stream)
+    return logger  # Return the logger
+
+
+log = colorlogger()
 
 try:
     discord_token: str = config.get('secret', 'discord-token')
@@ -30,32 +45,14 @@ try:
     embed_url: str = config.get('discord', 'embed_url')
 
 except Exception as err:
-    print("Error reading the config.ini file. Error: " + str(err))
-    owner_guilds = owner_ids = []
-    exit()
+    log.critical("Error reading the config.ini file. Error: " + str(err))
+    sys.exit()
 
-
-
-# Initializing the logger
-def colorlogger(name='bps-circular-bot'):
-    # disabler loggers
-    for logger in logging.Logger.manager.loggerDict:
-        logging.getLogger(logger).disabled = True
-    logger = logging.getLogger(name)
-    stream = logging.StreamHandler()
-    log_format = "%(reset)s%(log_color)s%(levelname)-8s%(reset)s | %(log_color)s%(message)s"
-    stream.setFormatter(ColoredFormatter(log_format))
-    logger.addHandler(stream)
-    # Set logger level
-    if log_level.upper() in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-        logger.setLevel(log_level.upper())
-    else:
-        log.warning(f"Invalid log level {log_level}. Defaulting to INFO.")
-        logger.setLevel("INFO")
-    return logger # Return the logger
-
-log = colorlogger()
-
+if log_level.upper() in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+    log.setLevel(log_level.upper())
+else:
+    log.warning(f"Invalid log level {log_level}. Defaulting to INFO.")
+    log.setLevel("INFO")
 
 owner_ids = tuple([int(i) for i in owner_ids])
 log.debug(owner_ids)
@@ -63,14 +60,12 @@ log.debug(owner_ids)
 owner_guilds = tuple([int(i) for i in owner_guilds])
 log.debug(owner_guilds)
 
-
 client = commands.Bot(help_command=None)  # Setting prefix
 
 
-
-async def get_circular_list(category: str) -> tuple | None:
+async def get_circular_list(category: str) -> tuple or None:
     url = base_api_url + "list"
-    if not category in ["ptm", "general", "exam"]:
+    if category not in ["ptm", "general", "exam"]:
         return None
 
     params = {'category': category}
@@ -81,7 +76,6 @@ async def get_circular_list(category: str) -> tuple | None:
         log.error("The API returned 500 Internal Server Error. Please check the API logs.")
         return
     return tuple(request.json()['data'])
-
 
 
 async def get_latest_circular(category: str, cached=False) -> dict | None:
@@ -112,8 +106,6 @@ async def get_latest_circular(category: str, cached=False) -> dict | None:
     return info
 
 
-
-
 async def get_png(download_url: str) -> str | None:
     url = base_api_url + "getpng"
     params = {'url': download_url}
@@ -127,8 +119,7 @@ async def get_png(download_url: str) -> str | None:
     return str(request.json()['data'])
 
 
-
-async def search(title:  str) -> dict | None:
+async def search(title: str) -> dict | None:
     url = base_api_url + "search"
 
     params = {'title': title}
@@ -164,7 +155,7 @@ class ConfirmButton(discord.ui.View):  # Confirm Button Class
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
     async def confirm_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
         if not interaction.user.id == self.author.id:
-             return await interaction.response.send_message("This button is not for you", ephemeral=True)
+            return await interaction.response.send_message("This button is not for you", ephemeral=True)
 
         self.value = True
 
@@ -196,7 +187,6 @@ class DeleteButton(discord.ui.View):
         self.author = ctx.author
         self.author_only = author_only
 
-
     # disable the delete button on timeout
     async def on_timeout(self):
         for child in self.children:
@@ -205,7 +195,7 @@ class DeleteButton(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label="Delete", style=discord.ButtonStyle.red)
-    async def button_callback(self, button, interaction): # Don't remove the unused argument, it's used by py-cord
+    async def button_callback(self, button, interaction):  # Don't remove the unused argument, it's used by py-cord
         if self.author_only:
             if not interaction.user.id == self.author.id:
                 return await interaction.response.send_message("This button is not for you", ephemeral=True)
