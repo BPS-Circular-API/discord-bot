@@ -1,4 +1,9 @@
-import configparser, discord, logging, requests, pickle, sys
+import configparser
+import discord
+import logging
+import requests
+import pickle
+import sys
 from discord.ext import commands
 from colorlog import ColoredFormatter
 
@@ -12,7 +17,7 @@ try:
     config.read('data/config.ini')
 except Exception as e:
     print("Error reading the config.ini file. Error: " + str(e))
-    exit()
+    sys.exit()
 
 
 # Initializing the logger
@@ -28,16 +33,17 @@ def colorlogger(name='bps-circular-bot'):
     return logger  # Return the logger
 
 
-log = colorlogger()
+console = colorlogger()
 
 try:
-    discord_token: str = config.get('secret', 'discord-token')
-    log_level: str = config.get('main', 'log-level')
-    owner_ids = config.get('main', 'owner-ids').strip().split(',')
-    owner_guilds = config.get('main', 'owner-guilds').strip().split(',')
+    discord_token: str = config.get('secret', 'discord_token')
+    log_level: str = config.get('main', 'log_level')
+    owner_ids = config.get('main', 'owner_ids').strip().split(',')
+    owner_guilds = config.get('main', 'owner_guilds').strip().split(',')
     base_api_url: str = config.get('main', 'base_api_url')
     backup_interval: int = config.getint('main', 'backup_interval')
     amount_to_cache: int = config.getint('main', 'amount_to_cache')
+    status_interval: int = config.getint('main', 'status_interval')
 
     embed_footer: str = config.get('discord', 'embed_footer')
     embed_color: int = int(config.get('discord', 'embed_color'), base=16)
@@ -45,20 +51,21 @@ try:
     embed_url: str = config.get('discord', 'embed_url')
 
 except Exception as err:
-    log.critical("Error reading the config.ini file. Error: " + str(err))
+    console.critical("Error reading the config.ini file. Error: " + str(err))
     sys.exit()
 
 if log_level.upper() in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-    log.setLevel(log_level.upper())
+    console.setLevel(log_level.upper())
 else:
-    log.warning(f"Invalid log level {log_level}. Defaulting to INFO.")
-    log.setLevel("INFO")
+    console.warning(f"Invalid log level {log_level}. Defaulting to INFO.")
+    console.setLevel("INFO")
 
 owner_ids = tuple([int(i) for i in owner_ids])
-log.debug(owner_ids)
+console.debug(owner_ids)
 
 owner_guilds = tuple([int(i) for i in owner_guilds])
-log.debug(owner_guilds)
+console.debug(owner_guilds)
+
 
 client = commands.Bot(help_command=None)  # Setting prefix
 
@@ -71,14 +78,14 @@ async def get_circular_list(category: str) -> tuple or None:
     params = {'category': category}
 
     request = requests.get(url, params=params)
-    log.debug(request.json())
+    console.debug(request.json())
     if int(request.json()['http_status']) == 500:
-        log.error("The API returned 500 Internal Server Error. Please check the API logs.")
+        console.error("The API returned 500 Internal Server Error. Please check the API logs.")
         return
     return tuple(request.json()['data'])
 
 
-async def get_latest_circular(category: str, cached=False) -> dict | None:
+async def get_latest_circular(category: str, cached=False) -> dict or None:
     url = base_api_url + "latest" if not cached else base_api_url + "cached-latest"
 
     if category == "all":
@@ -94,41 +101,41 @@ async def get_latest_circular(category: str, cached=False) -> dict | None:
         try:
             info = request.json()['data']
         except Exception as errr:
-            log.error(f"Error in get_latest_circular: {errr}")
+            console.error(f"Error in get_latest_circular: {errr}")
             return
         if int(request.json()['http_status']) == 500:
-            log.error("The API returned 500 Internal Server Error. Please check the API logs.")
+            console.error("The API returned 500 Internal Server Error. Please check the API logs.")
             return
     else:
         return
 
-    log.debug(info)
+    console.debug(info)
     return info
 
 
-async def get_png(download_url: str) -> str | None:
+async def get_png(download_url: str) -> str or None:
     url = base_api_url + "getpng"
     params = {'url': download_url}
 
     request = requests.get(url, params=params)
-    log.debug(request.json())
+    console.debug(request.json())
 
     if int(request.json()['http_status']) == 500:
-        log.error("The API returned 500 Internal Server Error. Please check the API logs.")
+        console.error("The API returned 500 Internal Server Error. Please check the API logs.")
         return
     return str(request.json()['data'])
 
 
-async def search(title: str) -> dict | None:
+async def search(title: str) -> dict or None:
     url = base_api_url + "search"
 
     params = {'title': title}
 
     request = requests.get(url, params=params)
-    log.debug(request.json())
+    console.debug(request.json())
 
     if int(request.json()['http_status']) == 500:
-        log.error("The API returned 500 Internal Server Error. Please check the API logs.")
+        console.error("The API returned 500 Internal Server Error. Please check the API logs.")
         return
     return request.json()['data']
 
