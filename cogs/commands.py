@@ -1,15 +1,13 @@
 import math
-import sqlite3, discord
-
+import sqlite3
+import discord
 import discord.ext.pages
 from discord.ext import commands
-from backend import get_circular_list, log, embed_color, embed_footer, embed_title, categories, receives, get_png, \
-    search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular
+from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular
 from discord import SlashCommandGroup
 
-if log.level == 10:
+if console.level == 10:
     import time
-
     debug_mode = True
 else:
     debug_mode = False
@@ -33,11 +31,11 @@ class Commands(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        log.info("Cog : Commands.py loaded.")
+        console.info("Cog : Commands.py loaded.")
 
-    # create slash command group
+    # Create slash command groups
     circular = SlashCommandGroup("circular", "Circular related commands.")
-    admin = circular.create_subgroup("admin", "Admin commands for the bot")
+    admin = circular.create_subgroup("admin", "Admin commands for the bot.")
 
     @circular.command(name='list', description='List all circulars in a particular category.')
     async def list(self, ctx, category: discord.Option(choices=category_options)):
@@ -48,7 +46,7 @@ class Commands(commands.Cog):
 
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
-        log.info(f"{author.id} in {guild.id} is requesting a list of circulars in {category}.")
+        console.info(f"{author.id} in {guild.id} is requesting a list of circulars in {category}.")
         raw_res = await get_circular_list(category)  # Get the list of circulars from API
 
         titles, links = [], []  # Define 3 empty lists
@@ -72,12 +70,12 @@ class Commands(commands.Cog):
             embed.add_field(name=title, value=link, inline=False)  # Add a field to the embed
             count += 1
             if count % 10 == 0:  # If the count is divisible by 10 (It has reached 10 fields)
-                log.debug('[Commands] | ', count)
+                console.debug('[Commands] | ', count)
                 embed.description = f"Page {int(count / 10)}"  # Set the description of the embed
                 page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
                 embed.clear_fields()  # Clear the fields of the embed
             elif count == len(titles):
-                log.debug('[Commands] | ', count)
+                console.debug('[Commands] | ', count)
                 embed.description = f"Page {int(math.ceil(count / 10))}"  # Set the description of the embed
                 page_list.append(embed.copy())
                 embed.clear_fields()
@@ -85,7 +83,7 @@ class Commands(commands.Cog):
         # Remove the last element of the list if it is empty
         if len(page_list[-1].fields) == 0:
             page_list.pop()
-        log.debug('[Commands] | ', page_list)
+        console.debug('[Commands] | ', page_list)
 
         paginator = discord.ext.pages.Paginator(
             pages=page_list, disable_on_timeout=True, timeout=120
@@ -93,7 +91,7 @@ class Commands(commands.Cog):
         await paginator.respond(ctx.interaction, ephemeral=False)
         if debug_mode:
             # noinspection PyUnboundLocalVariable
-            log.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
+            console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
     async def latest(self, ctx, category: discord.Option(choices=category_options)):
@@ -104,7 +102,7 @@ class Commands(commands.Cog):
 
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
-        log.info(f"{author.id} in {guild.id} is requesting the latest circular of category {category}.")
+        console.info(f"{author.id} in {guild.id} is requesting the latest circular of category {category}.")
 
         raw_res = await get_latest_circular(category, cached=True)  # Get the latest circular from API
         title = raw_res['title']  # Get the title
@@ -123,7 +121,7 @@ class Commands(commands.Cog):
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
         if debug_mode:
             # noinspection PyUnboundLocalVariable
-            log.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
+            console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     @circular.command(name="search", description="Searches for a particular circular in a particular category.")
     async def search(self, ctx, circular_title: str):
@@ -136,7 +134,7 @@ class Commands(commands.Cog):
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
 
-        log.info(f"{author.id} in {guild.id} is searching for {circular_title}")
+        console.info(f"{author.id} in {guild.id} is searching for {circular_title}")
         searched = await search(circular_title)  # Search for the circular from the backend function
 
         embed = discord.Embed(title="Circular Search", color=embed_color)  # Create an embed
@@ -163,7 +161,7 @@ class Commands(commands.Cog):
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
         if debug_mode:
             # noinspection PyUnboundLocalVariable
-            log.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
+            console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     # Admin commands
     @admin.command(name="setup",
@@ -174,7 +172,7 @@ class Commands(commands.Cog):
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await guild.fetch_member(ctx.author.id)  # Fetch the member object
 
-        log.info(f"{author.id} in {guild.id} is setting up the bot in {channel.name}.")
+        console.info(f"{author.id} in {guild.id} is setting up the bot in {channel.name}.")
 
         if not author.guild_permissions.administrator:  # Check if the author has admin permissions
             if author.id not in owner_ids:  # Check if the author is an owner
@@ -188,7 +186,7 @@ class Commands(commands.Cog):
         res = self.cur.fetchone()
 
         if res:  # If the guild is in the database
-            log.debug('[Commands] | ', res)
+            console.debug('[Commands] | ', res)
             e_embed = discord.Embed(title="Server Setup",
                                     description=f"The server has an already existing reminder configuration!",
                                     color=embed_color)
@@ -229,7 +227,7 @@ class Commands(commands.Cog):
     @admin.command(name="delete", description="Delete the server's circular reminder configuration.")
     async def delete(self, ctx):
         await ctx.defer()
-        log.info(f"{ctx.author.id} in {ctx.guild.id} is deleting the reminder configuration.")
+        console.info(f"{ctx.author.id} in {ctx.guild.id} is deleting the reminder configuration.")
 
         guild = await self.client.fetch_guild(ctx.guild.id)  # Get the guild from the discord API
         author = await guild.fetch_member(ctx.author.id)
@@ -330,7 +328,7 @@ class Commands(commands.Cog):
 
             r_embed.title = "Unsubscribed"
             r_embed.description = "You have been unsubscribed from reminders."
-            log.info(f"{ctx.author.id} in {ctx.guild.id} is un-subscribing from DM reminders.")
+            console.info(f"{ctx.author.id} in {ctx.guild.id} is un-subscribing from DM reminders.")
             await msg.edit(embed=r_embed)  # Edit the message to show that the user has been unsubscribed
             return
 
@@ -344,7 +342,7 @@ class Commands(commands.Cog):
         self.con.commit()
 
         r_embed.title = "Success!"  # Set the title to Success
-        log.info(f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
+        console.info(f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
         r_embed.description = "You successfully subscribed to DM reminders! </circular remindme:1010911588703817808> to unsubscribe."
 
         await ctx.followup.send(embed=r_embed)
