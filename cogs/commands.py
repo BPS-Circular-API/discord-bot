@@ -83,7 +83,7 @@ class Commands(commands.Cog):
         # Remove the last element of the list if it is empty
         if len(page_list[-1].fields) == 0:
             page_list.pop()
-        console.debug('[Commands] | ', page_list)
+        console.debug('[Commands] | ' + str(page_list))
 
         paginator = discord.ext.pages.Paginator(
             pages=page_list, disable_on_timeout=True, timeout=120
