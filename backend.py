@@ -1,4 +1,6 @@
 import configparser
+import sqlite3
+import time
 import discord
 import logging
 import requests
@@ -138,6 +140,34 @@ async def search(title: str) -> dict or None:
         console.error("The API returned 500 Internal Server Error. Please check the API logs.")
         return
     return request.json()['data']
+
+
+async def log(level, category, msg, *args):
+    # Db Structure - type, msg, category, timestamp, level
+    # categories = ["command", "listener", "backend", "etc"]
+    current_time = int(time.time())
+    if level.upper() not in ["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"]:
+        level = "INFO"
+
+    # join msg and args into one string
+    if args:
+        msg %= args
+    msg.replace('"', "")
+    # TODO: finish this
+
+    # This code logs the message using the correct level's logger based on the level parameter
+    console.debug(msg) if level.upper() == "DEBUG" else console.info(msg) if level.upper() == "INFO" else \
+        console.warning(msg) if level.upper() == "WARNING" else console.error(msg) if level.upper() == "ERROR" \
+        else console.critical(msg) if level.upper() == "CRITICAL" else console.info(msg)
+
+    if category not in ["command", "listener", "backend", "etc"]:
+        category = "etc"
+
+    db = sqlite3.connect('./data/data.db')
+    cursor = db.cursor()
+
+    cursor.execute(f'INSERT INTO logs VALUES ({current_time}, "{level}", "{category}", "{msg}");')
+    db.commit()
 
 
 def get_cached():

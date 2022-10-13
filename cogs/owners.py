@@ -48,7 +48,6 @@ class Owners(commands.Cog):
             for i in res:
                 embed.add_field(name=str(i), value=str(i), inline=False)
         self.con.commit()
-        self.con.close()
         msg = await ctx.followup.send(embed=embed)
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
 
