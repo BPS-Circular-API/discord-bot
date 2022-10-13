@@ -17,23 +17,22 @@ class Listeners(commands.Cog):
         self.cur = self.con.cursor()
         self.amount_to_cache = amount_to_cache
 
-
-
     @commands.Cog.listener()
     async def on_ready(self):
         console.info(f"Cog : Listeners.py loaded.")
 
+        global member_count
         member_count = -1
 
         if not self.get_member_count.is_running():
             self.get_member_count.start()
 
+        if not self.check_for_circular.is_running():
+            self.check_for_circular.start()
+
         if not self.backup.is_running():
             if backup_interval >= 0.5:
                 self.backup.start()
-
-        if not self.check_for_circular.is_running():
-            self.check_for_circular.start()
 
         while not member_count > -1:
             await asyncio.sleep(1)
@@ -64,10 +63,8 @@ class Listeners(commands.Cog):
     async def on_guild_join(self, guild):
         console.info(f"I just joined a new guild!")
 
-    @tasks.loop(seconds=status_interval)
+    @tasks.loop(seconds=status_interval*60)
     async def random_status(self):
-        rand_int = random.randint(0, 3)
-
         activities = (
             f"{member_count} Users!",
             f"{len(self.client.guilds)} Guilds!",
@@ -83,6 +80,9 @@ class Listeners(commands.Cog):
             discord.ActivityType.playing,
             discord.ActivityType.playing,
         )
+
+        rand_int = random.randint(0, len(activities) - 1)
+
         await self.client.change_presence(activity=discord.Activity(type=types[rand_int], name=activities[rand_int]))
 
     @tasks.loop(seconds=3600 * 24)  # Run every 24 hours
@@ -161,6 +161,7 @@ class Listeners(commands.Cog):
 
             for i in range(len(new_circular_objects)):
                 await self.notify(new_circular_categories[i], new_circular_objects[i])
+                await asyncio.sleep(15)
 
         else:
             console.info("No new circulars")
@@ -281,7 +282,7 @@ class Listeners(commands.Cog):
                 await user.send(embed=embed)  # Send the embed to the user
                 console.debug(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
 
-                notify_log['dm']['id'].append(user.id)  # Add the user to the list of notified users
+                notify_log['dm']['id'].append(str(user.id))  # Add the user to the list of notified users
                 notify_log['dm']['name'].append(
                     f"{user.name}#{user.discriminator}")  # Add the user's name to the list of notified users
 
@@ -298,9 +299,9 @@ class Listeners(commands.Cog):
                 console.error(f"Couldn't send Circular Embed to User: {user.id}")
                 console.error(e)
 
-        console.info(f"Notified {len(notify_log['guild'])} guilds and {len(notify_log['dm'])} users about the new circular.")
-        console.info(f"Guilds: {','.join(notify_log['guild']['id'])}")
-        console.info(f"Users: {','.join(notify_log['dm']['name'])}")
+        console.info(f"Notified {len(notify_log['guild']['id'])} guilds and {len(notify_log['dm']['id'])} users about the new circular.")
+        console.info(f"Guilds: {', '.join(notify_log['guild']['id'])}")
+        console.info(f"Users: {', '.join(notify_log['dm']['name'])}")
 
         console.debug(notify_log)
 
