@@ -3,7 +3,7 @@ import sqlite3
 import discord
 import discord.ext.pages
 from discord.ext import commands
-from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular
+from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log
 from discord import SlashCommandGroup
 
 if console.level == 10:
@@ -46,7 +46,9 @@ class Commands(commands.Cog):
 
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
-        console.info(f"{author.id} in {guild.id} is requesting a list of circulars in {category}.")
+
+        await log('info', 'command', f"`{author.id}` in `{guild.id}` has requested a list of circulars in `{category}`")
+
         raw_res = await get_circular_list(category)  # Get the list of circulars from API
 
         titles, links = [], []  # Define 3 empty lists
@@ -102,7 +104,8 @@ class Commands(commands.Cog):
 
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
-        console.info(f"{author.id} in {guild.id} is requesting the latest circular of category {category}.")
+
+        await log("info", "command", f"`{author.id}` in `{guild.id}` requested the latest circular of category `{category}`.")
 
         raw_res = await get_latest_circular(category, cached=True)  # Get the latest circular from API
         title = raw_res['title']  # Get the title
@@ -134,7 +137,7 @@ class Commands(commands.Cog):
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
 
-        console.info(f"{author.id} in {guild.id} is searching for {circular_title}")
+        await log("info", "command", f"`{author.id}` in `{guild.id}` searched for `{circular_title}`")
         searched = await search(circular_title)  # Search for the circular from the backend function
 
         embed = discord.Embed(title="Circular Search", color=embed_color)  # Create an embed
@@ -172,12 +175,13 @@ class Commands(commands.Cog):
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await guild.fetch_member(ctx.author.id)  # Fetch the member object
 
-        console.info(f"{author.id} in {guild.id} is setting up the bot in {channel.name}.")
+        await log("info", "command", f"{author.id} in {guild.id} is setting up the bot in {channel.name}.")
 
         if not author.guild_permissions.administrator:  # Check if the author has admin permissions
             if author.id not in owner_ids:  # Check if the author is an owner
                 await ctx.followup.send(
-                    embed=discord.Embed(title="Error!", description="You do not have permission to use this command!", color=embed_color)
+                    embed=discord.Embed(title="Error!", description="You do not have permission to use this command!",
+                                        color=embed_color)
                 )
                 return
 
