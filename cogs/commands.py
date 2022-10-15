@@ -175,7 +175,7 @@ class Commands(commands.Cog):
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await guild.fetch_member(ctx.author.id)  # Fetch the member object
 
-        await log("info", "command", f"{author.id} in {guild.id} is setting up the bot in {channel.name}.")
+        await log("info", "notification", f"{author.id} in {guild.id} is setting up the bot in {channel.name}.")
 
         if not author.guild_permissions.administrator:  # Check if the author has admin permissions
             if author.id not in owner_ids:  # Check if the author is an owner
@@ -231,7 +231,7 @@ class Commands(commands.Cog):
     @admin.command(name="delete", description="Delete the server's circular reminder configuration.")
     async def delete(self, ctx):
         await ctx.defer()
-        console.info(f"{ctx.author.id} in {ctx.guild.id} is deleting the reminder configuration.")
+        await log("info", "notification", f"{ctx.author.id} in {ctx.guild.id} is deleting the notification configuration.")
 
         guild = await self.client.fetch_guild(ctx.guild.id)  # Get the guild from the discord API
         author = await guild.fetch_member(ctx.author.id)
@@ -269,6 +269,7 @@ class Commands(commands.Cog):
     @commands.slash_command(name="invite", description="Get the invite link for the bot.")
     @circular.command(name="invite", description="Invite the bot to your server.")
     async def invite(self, ctx):
+        await log("info", "command", f"{ctx.author.id} in {ctx.guild.id} is getting the invite link.")
         embed = discord.Embed(title="Invite",
                               description=f"Click the below button to add the bot to your server. Alternatively you can use this URL too.\n https://bpsapi.rajtech.me/r/discord-bot-invite",
                               color=embed_color)
@@ -286,6 +287,7 @@ class Commands(commands.Cog):
     @commands.slash_command(name="help", description="Shows the help menu.")
     @circular.command(name="help", description="Shows the help message for the circular commands.")
     async def help(self, ctx):
+        await log("info", "command", f"{ctx.author.id} in {ctx.guild.id} is getting the help message.")
         await ctx.defer()
         embed = discord.Embed(title="Circular Commands", description="Here is the list of commands for the circulars.",
                               color=embed_color)
@@ -332,7 +334,7 @@ class Commands(commands.Cog):
 
             r_embed.title = "Unsubscribed"
             r_embed.description = "You have been unsubscribed from reminders."
-            console.info(f"{ctx.author.id} in {ctx.guild.id} is un-subscribing from DM reminders.")
+            await log("info", "notification", f"{ctx.author.id} in {ctx.guild.id} is un-subscribing from DM reminders.")
             await msg.edit(embed=r_embed)  # Edit the message to show that the user has been unsubscribed
             return
 
@@ -346,10 +348,16 @@ class Commands(commands.Cog):
         self.con.commit()
 
         r_embed.title = "Success!"  # Set the title to Success
-        console.info(f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
         r_embed.description = "You successfully subscribed to DM reminders! </circular remindme:1010911588703817808> to unsubscribe."
 
-        await ctx.followup.send(embed=r_embed)
+        try:
+            await ctx.author.send(embed=r_embed)  # Send the embed to the user in DMs
+            await ctx.followup.send(embed=r_embed)
+            await log("info", "notification", f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
+
+        except discord.Forbidden:
+            r_embed.description = "Error: I couldn't send you a DM. Please enable DMs from server members."
+            await ctx.followup.send(embed=r_embed)
 
 
 def setup(client):

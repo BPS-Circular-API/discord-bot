@@ -160,7 +160,7 @@ async def log(level, category, msg, *args):
         console.warning(msg) if level.upper() == "WARNING" else console.error(msg) if level.upper() == "ERROR" \
         else console.critical(msg) if level.upper() == "CRITICAL" else console.info(msg)
 
-    if category not in ["command", "listener", "backend", "etc"]:
+    if category not in ["command", "notification", "listener", "backend", "etc"]:
         category = "etc"
 
     db = sqlite3.connect('./data/data.db')
