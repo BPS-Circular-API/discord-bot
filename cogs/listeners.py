@@ -300,9 +300,12 @@ class Listeners(commands.Cog):
                 console.error(e)
 
         console.info(f"Notified {len(notify_log['guild']['id'])} guilds and {len(notify_log['dm']['id'])} users about the new circular.")
-        console.info(f"Guilds: {', '.join(notify_log['guild']['id'])}")
-        console.info(f"Users: {', '.join(notify_log['dm']['name'])}")
-
+        try:
+            # todo fix this
+            console.info(f"Guilds: {', '.join(notify_log['guild']['id'])}")
+            console.info(f"Users: {', '.join(notify_log['dm']['name'])}")
+        except:
+            pass
         console.debug(notify_log)
 
     @tasks.loop(minutes=backup_interval * 60)
