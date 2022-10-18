@@ -91,6 +91,7 @@ class Owners(commands.Cog):
                                            discord.OptionChoice("PTM", value="ptm"),
                                            discord.OptionChoice("Exam", value="exam")
                                        ]),
+                                       custom_message: str = None,
                                        send_only_to: discord.Option(choices=[
                                            discord.OptionChoice("DMs", value="dms"),
                                            discord.OptionChoice("Servers", value="servers"),
@@ -104,6 +105,10 @@ class Owners(commands.Cog):
         embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)  # Create the embed
         embed.set_footer(text=embed_footer)  # Set the footer
         embed.set_author(name=embed_title)  # Set the author
+
+        if custom_message is not None:  # If the user has provided a custom message
+            embed.add_field(name="Message from the Developer", value=custom_message, inline=False)
+
         embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url,
                         inline=False)  # Add the circular name and url field
 
@@ -111,8 +116,8 @@ class Owners(commands.Cog):
         embed.set_image(url=png_url)  # Set the image of the embed to the file
 
         if debug_guild:  # If a debug guild is specified, send the message to ONLY that guild.
-            self.cur.execute(
-                f"SELECT message FROM guild_notify WHERE guild_id = {debug_guild}")  # Get the server message from the database
+            self.cur.execute(   # Get the server message from the database
+                f"SELECT message FROM guild_notify WHERE guild_id = {debug_guild}")
             message = self.cur.fetchone()  # Get the reminder-message for the guild from the DB
             console.debug(f"[Owners] | Message: {message}")
 
@@ -130,7 +135,7 @@ class Owners(commands.Cog):
             return await ctx.respond(f"Notified the `{debug_guild}` server.")  # Respond to the user and return
 
         elif debug_user:  # If a debug user is specified, send the message to ONLY that user.
-            self.cur.execute(f"SELECT message FROM remind WHERE user_id = {debug_user}")
+            self.cur.execute(f"SELECT message FROM dm_notify WHERE user_id = {debug_user}")
             message = self.cur.fetchone()  # Get the reminder-message for the user from the DB
             console.debug(f"[Owners] | Message: {message}")
 
@@ -171,19 +176,11 @@ class Owners(commands.Cog):
             user_message = [x[1] for x in users]  # Get all the messages from the database
             del users, guild_notify  # Delete the variables to free up memory
 
-            embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)  # Create the embed
-            embed.set_footer(text=embed_footer)  # Set the footer
-            embed.set_author(name=embed_title)  # Set the author
-
-            png_url = await get_png(url)  # Get the png from the url
-
             error_embed = discord.Embed(title=f"Error!",
                                         description=f"Please make sure that I have the permission to send messages in the channel you set for notifications.",
                                         color=embed_color)
             error_embed.set_footer(text=embed_footer)
             error_embed.set_author(name=embed_title)
-            embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url, inline=False)
-            embed.set_image(url=png_url)  # Set the image of the embed to the file
 
             if send_only_to:  # If it has been specified to send the notifications to only servers/dms
                 if send_only_to == "dms":  # Send notifications to dms
@@ -317,13 +314,15 @@ class Owners(commands.Cog):
                     try:  # Try to send the embed to the user
                         await user.send(embed=embed)  # Send the embed to the user
                         console.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+                        
                     except discord.Forbidden:  # If the user has DMs disabled
-                        console.warning(
-                            f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
-                        # delete the user from the database
+                        console.warning(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
+
                         self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")
                         self.con.commit()
+
                         console.info(f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
+
                     except Exception as e:  # If the user has DMs disabled
                         console.error(f"Couldn't send Circular Embed to User: {user.id}")
                         console.error(e)
