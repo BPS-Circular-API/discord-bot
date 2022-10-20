@@ -85,6 +85,7 @@ class Commands(commands.Cog):
         # Remove the last element of the list if it is empty
         if len(page_list[-1].fields) == 0:
             page_list.pop()
+
         console.debug('[Commands] | ' + str(page_list))
 
         paginator = discord.ext.pages.Paginator(
@@ -92,7 +93,6 @@ class Commands(commands.Cog):
         )
         await paginator.respond(ctx.interaction, ephemeral=False)
         if debug_mode:
-            # noinspection PyUnboundLocalVariable
             console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
@@ -231,7 +231,8 @@ class Commands(commands.Cog):
     @admin.command(name="delete", description="Delete the server's circular reminder configuration.")
     async def delete(self, ctx):
         await ctx.defer()
-        await log("info", "notification", f"{ctx.author.id} in {ctx.guild.id} is deleting the notification configuration.")
+        guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
+        await log("info", "notification", f"{ctx.author.id} in {guild.id} is deleting the notification configuration.")
 
         guild = await self.client.fetch_guild(ctx.guild.id)  # Get the guild from the discord API
         author = await guild.fetch_member(ctx.author.id)
@@ -287,8 +288,11 @@ class Commands(commands.Cog):
     @commands.slash_command(name="help", description="Shows the help menu.")
     @circular.command(name="help", description="Shows the help message for the circular commands.")
     async def help(self, ctx):
-        await log("info", "command", f"{ctx.author.id} in {ctx.guild.id} is getting the help message.")
         await ctx.defer()
+
+        guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
+        await log("info", "command", f"{ctx.author.id} in {guild.id} is getting the help message.")
+
         embed = discord.Embed(title="Circular Commands", description="Here is the list of commands for the circulars.",
                               color=embed_color)
         embed.set_author(name=embed_title)

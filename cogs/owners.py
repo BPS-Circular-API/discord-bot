@@ -314,7 +314,7 @@ class Owners(commands.Cog):
                     try:  # Try to send the embed to the user
                         await user.send(embed=embed)  # Send the embed to the user
                         console.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
-                        
+
                     except discord.Forbidden:  # If the user has DMs disabled
                         console.warning(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
 
