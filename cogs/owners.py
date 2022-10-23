@@ -2,7 +2,8 @@ import discord
 import math
 import sqlite3
 from discord.ext import commands
-from backend import owner_ids, embed_title, embed_footer, embed_color, console, owner_guilds, get_png, ConfirmButton, DeleteButton
+from backend import owner_ids, embed_title, embed_footer, embed_color, console, owner_guilds, get_png, ConfirmButton, \
+    DeleteButton, log
 
 
 class Owners(commands.Cog):
@@ -116,7 +117,7 @@ class Owners(commands.Cog):
         embed.set_image(url=png_url)  # Set the image of the embed to the file
 
         if debug_guild:  # If a debug guild is specified, send the message to ONLY that guild.
-            self.cur.execute(   # Get the server message from the database
+            self.cur.execute(  # Get the server message from the database
                 f"SELECT message FROM guild_notify WHERE guild_id = {debug_guild}")
             message = self.cur.fetchone()  # Get the reminder-message for the guild from the DB
             console.debug(f"[Owners] | Message: {message}")
@@ -196,7 +197,8 @@ class Owners(commands.Cog):
                             console.info(
                                 f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
                         except discord.Forbidden:  # If the bot is not allowed to send messages to the user
-                            console.error(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+                            console.error(
+                                f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
                             # self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")
                             # self.con.commit()
 
@@ -313,10 +315,12 @@ class Owners(commands.Cog):
 
                     try:  # Try to send the embed to the user
                         await user.send(embed=embed)  # Send the embed to the user
-                        console.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+                        console.info(
+                            f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
 
                     except discord.Forbidden:  # If the user has DMs disabled
-                        console.warning(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
+                        console.warning(
+                            f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
 
                         self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")
                         self.con.commit()

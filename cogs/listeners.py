@@ -7,7 +7,7 @@ import datetime
 import asyncio
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, get_cached, \
-    set_cached, get_circular_list, amount_to_cache, status_interval
+    set_cached, get_circular_list, amount_to_cache, status_interval, log
 
 
 class Listeners(commands.Cog):
@@ -90,7 +90,7 @@ class Listeners(commands.Cog):
             await self.client.change_presence(activity=discord.Activity(type=types[rand_int], name=activities[rand_int]))
         except Exception as e:
             await log('warning', 'listener', f"Error in changing status : {e}")
-        log.debug(f"Changed status to {activities[rand_int]}")
+        console.debug(f"Changed status to {activities[rand_int]}")
 
     @tasks.loop(seconds=3600 * 24)  # Run every 24 hours
     async def get_member_count(self):
