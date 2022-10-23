@@ -42,26 +42,29 @@ class Listeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, ctx):
+        # Ignore if message is from a bot or a reply
         if (not ctx.author.bot) & (self.client.user.mentioned_in(ctx)) & (ctx.reference is None):
-            embed = discord.Embed(title="Mention Message", description="Hello! Thanks for using this bot.",
-                                  color=embed_color)
+
+            embed = discord.Embed(title="Mention Message", description="Hello! Thanks for using this bot.", color=embed_color)
             embed.set_footer(text=embed_footer)
             embed.set_author(name=embed_title)
-            embed.add_field(name="Prefix", value="This bot uses slash commands, which are prefixed with `/circular`",
-                            inline=False)
-            embed.add_field(name="For help",
-                            value="Use </help:1017654494009491476>  to get a list of all the commands.", inline=False)
+            embed.add_field(name="Prefix", value="This bot uses slash commands, which are prefixed with `/circular`", inline=False)
+            embed.add_field(name="For help", value="Use </help:1017654494009491476>  to get a list of all the commands.", inline=False)
+
             try:
                 msg = await ctx.reply(embed=embed)
                 await msg.edit(embed=embed, view=DeleteButton(ctx, msg, author_only=False))
-            except discord.Forbidden:
-                console.warning(f"Missing permissions to send mention message in {ctx.channel.id} in {ctx.guild.id}")
+                await log('info', 'command', f"Sent mention message to {ctx.author.name}#{ctx.author.discriminator} ({ctx.author.id})")
+
+            except discord.Forbidden:   # If the bot doesn't have permission to send messages
+                await log('warning', 'command', f"Missing permissions to send mention message in {ctx.channel.id} in {ctx.guild.id}")
+
             except Exception as e:
-                console.error(f"Error sending mention message in {ctx.channel.id} in {ctx.guild.id} : {e}")
+                await log('warning', 'command', f"Error in sending mention message in {ctx.channel.id} in {ctx.guild.id} : {e}")
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-        console.info(f"I just joined a new guild!")
+        await log('info', 'listener', f"Joined guild {guild.id}")
 
     @tasks.loop(seconds=status_interval*60)
     async def random_status(self):
@@ -83,7 +86,11 @@ class Listeners(commands.Cog):
 
         rand_int = random.randint(0, len(activities) - 1)
 
-        await self.client.change_presence(activity=discord.Activity(type=types[rand_int], name=activities[rand_int]))
+        try:
+            await self.client.change_presence(activity=discord.Activity(type=types[rand_int], name=activities[rand_int]))
+        except Exception as e:
+            await log('warning', 'listener', f"Error in changing status : {e}")
+        log.debug(f"Changed status to {activities[rand_int]}")
 
     @tasks.loop(seconds=3600 * 24)  # Run every 24 hours
     async def get_member_count(self):
@@ -300,8 +307,9 @@ class Listeners(commands.Cog):
                 console.error(e)
 
         console.info(f"Notified {len(notify_log['guild']['id'])} guilds and {len(notify_log['dm']['id'])} users about the new circular.")
+        await log('info', "listener", f"Notified {len(notify_log['guild']['id'])} guilds and {len(notify_log['dm']['id'])} users about the new circular.")
         try:
-            # todo fix this
+            # TODO: fix this
             console.info(f"Guilds: {', '.join(notify_log['guild']['id'])}")
             console.info(f"Users: {', '.join(notify_log['dm']['name'])}")
         except:
@@ -320,9 +328,8 @@ class Listeners(commands.Cog):
         if not os.path.exists('./data/backups/'):  # If the directory does not exist
             os.mkdir("./data/backups/")
 
-        shutil.copyfile("./data/data.db",
-                        f"./data/backups/data-{date_time}.db")  # Copy the current file to the new directory
-        console.info("Backed up data.db")
+        shutil.copyfile("./data/data.db",f"./data/backups/data-{date_time}.db")  # Copy the current file to the new directory
+        await log('info', "etc", f"Backed up the database to ./data/backups/data-{date_time}.db")
 
         # open DB
         self.con = sqlite3.connect("./data/data.db")

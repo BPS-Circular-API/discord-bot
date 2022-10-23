@@ -354,14 +354,16 @@ class Commands(commands.Cog):
         r_embed.title = "Success!"  # Set the title to Success
         r_embed.description = "You successfully subscribed to DM reminders! </circular remindme:1010911588703817808> to unsubscribe."
 
-        try:
+        try:    # Try to send the user a DM
             await ctx.author.send(embed=r_embed)  # Send the embed to the user in DMs
-            await ctx.followup.send(embed=r_embed)
-            await log("info", "notification", f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
 
-        except discord.Forbidden:
+        except discord.Forbidden:   # If the user has DMs disabled
             r_embed.description = "Error: I couldn't send you a DM. Please enable DMs from server members."
             await ctx.followup.send(embed=r_embed)
+
+        else:   # If the user has DMs enabled
+            await ctx.followup.send(embed=r_embed)
+            await log("info", "notification", f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
 
 
 def setup(client):
