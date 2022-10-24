@@ -47,7 +47,7 @@ class Commands(commands.Cog):
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
 
-        await log('info', 'command', f"`{author.id}` in `{guild.id}` has requested a list of circulars in `{category}`")
+        await log('info', 'command', f"{author.id} in {guild.id} has requested a list of circulars in {category}")
 
         raw_res = await get_circular_list(category)  # Get the list of circulars from API
 
@@ -105,7 +105,7 @@ class Commands(commands.Cog):
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
 
-        await log("info", "command", f"`{author.id}` in `{guild.id}` requested the latest circular of category `{category}`.")
+        await log("info", "command", f"{author.id} in {guild.id} requested the latest circular of category {category}.")
 
         raw_res = await get_latest_circular(category, cached=True)  # Get the latest circular from API
         title = raw_res['title']  # Get the title
@@ -137,7 +137,7 @@ class Commands(commands.Cog):
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
 
-        await log("info", "command", f"`{author.id}` in `{guild.id}` searched for `{circular_title}`")
+        await log("info", "command", f"{author.id} in {guild.id} searched for {circular_title}")
         searched = await search(circular_title)  # Search for the circular from the backend function
 
         embed = discord.Embed(title="Circular Search", color=embed_color)  # Create an embed
@@ -146,7 +146,7 @@ class Commands(commands.Cog):
 
         if searched is None:
             embed.add_field(name="Error",
-                            value="No circular found with that title. Maybe specify better search terms, or find the circular you wanted from `/circular list`",
+                            value="No circular found with that title. Maybe specify better search terms, or find the circular you wanted from </circular list:1010911588703817808>.",
                             inline=False)
             await ctx.followup.send(embed=embed)
             return
@@ -199,7 +199,7 @@ class Commands(commands.Cog):
             e_embed.add_field(name="Channel", value=f"`{res[1]}`", inline=False)
             e_embed.add_field(name="Message", value=f"`{res[2]}`", inline=True)
             e_embed.add_field(name="To delete!",
-                              value=f"Use `/circular admin delete` to delete this existing configuration!",
+                              value=f"Use </circular admin delete:1010911588703817808> to delete this existing configuration!",
                               inline=False)
             await ctx.followup.send(embed=e_embed)
             return

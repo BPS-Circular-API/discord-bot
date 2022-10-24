@@ -331,14 +331,75 @@ class Owners(commands.Cog):
                         console.error(f"Couldn't send Circular Embed to User: {user.id}")
                         console.error(e)
 
+    @owners.command(name="logs", description="Get bot logs.")
+    async def get_logs(self, ctx,
+                   level: discord.Option(choices=[
+                       discord.OptionChoice("All", value="all"),
+                       discord.OptionChoice("Debug", value="debug"),
+                       discord.OptionChoice("Info", value="info"),
+                       discord.OptionChoice("Warning", value="warning"),
+                       discord.OptionChoice("Error", value="error"),
+                       discord.OptionChoice("Critical", value="critical")
+                   ]),
 
+                   category: discord.Option(choices=[
+                       discord.OptionChoice("All", value="all"),
+                       discord.OptionChoice("Command", value="command"),
+                       discord.OptionChoice("Listener", value="listener"),
+                       discord.OptionChoice("Backend", value="backend"),
+                       discord.OptionChoice("Etc", value="etc")
+                   ]),
+                   amount: int):
 
+        if ctx.author.id not in owner_ids:
+            return await ctx.respond("You are not allowed to use this command.")
+        await ctx.defer()
 
+        if level == "all":
+            level = None
 
+        if category == "all":
+            category = None
 
+        # get logs from sql
+        if level is None and category is None:
+            self.cur.execute(f"SELECT * FROM logs ORDER BY timestamp DESC LIMIT {amount}")
+        elif level is None:
+            self.cur.execute(f"SELECT * FROM logs WHERE category = '{category}' ORDER BY timestamp DESC LIMIT {amount}")
+        elif category is None:
+            self.cur.execute(f"SELECT * FROM logs WHERE log_level = '{level}' ORDER BY timestamp DESC LIMIT {amount}")
+        else:
+            self.cur.execute(
+                f"SELECT * FROM logs WHERE log_level = '{level}' AND category = '{category}' ORDER BY timestamp DESC LIMIT {amount}")
 
+        logs = self.cur.fetchall()
 
+        if not logs:
+            return await ctx.send("No logs found.", ephemerical=True)
 
+        embed = discord.Embed(title="Logs", color=embed_color)
+        embed.set_footer(text=embed_footer)
+        embed.set_author(name=embed_title)
+
+        pages = []
+        i = 1
+        # Log format: (timestamp, log_level, category, message)
+        for log in logs:
+            embed.add_field(name=f"**{i}** <t:{log[0]}:f>", value=f"```{log[3]}```", inline=False)
+            i += 1
+
+            if i % 10 == 0:
+                pages.append(embed.copy())
+                embed.clear_fields()
+            elif i == len(logs):
+                pages.append(embed.copy())
+                embed.clear_fields()
+
+        # send paginated logs
+        paginator = discord.ext.pages.Paginator(
+            pages=pages, disable_on_timeout=True, timeout=120
+        )
+        await paginator.respond(ctx.interaction, ephemeral=True)
 
 
 def setup(client):
