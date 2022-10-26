@@ -56,7 +56,7 @@ class Commands(commands.Cog):
 
         # Loop through the raw API output
         for item in raw_res:
-            titles.append(f"**{loop_int}**. `{item['title']}`")  # Add the title to the list
+            titles.append(f"**{loop_int}**. [{item['id']}] `{item['title']}`")  # Add the title to the list
             links.append(f"{item['link']}")  # Add the link to the list
             loop_int += 1
 
@@ -73,12 +73,12 @@ class Commands(commands.Cog):
             count += 1
             if count % 10 == 0:  # If the count is divisible by 10 (It has reached 10 fields)
                 console.debug('[Commands] | ', count)
-                embed.description = f"Page {int(count / 10)}"  # Set the description of the embed
+                embed.description = f"Format - `number [id] title`\nPage **{int(count / 10)}**\n"  # Set the description of the embed
                 page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
                 embed.clear_fields()  # Clear the fields of the embed
             elif count == len(titles):
                 console.debug('[Commands] | ', count)
-                embed.description = f"Page {int(math.ceil(count / 10))}"  # Set the description of the embed
+                embed.description = f"Format - `number [id] title`\nPage **{int(math.ceil(count / 10))}**\n"  # Set the description of the embed
                 page_list.append(embed.copy())
                 embed.clear_fields()
 
@@ -167,8 +167,10 @@ class Commands(commands.Cog):
             console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     # Admin commands
-    @admin.command(name="setup",
-                   description="Set up the bot to guild_notify the user when a circular is available in a channel.")
+    @admin.command(
+        name="setup",
+        description="Set up the bot to guild_notify the user when a circular is available in a channel."
+    )
     async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
         await ctx.defer()
 
