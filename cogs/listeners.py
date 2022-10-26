@@ -188,12 +188,9 @@ class Listeners(commands.Cog):
         user_message = [x[1] for x in users]
         del users, guild_notify  # Delete the variables to save memory
 
-        embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
-        embed.set_footer(text=embed_footer)
-        embed.set_author(name=embed_title)
-
         link = _circular_obj['link']  # Get the link of the new circular
         title = _circular_obj['title']  # Get the title of the new circular
+        id_ = _circular_obj['id']  # Get the id of the new circular
         notify_log = {
             "guild": {
                 "id": [],
@@ -208,14 +205,20 @@ class Listeners(commands.Cog):
 
         png_url = await get_png(link)  # Get the PNG of the circular
 
-        error_embed = discord.Embed(title=f"Error!",
-                                    description=f"Please make sure that I have the permission to send messages in the channel you set for notifications.",
-                                    color=embed_color)
+        # Create the error embed
+        error_embed = discord.Embed(title=f"Error!", color=embed_color)
+        error_embed.description = "Please make sure that I have the adequate permissions to send messages in the " \
+                                  "channel you set for notifications."
         error_embed.set_footer(text=embed_footer)  # Set the footer
         error_embed.set_author(name=embed_title)  # Set the author
-        embed.set_image(url=png_url)  # Set the image to the attachment
 
-        embed.add_field(name=f"{_circular_category.capitalize()} | {title}", value=link, inline=False)  # Add the field
+        # Create the main embed
+        embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
+        embed.set_footer(text=embed_footer)
+        embed.set_author(name=embed_title)
+        embed.set_image(url=png_url)  # Set the image to the attachment
+        embed.add_field(name=f"**{_circular_category.capitalize()}** | [{id_}] `{title}`", value=link, inline=False)
+
         for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
             console.debug(f"[Listeners] | Message: {message}")
@@ -290,8 +293,7 @@ class Listeners(commands.Cog):
                 console.debug(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
 
                 notify_log['dm']['id'].append(str(user.id))  # Add the user to the list of notified users
-                notify_log['dm']['name'].append(
-                    f"{user.name}#{user.discriminator}")  # Add the user's name to the list of notified users
+                notify_log['dm']['name'].append(f"{user.name}#{user.discriminator}")
 
             except discord.Forbidden:  # If the user has DMs disabled
                 console.error(
