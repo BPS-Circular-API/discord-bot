@@ -110,10 +110,12 @@ class Commands(commands.Cog):
         raw_res = await get_latest_circular(category, cached=True)  # Get the latest circular from API
         title = raw_res['title']  # Get the title
         link = raw_res['link']  # Get the link
+        id_ = raw_res['id']  # Get the id
 
         embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color)  # Create the embed
         embed.set_author(name=embed_title)  # Set the author
         embed.add_field(name="Title", value=f"`{title}`", inline=False)  # Add the title field
+        embed.add_field(name="Circular ID", value=f"`{id_}`", inline=False)  # Add the id field
         embed.add_field(name="Download URL", value=link, inline=False)  # Add the download url field
         embed.set_footer(text=embed_footer)  # Set the footer
 
@@ -153,8 +155,10 @@ class Commands(commands.Cog):
 
         title = searched['title']  # Get the title
         link = searched['link']  # Get the link
+        id_ = searched['id']  # Get the id
 
         embed.add_field(name="Title", value=f"`{title}`", inline=False)
+        embed.add_field(name="Circular ID", value=f"`{id_}`", inline=False)
         embed.add_field(name="Download URL", value=link, inline=False)
 
         png_url = await get_png(link)  # Get the png file from the download url
