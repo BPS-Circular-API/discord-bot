@@ -74,6 +74,7 @@ class Listeners(commands.Cog):
             "/circular help",
             "Made by Raj Dave#3215",
             "Fully Open Source!",
+            "Now on Telegram! @bps_circular_bot"
         )
 
         types = (
@@ -82,6 +83,7 @@ class Listeners(commands.Cog):
             discord.ActivityType.playing,
             discord.ActivityType.playing,
             discord.ActivityType.playing,
+            discord.ActivityType.playing
         )
 
         rand_int = random.randint(0, len(activities) - 1)
@@ -213,11 +215,11 @@ class Listeners(commands.Cog):
         error_embed.set_author(name=embed_title)  # Set the author
 
         # Create the main embed
-        embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)
+        embed = discord.Embed(title=f"New Circular | **{_circular_category.capitalize()}**", color=embed_color)
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
         embed.set_image(url=png_url)  # Set the image to the attachment
-        embed.add_field(name=f"**{_circular_category.capitalize()}** | [{id_}] `{title}`", value=link, inline=False)
+        embed.add_field(name=f"[{id_}] `{title}`", value=link, inline=False)
 
         for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
