@@ -18,7 +18,6 @@ class Owners(commands.Cog):
     async def on_ready(self):
         console.info(f"Cog : Owners.py loaded.")
 
-
     @owners.command(name='status', description='Change the bot status.')
     async def status(self, ctx, status: str, message: str):
         if ctx.author.id in owner_ids:
@@ -27,18 +26,19 @@ class Owners(commands.Cog):
             elif status == 'streaming':
                 await self.client.change_presence(activity=discord.Streaming(name=message, url='https://twitch.tv/'))
             elif status == 'listening':
-                await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=message))
+                await self.client.change_presence(
+                    activity=discord.Activity(type=discord.ActivityType.listening, name=message))
             elif status == 'watching':
-                await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=message))
+                await self.client.change_presence(
+                    activity=discord.Activity(type=discord.ActivityType.watching, name=message))
             else:
                 await ctx.respond("Invalid status.")
                 return
             await ctx.respond("Status changed.")
             # stop the status changer loop
-            
+
         else:
             await ctx.respond("You are not a bot owner.")
-
 
     @owners.command(name='reload', description='Reload a cog.')
     async def reload(self, ctx, cog: str):
@@ -108,7 +108,7 @@ class Owners(commands.Cog):
         await paginator.respond(ctx.interaction, ephemeral=True)
 
     @owners.command(name="manualnotify", description="Notify all users in a server.")
-    async def send_manual_notification(self, ctx, circular_name: str, url: str,
+    async def send_manual_notification(self, ctx, circular_name: str, url: str, id_: int,
                                        category: discord.Option(choices=[
                                            discord.OptionChoice("General", value="general"),
                                            discord.OptionChoice("PTM", value="ptm"),
@@ -125,15 +125,14 @@ class Owners(commands.Cog):
             return await ctx.respond("You are not allowed to use this command.")
         await ctx.defer()
 
-        embed = discord.Embed(title=f"New Circular Alert!", color=embed_color)  # Create the embed
+        embed = discord.Embed(title=f"New Circular | **{category.capitalize()}** ", color=embed_color)  # Create the embed
         embed.set_footer(text=embed_footer)  # Set the footer
         embed.set_author(name=embed_title)  # Set the author
 
         if custom_message is not None:  # If the user has provided a custom message
             embed.add_field(name="Message from the Developer", value=custom_message, inline=False)
 
-        embed.add_field(name=f"{category.capitalize()} | {circular_name}", value=url,
-                        inline=False)  # Add the circular name and url field
+        embed.add_field(name=f"[{id_}] `{circular_name}`", value=url, inline=False)
 
         png_url = await get_png(url)  # Get the png from the url
         embed.set_image(url=png_url)  # Set the image of the embed to the file
@@ -355,23 +354,23 @@ class Owners(commands.Cog):
 
     @owners.command(name="logs", description="Get bot logs.")
     async def get_logs(self, ctx,
-                   level: discord.Option(choices=[
-                       discord.OptionChoice("All", value="all"),
-                       discord.OptionChoice("Debug", value="debug"),
-                       discord.OptionChoice("Info", value="info"),
-                       discord.OptionChoice("Warning", value="warning"),
-                       discord.OptionChoice("Error", value="error"),
-                       discord.OptionChoice("Critical", value="critical")
-                   ]),
+                       level: discord.Option(choices=[
+                           discord.OptionChoice("All", value="all"),
+                           discord.OptionChoice("Debug", value="debug"),
+                           discord.OptionChoice("Info", value="info"),
+                           discord.OptionChoice("Warning", value="warning"),
+                           discord.OptionChoice("Error", value="error"),
+                           discord.OptionChoice("Critical", value="critical")
+                       ]),
 
-                   category: discord.Option(choices=[
-                       discord.OptionChoice("All", value="all"),
-                       discord.OptionChoice("Command", value="command"),
-                       discord.OptionChoice("Listener", value="listener"),
-                       discord.OptionChoice("Backend", value="backend"),
-                       discord.OptionChoice("Etc", value="etc")
-                   ]),
-                   amount: int):
+                       category: discord.Option(choices=[
+                           discord.OptionChoice("All", value="all"),
+                           discord.OptionChoice("Command", value="command"),
+                           discord.OptionChoice("Listener", value="listener"),
+                           discord.OptionChoice("Backend", value="backend"),
+                           discord.OptionChoice("Etc", value="etc")
+                       ]),
+                       amount: int):
 
         if ctx.author.id not in owner_ids:
             return await ctx.respond("You are not allowed to use this command.")
