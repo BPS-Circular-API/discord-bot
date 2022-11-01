@@ -310,7 +310,6 @@ class Listeners(commands.Cog):
                 console.error(f"Couldn't send Circular Embed to User: {user.id}")
                 console.error(e)
 
-        console.info(f"Notified {len(notify_log['guild']['id'])} guilds and {len(notify_log['dm']['id'])} users about the new circular.")
         await log('info', "listener", f"Notified {len(notify_log['guild']['id'])} guilds and {len(notify_log['dm']['id'])} users about the new circular.")
         try:
             # TODO: fix this
