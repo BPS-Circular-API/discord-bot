@@ -107,14 +107,26 @@ class Commands(commands.Cog):
         embed.add_field(name="Download URL", value=link, inline=False)  # Add the download url field
         embed.set_footer(text=embed_footer)  # Set the footer
 
-        png_url = await get_png(link)  # Get the png file from the download url
-        embed.set_image(url=png_url)  # Set the image to the embed
+        png_url = list(await get_png(link))  # Get the png file from the download url
+        embed.set_image(url=png_url[0])  # Set the image to the embed
 
-        e = discord.Embed(url='https://bpsapi.rajtech.me')  # Create a new embed
-        e.set_image(url=png_url)  # Set the image to the embed
+        embed_list = [embed]
 
-        msg = await ctx.followup.send(embeds=[embed, e])  # Send the embed
-        await msg.edit(embeds=[embed, e], view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
+        if len(png_url) != 1:
+            for i in range(len(png_url)):
+                if i == 0:
+                    continue
+                print(i, png_url[i])
+                if i == 0:
+                    continue
+                if i > 3:
+                    break
+                temp_embed = discord.Embed(url=embed_url)  # Create a new embed
+                temp_embed.set_image(url=png_url[i])
+                embed_list.append(temp_embed.copy())
+
+        msg = await ctx.followup.send(embeds=embed_list)  # Send the embed
+        await msg.edit(embeds=embed_list, view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
 
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
@@ -130,7 +142,7 @@ class Commands(commands.Cog):
         await log("info", "command", f"{author.id} in {guild.id} searched for {circular_title}")
         searched = await search(circular_title)  # Search for the circular from the backend function
 
-        embed = discord.Embed(title="Circular Search", color=embed_color)  # Create an embed
+        embed = discord.Embed(title="Circular Search", color=embed_color, url=embed_url)  # Create an embed
         embed.set_author(name=embed_title)  # Set the author
         embed.set_footer(text=embed_footer)  # Set the footer
 
