@@ -44,7 +44,6 @@ try:
     owner_guilds = config.get('main', 'owner_guilds').strip().split(',')
     base_api_url: str = config.get('main', 'base_api_url')
     backup_interval: int = config.getint('main', 'backup_interval')
-    amount_to_cache: int = config.getint('main', 'amount_to_cache')
     status_interval: int = config.getint('main', 'status_interval')
 
     embed_footer: str = config.get('discord', 'embed_footer')

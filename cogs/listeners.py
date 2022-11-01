@@ -7,7 +7,7 @@ import datetime
 import asyncio
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, get_cached, \
-    set_cached, get_circular_list, amount_to_cache, status_interval, log
+    set_cached, get_circular_list, status_interval, log
 
 
 class Listeners(commands.Cog):
@@ -15,7 +15,6 @@ class Listeners(commands.Cog):
         self.client = client
         self.con = sqlite3.connect('./data/data.db')
         self.cur = self.con.cursor()
-        self.amount_to_cache = amount_to_cache
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -109,7 +108,7 @@ class Listeners(commands.Cog):
     async def get_circulars(self, _cats, final_dict):
         for item in _cats:
             res = await get_circular_list(item)
-            final_dict[item] = [res[i] for i in range(self.amount_to_cache)]
+            final_dict[item] = res
 
         set_cached(final_dict)
 
@@ -118,11 +117,7 @@ class Listeners(commands.Cog):
 
         categories = ("ptm", "general", "exam")
         final_dict = {"general": [], "ptm": [], "exam": []}
-        new_circular_categories = []
-        new_circular_objects = []
-
-        if self.amount_to_cache < 1:
-            self.amount_to_cache = 1
+        new_circular_objects = {"general": [], "ptm": [], "exam": []}
 
         try:  # Try to get the cached data and make it a dict
             old_cached = dict(get_cached())
@@ -143,7 +138,7 @@ class Listeners(commands.Cog):
 
         for item in categories:
             res = await get_circular_list(item)
-            final_dict[item] = [res[i] for i in range(self.amount_to_cache)]
+            final_dict[item] = res
 
         await self.get_circulars(categories, final_dict)
 
@@ -160,17 +155,15 @@ class Listeners(commands.Cog):
             console.info("There's a new circular posted!")
 
             for circular_cat in categories:
-                for i in range(len(final_dict[circular_cat])):
-                    if final_dict[circular_cat][i] not in old_cached[circular_cat]:
-                        new_circular_categories.append(circular_cat)
-                        new_circular_objects.append(final_dict[circular_cat][i])
+                new_circular_objects[circular_cat] = [i for i in final_dict[circular_cat] if i not in old_cached[circular_cat]]
 
-            console.info(f"{len(new_circular_objects)} new circular(s) found")
+            console.info(f"{(sum(len(v) for v in new_circular_objects.values()))} new circular(s) found")
             console.debug(new_circular_objects)
 
-            for i in range(len(new_circular_objects)):
-                await self.notify(new_circular_categories[i], new_circular_objects[i])
-                await asyncio.sleep(15)
+            for cat in categories:
+                for circular in new_circular_objects[cat]:
+                    console.debug(circular)
+                    await self.notify(cat, circular)
 
         else:
             console.info("No new circulars")
@@ -298,8 +291,7 @@ class Listeners(commands.Cog):
                 notify_log['dm']['name'].append(f"{user.name}#{user.discriminator}")
 
             except discord.Forbidden:  # If the user has DMs disabled
-                console.error(
-                    f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
+                console.error(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
 
                 # Delete the user from the database
                 self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")
