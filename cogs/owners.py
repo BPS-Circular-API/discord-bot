@@ -135,7 +135,22 @@ class Owners(commands.Cog):
         embed.add_field(name=f"[{id_}] `{circular_name}`", value=url, inline=False)
 
         png_url = await get_png(url)  # Get the png from the url
-        embed.set_image(url=png_url)  # Set the image of the embed to the file
+        embed.set_image(url=png_url[0])  # Set the image of the embed to the file
+
+        embed_list = []
+
+        if len(png_url) != 1:
+            for i in range(len(png_url)):
+                if i == 0:
+                    continue
+                print(i, png_url[i])
+                if i == 0:
+                    continue
+                if i > 3:
+                    break
+                temp_embed = discord.Embed(url=embed_url)  # Create a new embed
+                temp_embed.set_image(url=png_url[i])
+                embed_list.append(temp_embed.copy())
 
         if debug_guild:  # If a debug guild is specified, send the message to ONLY that guild.
             self.cur.execute(  # Get the server message from the database
@@ -153,7 +168,7 @@ class Owners(commands.Cog):
 
             channel = await guild.fetch_channel(int(channel_id))  # Get the channel object
 
-            await channel.send(embed=embed)  # Send the embed
+            await channel.send(embeds=[embed.copy(), *embed_list])  # Send the embed
             return await ctx.respond(f"Notified the `{debug_guild}` server.")  # Respond to the user and return
 
         elif debug_user:  # If a debug user is specified, send the message to ONLY that user.
@@ -214,7 +229,7 @@ class Owners(commands.Cog):
                         embed.description = message  # Set the description of the embed to the message
 
                         try:  # Try to send the embed to the user
-                            await user.send(embed=embed)  # Send the embed to the user
+                            await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed to the user
                             console.info(
                                 f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
                         except discord.Forbidden:  # If the bot is not allowed to send messages to the user
@@ -255,7 +270,7 @@ class Owners(commands.Cog):
                             continue
 
                         try:  # Try to send the message
-                            await channel.send(embed=embed)  # Send the embed
+                            await channel.send(embeds=[embed.copy(), *embed_list])  # Send the embed
                             console.info(f"Sent Circular Embed to {guild.id} | {channel.id}")
 
                         except discord.Forbidden:  # If the bot doesn't have permission to send messages in the channel
@@ -263,7 +278,7 @@ class Owners(commands.Cog):
 
                                 try:  # Try to send the error embed
                                     await _channel.send(embed=error_embed)  # Send the error embed
-                                    await _channel.send(embed=embed)  # Send the circular embed
+                                    await _channel.send(embeds=[embed.copy(), *embed_list])  # Send the circular embed
                                     console.info(
                                         f"Sent Circular Embed and Error Embed to Fallback Channel in {guild.id} | {_channel.id}")
                                     break  # Break the loop
@@ -307,14 +322,14 @@ class Owners(commands.Cog):
                         continue
 
                     try:  # Try to send the message
-                        await channel.send(embed=embed)  # Send the embed
+                        await channel.send(embeds=[embed.copy(), *embed_list])  # Send the embed
                         console.info(f"Sent Circular Embed to {guild.id} | {channel.id}")
 
                     except discord.Forbidden:  # If the bot doesn't have permission to send messages in the channel
                         for _channel in guild.text_channels:  # Find a channel where it can send messages
                             try:  # Try to send the error embed
                                 await _channel.send(embed=error_embed)  # Send the error embed
-                                await _channel.send(embed=embed)  # Send the circular embed
+                                await _channel.send(embeds=[embed.copy(), *embed_list])  # Send the circular embed
                                 console.info(
                                     f"Sent Circular Embed and Error Embed to Fallback Channel in {guild.id} | {_channel.id}")
                                 break  # Break the loop
@@ -335,7 +350,7 @@ class Owners(commands.Cog):
                     embed.description = message
 
                     try:  # Try to send the embed to the user
-                        await user.send(embed=embed)  # Send the embed to the user
+                        await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed to the user
                         console.info(
                             f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
 
