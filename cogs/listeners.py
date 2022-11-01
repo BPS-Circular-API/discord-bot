@@ -7,7 +7,7 @@ import datetime
 import asyncio
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, get_cached, \
-    set_cached, get_circular_list, status_interval, log
+    set_cached, get_circular_list, status_interval, log, embed_url
 
 
 class Listeners(commands.Cog):
@@ -208,7 +208,7 @@ class Listeners(commands.Cog):
         error_embed.set_author(name=embed_title)  # Set the author
 
         # Create the main embed
-        embed = discord.Embed(title=f"New Circular | **{_circular_category.capitalize()}**", color=embed_color)
+        embed = discord.Embed(title=f"New Circular | **{_circular_category.capitalize()}**", color=embed_color, url=embed_url)
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
         embed.set_image(url=png_url[0])  # Set the image to the attachment
