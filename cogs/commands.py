@@ -3,7 +3,7 @@ import sqlite3
 import discord
 import discord.ext.pages
 from discord.ext import commands
-from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log
+from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url
 from discord import SlashCommandGroup
 import time
 
@@ -161,11 +161,26 @@ class Commands(commands.Cog):
         embed.add_field(name="Circular ID", value=f"`{id_}`", inline=False)
         embed.add_field(name="Download URL", value=link, inline=False)
 
-        png_url = await get_png(link)  # Get the png file from the download url
-        embed.set_image(url=png_url)  # Set the image to the embed
+        png_url = list(await get_png(link))  # Get the png file from the download url
+        embed.set_image(url=png_url[0])  # Set the image to the embed
 
-        msg = await ctx.followup.send(embed=embed)  # Send the embed
-        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
+        embed_list = [embed]
+
+        if len(png_url) != 1:
+            for i in range(len(png_url)):
+                if i == 0:
+                    continue
+                print(i, png_url[i])
+                if i == 0:
+                    continue
+                if i > 3:
+                    break
+                temp_embed = discord.Embed(url=embed_url)  # Create a new embed
+                temp_embed.set_image(url=png_url[i])
+                embed_list.append(temp_embed.copy())
+
+        msg = await ctx.followup.send(embeds=embed_list)
+        await msg.edit(embeds=embed_list, view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     # Admin commands
