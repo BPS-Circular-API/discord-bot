@@ -211,8 +211,23 @@ class Listeners(commands.Cog):
         embed = discord.Embed(title=f"New Circular | **{_circular_category.capitalize()}**", color=embed_color)
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
-        embed.set_image(url=png_url)  # Set the image to the attachment
+        embed.set_image(url=png_url[0])  # Set the image to the attachment
         embed.add_field(name=f"[{id_}] `{title}`", value=link, inline=False)
+
+        embed_list = []
+
+        if len(png_url) != 1:
+            for i in range(len(png_url)):
+                if i == 0:
+                    continue
+                print(i, png_url[i])
+                if i == 0:
+                    continue
+                if i > 3:
+                    break
+                temp_embed = discord.Embed(url=embed_url)  # Create a new embed
+                temp_embed.set_image(url=png_url[i])
+                embed_list.append(temp_embed.copy())
 
         for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
@@ -243,7 +258,7 @@ class Listeners(commands.Cog):
                 continue
 
             try:  # Try to send the message
-                await channel.send(embed=embed)  # Send the embed
+                await channel.send(embeds=[embed.copy(), *embed_list])  # Send the embed
                 console.debug(f"Sent Circular Embed to {guild.id} | {channel.id}")
                 notify_log['guild']['id'].append(guild.id)  # Add the guild to the list of notified guilds
                 notify_log['guild']['channel'].append(channel.id)  # Add the channel to the list of notified channels
@@ -253,7 +268,7 @@ class Listeners(commands.Cog):
 
                     try:  # Try to send the error embed
                         await _channel.send(embed=error_embed)  # Send the error embed
-                        await _channel.send(embed=embed)  # Send the circular embed
+                        await _channel.send(embeds=[embed.copy(), *embed_list])  # Send the circular embed
                         console.warning(
                             f"Could not send message to {channel.id} in {guild.id}. Sent to {channel.id} instead.")
                         break  # Break the loop
@@ -284,7 +299,7 @@ class Listeners(commands.Cog):
             embed.description = message
 
             try:  # Try to send the embed to the user
-                await user.send(embed=embed)  # Send the embed to the user
+                await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed to the user
                 console.debug(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
 
                 notify_log['dm']['id'].append(str(user.id))  # Add the user to the list of notified users
