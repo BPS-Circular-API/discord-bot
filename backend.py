@@ -44,7 +44,6 @@ try:
     owner_guilds = config.get('main', 'owner_guilds').strip().split(',')
     base_api_url: str = config.get('main', 'base_api_url')
     backup_interval: int = config.getint('main', 'backup_interval')
-    amount_to_cache: int = config.getint('main', 'amount_to_cache')
     status_interval: int = config.getint('main', 'status_interval')
 
     embed_footer: str = config.get('discord', 'embed_footer')
@@ -115,7 +114,7 @@ async def get_latest_circular(category: str, cached=False) -> dict or None:
     return info
 
 
-async def get_png(download_url: str) -> str or None:
+async def get_png(download_url: str) -> list or None:
     url = base_api_url + "getpng"
     params = {'url': download_url}
 
@@ -125,7 +124,7 @@ async def get_png(download_url: str) -> str or None:
     if int(request.json()['http_status']) == 500:
         console.error("The API returned 500 Internal Server Error. Please check the API logs.")
         return
-    return str(request.json()['data'])
+    return list(request.json()['data'])
 
 
 async def search(title: str) -> dict or None:

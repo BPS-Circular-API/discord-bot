@@ -3,14 +3,9 @@ import sqlite3
 import discord
 import discord.ext.pages
 from discord.ext import commands
-from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log
+from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url
 from discord import SlashCommandGroup
-
-if console.level == 10:
-    import time
-    debug_mode = True
-else:
-    debug_mode = False
+import time
 
 category_options = []
 for i in categories:
@@ -40,9 +35,7 @@ class Commands(commands.Cog):
     @circular.command(name='list', description='List all circulars in a particular category.')
     async def list(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
-
-        if debug_mode:
-            start = time.time()
+        start = time.time()
 
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
@@ -63,7 +56,7 @@ class Commands(commands.Cog):
         embed = discord.Embed(color=embed_color)  # Create the embed
         embed.set_footer(text=embed_footer)  # Set the footer
         embed.set_author(name=embed_title)  # Set the author
-        embed.title = f"Here is the result getting the `{category.capitalize()}` circulars!"  # Set the title of the embed
+        embed.title = f"Circular List | `{category.capitalize()}`"  # Set the title of the embed
 
         page_list = []  # Create an empty list
 
@@ -86,21 +79,16 @@ class Commands(commands.Cog):
         if len(page_list[-1].fields) == 0:
             page_list.pop()
 
-        console.debug('[Commands] | ' + str(page_list))
-
         paginator = discord.ext.pages.Paginator(
             pages=page_list, disable_on_timeout=True, timeout=120
         )
         await paginator.respond(ctx.interaction, ephemeral=False)
-        if debug_mode:
-            console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
+        console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
     async def latest(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()  # Defer the interaction
-
-        if debug_mode:
-            start = time.time()
+        start = time.time()
 
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
@@ -112,29 +100,41 @@ class Commands(commands.Cog):
         link = raw_res['link']  # Get the link
         id_ = raw_res['id']  # Get the id
 
-        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color)  # Create the embed
+        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color, url="https://bpsapi.rajtech.me")  # Create the embed
         embed.set_author(name=embed_title)  # Set the author
         embed.add_field(name="Title", value=f"`{title}`", inline=False)  # Add the title field
         embed.add_field(name="Circular ID", value=f"`{id_}`", inline=False)  # Add the id field
         embed.add_field(name="Download URL", value=link, inline=False)  # Add the download url field
         embed.set_footer(text=embed_footer)  # Set the footer
 
-        png_url = await get_png(link)  # Get the png file from the download url
-        embed.set_image(url=png_url)  # Set the image to the embed
+        png_url = list(await get_png(link))  # Get the png file from the download url
+        embed.set_image(url=png_url[0])  # Set the image to the embed
 
-        msg = await ctx.followup.send(embed=embed)  # Send the embed
-        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
-        if debug_mode:
-            # noinspection PyUnboundLocalVariable
-            console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
+        embed_list = [embed]
+
+        if len(png_url) != 1:
+            for i in range(len(png_url)):
+                if i == 0:
+                    continue
+                print(i, png_url[i])
+                if i == 0:
+                    continue
+                if i > 3:
+                    break
+                temp_embed = discord.Embed(url=embed_url)  # Create a new embed
+                temp_embed.set_image(url=png_url[i])
+                embed_list.append(temp_embed.copy())
+
+        msg = await ctx.followup.send(embeds=embed_list)  # Send the embed
+        await msg.edit(embeds=embed_list, view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
+
+        console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     @circular.command(name="search", description="Searches for a particular circular in a particular category.")
     async def search(self, ctx, circular_title: str):
         # check log level
         await ctx.defer()
-
-        if debug_mode:
-            start = time.time()
+        start = time.time()
 
         guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
@@ -142,7 +142,7 @@ class Commands(commands.Cog):
         await log("info", "command", f"{author.id} in {guild.id} searched for {circular_title}")
         searched = await search(circular_title)  # Search for the circular from the backend function
 
-        embed = discord.Embed(title="Circular Search", color=embed_color)  # Create an embed
+        embed = discord.Embed(title="Circular Search", color=embed_color, url=embed_url)  # Create an embed
         embed.set_author(name=embed_title)  # Set the author
         embed.set_footer(text=embed_footer)  # Set the footer
 
@@ -161,14 +161,27 @@ class Commands(commands.Cog):
         embed.add_field(name="Circular ID", value=f"`{id_}`", inline=False)
         embed.add_field(name="Download URL", value=link, inline=False)
 
-        png_url = await get_png(link)  # Get the png file from the download url
-        embed.set_image(url=png_url)  # Set the image to the embed
+        png_url = list(await get_png(link))  # Get the png file from the download url
+        embed.set_image(url=png_url[0])  # Set the image to the embed
 
-        msg = await ctx.followup.send(embed=embed)  # Send the embed
-        await msg.edit(embed=embed, view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
-        if debug_mode:
-            # noinspection PyUnboundLocalVariable
-            console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
+        embed_list = [embed]
+
+        if len(png_url) != 1:
+            for i in range(len(png_url)):
+                if i == 0:
+                    continue
+                print(i, png_url[i])
+                if i == 0:
+                    continue
+                if i > 3:
+                    break
+                temp_embed = discord.Embed(url=embed_url)  # Create a new embed
+                temp_embed.set_image(url=png_url[i])
+                embed_list.append(temp_embed.copy())
+
+        msg = await ctx.followup.send(embeds=embed_list)
+        await msg.edit(embeds=embed_list, view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
+        console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     # Admin commands
     @admin.command(

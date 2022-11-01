@@ -7,7 +7,7 @@ import datetime
 import asyncio
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, get_cached, \
-    set_cached, get_circular_list, amount_to_cache, status_interval, log
+    set_cached, get_circular_list, status_interval, log, embed_url
 
 
 class Listeners(commands.Cog):
@@ -15,7 +15,6 @@ class Listeners(commands.Cog):
         self.client = client
         self.con = sqlite3.connect('./data/data.db')
         self.cur = self.con.cursor()
-        self.amount_to_cache = amount_to_cache
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -109,7 +108,7 @@ class Listeners(commands.Cog):
     async def get_circulars(self, _cats, final_dict):
         for item in _cats:
             res = await get_circular_list(item)
-            final_dict[item] = [res[i] for i in range(self.amount_to_cache)]
+            final_dict[item] = res
 
         set_cached(final_dict)
 
@@ -118,11 +117,7 @@ class Listeners(commands.Cog):
 
         categories = ("ptm", "general", "exam")
         final_dict = {"general": [], "ptm": [], "exam": []}
-        new_circular_categories = []
-        new_circular_objects = []
-
-        if self.amount_to_cache < 1:
-            self.amount_to_cache = 1
+        new_circular_objects = {"general": [], "ptm": [], "exam": []}
 
         try:  # Try to get the cached data and make it a dict
             old_cached = dict(get_cached())
@@ -143,7 +138,7 @@ class Listeners(commands.Cog):
 
         for item in categories:
             res = await get_circular_list(item)
-            final_dict[item] = [res[i] for i in range(self.amount_to_cache)]
+            final_dict[item] = res
 
         await self.get_circulars(categories, final_dict)
 
@@ -160,17 +155,15 @@ class Listeners(commands.Cog):
             console.info("There's a new circular posted!")
 
             for circular_cat in categories:
-                for i in range(len(final_dict[circular_cat])):
-                    if final_dict[circular_cat][i] not in old_cached[circular_cat]:
-                        new_circular_categories.append(circular_cat)
-                        new_circular_objects.append(final_dict[circular_cat][i])
+                new_circular_objects[circular_cat] = [i for i in final_dict[circular_cat] if i not in old_cached[circular_cat]]
 
-            console.info(f"{len(new_circular_objects)} new circular(s) found")
+            console.info(f"{(sum(len(v) for v in new_circular_objects.values()))} new circular(s) found")
             console.debug(new_circular_objects)
 
-            for i in range(len(new_circular_objects)):
-                await self.notify(new_circular_categories[i], new_circular_objects[i])
-                await asyncio.sleep(15)
+            for cat in categories:
+                for circular in new_circular_objects[cat]:
+                    console.debug(circular)
+                    await self.notify(cat, circular)
 
         else:
             console.info("No new circulars")
@@ -215,11 +208,26 @@ class Listeners(commands.Cog):
         error_embed.set_author(name=embed_title)  # Set the author
 
         # Create the main embed
-        embed = discord.Embed(title=f"New Circular | **{_circular_category.capitalize()}**", color=embed_color)
+        embed = discord.Embed(title=f"New Circular | **{_circular_category.capitalize()}**", color=embed_color, url=embed_url)
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
-        embed.set_image(url=png_url)  # Set the image to the attachment
+        embed.set_image(url=png_url[0])  # Set the image to the attachment
         embed.add_field(name=f"[{id_}] `{title}`", value=link, inline=False)
+
+        embed_list = []
+
+        if len(png_url) != 1:
+            for i in range(len(png_url)):
+                if i == 0:
+                    continue
+                print(i, png_url[i])
+                if i == 0:
+                    continue
+                if i > 3:
+                    break
+                temp_embed = discord.Embed(url=embed_url)  # Create a new embed
+                temp_embed.set_image(url=png_url[i])
+                embed_list.append(temp_embed.copy())
 
         for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
@@ -250,7 +258,7 @@ class Listeners(commands.Cog):
                 continue
 
             try:  # Try to send the message
-                await channel.send(embed=embed)  # Send the embed
+                await channel.send(embeds=[embed.copy(), *embed_list])  # Send the embed
                 console.debug(f"Sent Circular Embed to {guild.id} | {channel.id}")
                 notify_log['guild']['id'].append(guild.id)  # Add the guild to the list of notified guilds
                 notify_log['guild']['channel'].append(channel.id)  # Add the channel to the list of notified channels
@@ -260,7 +268,7 @@ class Listeners(commands.Cog):
 
                     try:  # Try to send the error embed
                         await _channel.send(embed=error_embed)  # Send the error embed
-                        await _channel.send(embed=embed)  # Send the circular embed
+                        await _channel.send(embeds=[embed.copy(), *embed_list])  # Send the circular embed
                         console.warning(
                             f"Could not send message to {channel.id} in {guild.id}. Sent to {channel.id} instead.")
                         break  # Break the loop
@@ -291,15 +299,14 @@ class Listeners(commands.Cog):
             embed.description = message
 
             try:  # Try to send the embed to the user
-                await user.send(embed=embed)  # Send the embed to the user
+                await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed to the user
                 console.debug(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
 
                 notify_log['dm']['id'].append(str(user.id))  # Add the user to the list of notified users
                 notify_log['dm']['name'].append(f"{user.name}#{user.discriminator}")
 
             except discord.Forbidden:  # If the user has DMs disabled
-                console.error(
-                    f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
+                console.error(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
 
                 # Delete the user from the database
                 self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")
@@ -310,7 +317,6 @@ class Listeners(commands.Cog):
                 console.error(f"Couldn't send Circular Embed to User: {user.id}")
                 console.error(e)
 
-        console.info(f"Notified {len(notify_log['guild']['id'])} guilds and {len(notify_log['dm']['id'])} users about the new circular.")
         await log('info', "listener", f"Notified {len(notify_log['guild']['id'])} guilds and {len(notify_log['dm']['id'])} users about the new circular.")
         try:
             # TODO: fix this
