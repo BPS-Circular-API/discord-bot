@@ -220,7 +220,6 @@ class Listeners(commands.Cog):
             for i in range(len(png_url)):
                 if i == 0:
                     continue
-                print(i, png_url[i])
                 if i == 0:
                     continue
                 if i > 3:
