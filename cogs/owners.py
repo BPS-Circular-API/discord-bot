@@ -181,13 +181,13 @@ class Owners(commands.Cog):
 
             user = await self.client.fetch_user(int(debug_user))  # Get the user object
 
-            await user.send(embed=embed)  # Send the embed
+            await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed
             return await ctx.respond(f"Notified the `{debug_user}` user.")  # Respond to the user and return
 
         else:
             button = ConfirmButton(ctx.author)  # Create a ConfirmButton object
 
-            await ctx.followup.send(embed=embed, view=button)  # Send the embed to the user for confirmation
+            await ctx.followup.send(embeds=[embed.copy(), *embed_list], view=button)  # Send the embed to the user for confirmation
             await button.wait()  # Wait for the user to confirm
 
             if button.value is None:  # Timeout
@@ -229,11 +229,10 @@ class Owners(commands.Cog):
 
                         try:  # Try to send the embed to the user
                             await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed to the user
-                            console.info(
-                                f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+                            console.info(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+
                         except discord.Forbidden:  # If the bot is not allowed to send messages to the user
-                            console.error(
-                                f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+                            console.error(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
                             # self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")
                             # self.con.commit()
 
