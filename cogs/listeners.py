@@ -145,12 +145,6 @@ class Listeners(commands.Cog):
         console.debug('[Listeners] | ' + str(final_dict))
         console.debug('[Listeners] | ' + str(old_cached))
 
-        for cat in categories:
-            if not len(final_dict[cat]) == len(old_cached[cat]):
-                await self.get_circulars(categories, final_dict)
-                console.info("The length of the circulars in a category is different, updating cache")
-                return
-
         if final_dict != old_cached:  # If the old and new dict are not the same
             console.info("There's a new circular posted!")
 
@@ -276,8 +270,7 @@ class Listeners(commands.Cog):
                         console.error(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
 
             except Exception as e:  # If it can't send the circular embed
-                console.error(
-                    f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden." + str(e))
+                console.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden." + str(e))
 
         for user, message in zip(user_id, user_message):  # For each user in the database
 
