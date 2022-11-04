@@ -236,3 +236,61 @@ class DeleteButton(discord.ui.View):
             if not interaction.user.id == self.author.id:
                 return await interaction.response.send_message("This button is not for you", ephemeral=True)
         await self.msg.delete()
+
+# Feedback Button Discord View
+class FeedbackButton(discord.ui.View):
+    def __init__(self, msg, author, search_query, search_result, author_only=True):
+        super().__init__(timeout=300)
+        self.msg = msg
+        self.author = author
+        self.author_only = author_only
+        self.search_query = search_query
+        self.search_result = search_result
+
+    # disable the delete button on timeout
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        await self.msg.edit(view=self)
+        self.stop()
+
+    @discord.ui.button(label="👍")
+    async def thumbs_up_button_callback(self, button, interaction):  # Don't remove the unused argument, it's used by py-cord
+        if self.author_only:
+            if interaction.user.id != self.author.id:
+                return await interaction.response.send_message("This button is not for you", ephemeral=True)
+
+        con = sqlite3.connect("./data/data.db")
+        cur = con.cursor()
+        self.search_query = self.search_query.replace('"', "")
+        cur.execute(f"INSERT INTO search_feedback VALUES ({interaction.user.id}, {self.msg.id}, \"{self.search_query}\", {True})")
+        con.commit()
+        con.close()
+
+        await interaction.response.send_message("Thanks for your feedback!", ephemeral=True)
+
+        for child in self.children:
+            child.disabled = True
+        await self.msg.edit(view=self)
+        self.stop()
+
+    @discord.ui.button(label="👎")
+    async def thumbs_down_button_callback(self, button, interaction):  # Don't remove the unused argument, it's used by py-cord
+        if self.author_only:
+            if not interaction.user.id == self.author.id:
+                return await interaction.response.send_message("This button is not for you", ephemeral=True)
+
+        con = sqlite3.connect("./data/data.db")
+        cur = con.cursor()
+        cur.execute(f"INSERT INTO search_feedback VALUES ({interaction.user.id}, {self.msg.id}, {False})")
+        con.commit()
+        con.close()
+
+        await interaction.response.send_message(
+            "We're sorry to about hear that. Please let us know what we can do to improve our bot. by clicking the `📩` button below.",
+
+        for child in self.children:
+            child.disabled = True
+        await self.msg.edit(view=self)
+        self.stop()
+
