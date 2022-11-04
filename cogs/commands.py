@@ -53,10 +53,9 @@ class Commands(commands.Cog):
             links.append(f"{item['link']}")  # Add the link to the list
             loop_int += 1
 
-        embed = discord.Embed(color=embed_color)  # Create the embed
+        embed = discord.Embed(color=embed_color, title=f"Circular List | `{category.capitalize()}`")  # Create the embed
         embed.set_footer(text=embed_footer)  # Set the footer
         embed.set_author(name=embed_title)  # Set the author
-        embed.title = f"Circular List | `{category.capitalize()}`"  # Set the title of the embed
 
         page_list = []  # Create an empty list
 
@@ -100,7 +99,7 @@ class Commands(commands.Cog):
         link = raw_res['link']  # Get the link
         id_ = raw_res['id']  # Get the id
 
-        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color, url="https://bpsapi.rajtech.me")  # Create the embed
+        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color, url=embed_url)  # Create the embed
         embed.set_author(name=embed_title)  # Set the author
         embed.add_field(name="Title", value=f"`{title}`", inline=False)  # Add the title field
         embed.add_field(name="Circular ID", value=f"`{id_}`", inline=False)  # Add the id field
@@ -127,7 +126,7 @@ class Commands(commands.Cog):
         msg = await ctx.followup.send(embeds=embed_list)  # Send the embed
         await msg.edit(embeds=embed_list, view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
 
-        console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
+        console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} second(s).")
 
     @circular.command(name="search", description="Searches for a particular circular in a particular category.")
     async def search(self, ctx, circular_title: str):
@@ -147,7 +146,8 @@ class Commands(commands.Cog):
 
         if searched is None:
             embed.add_field(name="Error",
-                            value="No circular found with that title. Maybe specify better search terms, or find the circular you wanted from </circular list:1010911588703817808>.",
+                            value="No circular found with that title or id. Maybe specify better search terms, "
+                                  "or find the circular you wanted from </circular list:1010911588703817808>.",
                             inline=False)
             await ctx.followup.send(embed=embed)
             return
@@ -160,18 +160,18 @@ class Commands(commands.Cog):
         embed.add_field(name="Circular ID", value=f"`{id_}`", inline=False)
         embed.add_field(name="Download URL", value=link, inline=False)
 
-        png_url = list(await get_png(link))  # Get the png file from the download url
+        png_url = await get_png(link)  # Get the png file from the download url
         embed.set_image(url=png_url[0])  # Set the image to the embed
+        embed.description = f"Search took {round(time.time() - start, 2)} seconds. Requested by {author.mention}."
 
         embed_list = [embed]
+        console.debug(png_url)
 
         if len(png_url) != 1:
             for i in range(len(png_url)):
                 if i == 0:
                     continue
-                if i == 0:
-                    continue
-                if i > 3:
+                elif i > 3:
                     break
                 temp_embed = discord.Embed(url=embed_url)  # Create a new embed
                 temp_embed.set_image(url=png_url[i])
