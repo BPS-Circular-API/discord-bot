@@ -237,6 +237,31 @@ class DeleteButton(discord.ui.View):
                 return await interaction.response.send_message("This button is not for you", ephemeral=True)
         await self.msg.delete()
 
+
+class FeedbackModal(discord.ui.Modal):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(title="Suggestions", *args, **kwargs)
+        # self.add_item(discord.ui.InputText(label="Short Input"))
+        self.add_item(discord.ui.InputText(label="Please list what you'd like changed", style=discord.InputTextStyle.long))
+
+    async def callback(self, interaction: discord.Interaction):
+        con = sqlite3.connect('./data/data.db')
+        cursor = con.cursor()
+        res = self.children[0].value.replace('"', "")
+        cursor.execute(f"INSERT INTO suggestions VALUES ({interaction.user.id}, {interaction.message.id}, \"{res}\")")
+        con.commit()
+        await interaction.response.send_message("Thank you for your feedback!", ephemeral=True)
+
+
+class FeedbackModalButton(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=300)
+
+    @discord.ui.button(label="📩", style=discord.ButtonStyle.green)
+    async def feedback_button(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.response.send_modal(FeedbackModal())
+
+
 # Feedback Button Discord View
 class FeedbackButton(discord.ui.View):
     def __init__(self, msg, author, search_query, search_result, author_only=True):
@@ -254,7 +279,7 @@ class FeedbackButton(discord.ui.View):
         await self.msg.edit(view=self)
         self.stop()
 
-    @discord.ui.button(label="👍")
+    @discord.ui.button(label="👍", style=discord.ButtonStyle.green)
     async def thumbs_up_button_callback(self, button, interaction):  # Don't remove the unused argument, it's used by py-cord
         if self.author_only:
             if interaction.user.id != self.author.id:
@@ -274,7 +299,7 @@ class FeedbackButton(discord.ui.View):
         await self.msg.edit(view=self)
         self.stop()
 
-    @discord.ui.button(label="👎")
+    @discord.ui.button(label="👎", style=discord.ButtonStyle.red)
     async def thumbs_down_button_callback(self, button, interaction):  # Don't remove the unused argument, it's used by py-cord
         if self.author_only:
             if not interaction.user.id == self.author.id:
@@ -282,12 +307,16 @@ class FeedbackButton(discord.ui.View):
 
         con = sqlite3.connect("./data/data.db")
         cur = con.cursor()
-        cur.execute(f"INSERT INTO search_feedback VALUES ({interaction.user.id}, {self.msg.id}, {False})")
+        self.search_query = self.search_query.replace('"', "")
+        cur.execute(f"INSERT INTO search_feedback VALUES ({interaction.user.id}, {self.msg.id}, \"{self.search_query}\", {False})")
         con.commit()
         con.close()
 
         await interaction.response.send_message(
             "We're sorry to about hear that. Please let us know what we can do to improve our bot. by clicking the `📩` button below.",
+            view=FeedbackModalButton(),
+            ephemeral=True)
+        # edit the message to add the feedback button
 
         for child in self.children:
             child.disabled = True

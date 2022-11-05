@@ -3,7 +3,7 @@ import sqlite3
 import discord
 import discord.ext.pages
 from discord.ext import commands
-from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url
+from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url, FeedbackButton
 from discord import SlashCommandGroup
 import time
 
@@ -108,6 +108,7 @@ class Commands(commands.Cog):
 
         png_url = list(await get_png(link))  # Get the png file from the download url
         embed.set_image(url=png_url[0])  # Set the image to the embed
+        embed.description = f"Searched took {round(time.time() - start, 2)} second(s). Requested by {author.mention}"  # Set the description
 
         embed_list = [embed]
 
@@ -178,7 +179,7 @@ class Commands(commands.Cog):
                 embed_list.append(temp_embed.copy())
 
         msg = await ctx.followup.send(embeds=embed_list)
-        await msg.edit(embeds=embed_list, view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
+        await msg.edit(embeds=embed_list, view=FeedbackButton(msg, author, circular_title, searched))  # Edit the embed and add the delete button
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     # Admin commands
