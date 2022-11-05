@@ -5,6 +5,10 @@ The official BPS Circular API Discord Bot is a bot that allows you to get the la
 
 It uses my own BPS Circular API to get the latest circulars.
 
+## Uses 
+
+Here is what the bot can do - https://bpsapi.rajtech.me/docs/discord-bot/using-the-bot/features
+
 ## Documentation ###
 
 The documentation for the bot can be found [here](https://bpsapi.rajtech.me/docs/category/discord-bot).
