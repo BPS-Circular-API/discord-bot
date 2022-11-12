@@ -5,6 +5,7 @@ import shutil
 import random
 import datetime
 import asyncio
+import pybpsapi
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, get_cached, \
     set_cached, get_circular_list, status_interval, log, embed_url
@@ -15,6 +16,10 @@ class Listeners(commands.Cog):
         self.client = client
         self.con = sqlite3.connect('./data/data.db')
         self.cur = self.con.cursor()
+
+        self.general = pybpsapi.CircularChecker('general', cache_method='database', db_name='data', db_path='./data', db_table='cache')
+        self.ptm = pybpsapi.CircularChecker('ptm', cache_method='database', db_name='data', db_path='./data', db_table='cache')
+        self.exam = pybpsapi.CircularChecker('exam', cache_method='database', db_name='data', db_path='./data', db_table='cache')
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -114,53 +119,30 @@ class Listeners(commands.Cog):
 
     @tasks.loop(seconds=3600)
     async def check_for_circular(self):
-
-        categories = ("ptm", "general", "exam")
-        final_dict = {"general": [], "ptm": [], "exam": []}
         new_circular_objects = {"general": [], "ptm": [], "exam": []}
 
-        try:  # Try to get the cached data and make it a dict
-            old_cached = dict(get_cached())
+        ptm = self.ptm.check()
+        general = self.general.check()
+        exam = self.exam.check()
 
-        except Exception as e:  # If it can't be gotten/can't be made into a dict (is None)
-            console.warning(f"Error getting cached circulars : {e}")
-            await self.get_circulars(categories, final_dict)
+        if ptm:
+            new_circular_objects["ptm"] = ptm
+        if general:
+            new_circular_objects["general"] = general
+        if exam:
+            new_circular_objects["exam"] = exam
 
-            set_cached(final_dict)
-            return
+        console.info(f"Found {len(new_circular_objects['general'])} new general circulars, {len(new_circular_objects['ptm'])} new PTM circulars and {len(new_circular_objects['exam'])} new exam circulars.")
+        console.debug(f"New Circulars: {new_circular_objects}")
 
-        if old_cached == {}:
-            console.info("Cached is empty, setting it to the latest circular")
-            await self.get_circulars(categories, final_dict)
-            return
-        else:
-            console.debug("Cache is not empty, checking for new circulars")
-
-        for item in categories:
-            res = await get_circular_list(item)
-            final_dict[item] = res
-
-        await self.get_circulars(categories, final_dict)
-
-        console.debug('[Listeners] | ' + str(final_dict))
-        console.debug('[Listeners] | ' + str(old_cached))
-
-        if final_dict != old_cached:  # If the old and new dict are not the same
-            console.info("There's a new circular posted!")
-
-            for circular_cat in categories:
-                new_circular_objects[circular_cat] = [i for i in final_dict[circular_cat] if i not in old_cached[circular_cat]]
-
-            console.info(f"{(sum(len(v) for v in new_circular_objects.values()))} new circular(s) found")
-            console.debug(new_circular_objects)
-
-            for cat in categories:
-                for circular in new_circular_objects[cat]:
-                    console.debug(circular)
-                    await self.notify(cat, circular)
+        if new_circular_objects["ptm"] or new_circular_objects["general"] or new_circular_objects["exam"]:
+            for cat in new_circular_objects:
+                if cat:
+                    for obj in new_circular_objects[cat]:
+                        await self.notify(cat, obj)
 
         else:
-            console.info("No new circulars")
+            console.debug(f"[Listeners] | No new circulars found.")
 
     async def notify(self, _circular_category, _circular_obj):
         self.cur.execute("SELECT * FROM guild_notify")  # Get all the guilds that have enabled notifications
