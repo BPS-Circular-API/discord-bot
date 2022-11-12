@@ -70,7 +70,6 @@ console.debug(owner_guilds)
 if base_api_url[-1] != "/":  # For some very bright people who don't know how to read
     base_api_url += "/"
 
-
 client = commands.Bot(help_command=None)  # Setting prefix
 
 
@@ -160,7 +159,7 @@ async def log(level, category, msg, *args):
     # This code logs the message using the correct level's logger based on the level parameter
     console.debug(msg) if level.upper() == "DEBUG" else console.info(msg) if level.upper() == "INFO" else \
         console.warning(msg) if level.upper() == "WARNING" else console.error(msg) if level.upper() == "ERROR" \
-        else console.critical(msg) if level.upper() == "CRITICAL" else console.info(msg)
+            else console.critical(msg) if level.upper() == "CRITICAL" else console.info(msg)
 
     if category not in ["command", "notification", "listener", "backend", "etc"]:
         category = "etc"
@@ -241,30 +240,6 @@ class DeleteButton(discord.ui.View):
         await self.msg.delete()
 
 
-class FeedbackModal(discord.ui.Modal):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(title="Suggestions", *args, **kwargs)
-        # self.add_item(discord.ui.InputText(label="Short Input"))
-        self.add_item(discord.ui.InputText(label="Please list what you'd like changed", style=discord.InputTextStyle.long))
-
-    async def callback(self, interaction: discord.Interaction):
-        con = sqlite3.connect('./data/data.db')
-        cursor = con.cursor()
-        res = self.children[0].value.replace('"', "")
-        cursor.execute(f"INSERT INTO suggestions VALUES ({interaction.user.id}, {interaction.message.id}, \"{res}\")")
-        con.commit()
-        await interaction.response.send_message("Thank you for your feedback!", ephemeral=True)
-
-
-class FeedbackModalButton(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=300)
-
-    @discord.ui.button(label="📩", style=discord.ButtonStyle.green)
-    async def feedback_button(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.response.send_modal(FeedbackModal())
-
-
 # Feedback Button Discord View
 class FeedbackButton(discord.ui.View):
     def __init__(self, msg, author, search_query, search_result, author_only=True):
@@ -275,7 +250,7 @@ class FeedbackButton(discord.ui.View):
         self.search_query = search_query
         self.search_result = search_result
 
-    # disable the delete button on timeout
+    # disable the button on timeout
     async def on_timeout(self):
         for child in self.children:
             child.disabled = True
@@ -283,7 +258,8 @@ class FeedbackButton(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label="👍", style=discord.ButtonStyle.green)
-    async def thumbs_up_button_callback(self, button, interaction):  # Don't remove the unused argument, it's used by py-cord
+    async def thumbs_up_button_callback(self, button,
+                                        interaction):  # Don't remove the unused argument, it's used by py-cord
         if self.author_only:
             if interaction.user.id != self.author.id:
                 return await interaction.response.send_message("This button is not for you", ephemeral=True)
@@ -291,7 +267,8 @@ class FeedbackButton(discord.ui.View):
         con = sqlite3.connect("./data/data.db")
         cur = con.cursor()
         self.search_query = self.search_query.replace('"', "")
-        cur.execute(f"INSERT INTO search_feedback VALUES ({interaction.user.id}, {self.msg.id}, \"{self.search_query}\", {True})")
+        cur.execute(
+            f"INSERT INTO search_feedback VALUES ({interaction.user.id}, {self.msg.id}, \"{self.search_query}\", {True})")
         con.commit()
         con.close()
 
@@ -303,7 +280,8 @@ class FeedbackButton(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label="👎", style=discord.ButtonStyle.red)
-    async def thumbs_down_button_callback(self, button, interaction):  # Don't remove the unused argument, it's used by py-cord
+    async def thumbs_down_button_callback(self, button,
+                                          interaction):  # Don't remove the unused argument, it's used by py-cord
         if self.author_only:
             if not interaction.user.id == self.author.id:
                 return await interaction.response.send_message("This button is not for you", ephemeral=True)
@@ -311,13 +289,13 @@ class FeedbackButton(discord.ui.View):
         con = sqlite3.connect("./data/data.db")
         cur = con.cursor()
         self.search_query = self.search_query.replace('"', "")
-        cur.execute(f"INSERT INTO search_feedback VALUES ({interaction.user.id}, {self.msg.id}, \"{self.search_query}\", {False})")
+        cur.execute(
+            f"INSERT INTO search_feedback VALUES ({interaction.user.id}, {self.msg.id}, \"{self.search_query}\", {False})")
         con.commit()
         con.close()
 
         await interaction.response.send_message(
-            "We're sorry to about hear that. Please let us know what we can do to improve our bot. by clicking the `📩` button below.",
-            view=FeedbackModalButton(),
+            "We're sorry to about hear that. Please let us know what went wrong! Feel free to DM <@837584356988944396>",
             ephemeral=True)
         # edit the message to add the feedback button
 
@@ -325,4 +303,3 @@ class FeedbackButton(discord.ui.View):
             child.disabled = True
         await self.msg.edit(view=self)
         self.stop()
-
