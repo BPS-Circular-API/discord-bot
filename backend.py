@@ -67,6 +67,9 @@ console.debug(owner_ids)
 owner_guilds = tuple([int(i) for i in owner_guilds])
 console.debug(owner_guilds)
 
+if base_api_url[-1] != "/":  # For some very bright people who don't know how to read
+    base_api_url += "/"
+
 
 client = commands.Bot(help_command=None)  # Setting prefix
 
