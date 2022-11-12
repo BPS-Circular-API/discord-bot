@@ -190,6 +190,12 @@ class Listeners(commands.Cog):
         embed.set_image(url=png_url[0])  # Set the image to the attachment
         embed.add_field(name=f"[{id_}] `{title}`", value=link, inline=False)
 
+        self.cur.execute(f"SELECT data FROM cache WHERE title = 'circular_message'")  # Get the circular message
+        circular_message = self.cur.fetchone()
+
+        if circular_message:
+            embed.add_field(name="Message from the Developer", value=circular_message[0], inline=False)
+
         embed_list = []
 
         if len(png_url) != 1:
@@ -301,7 +307,7 @@ class Listeners(commands.Cog):
         console.debug(notify_log)
 
     @tasks.loop(minutes=backup_interval * 60)
-    async def backup(self):
+    async def backup(self): # TODO: Fix this not working after using package
         # Close the DB
         self.con.commit()
         self.con.close()

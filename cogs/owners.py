@@ -252,8 +252,7 @@ class Owners(commands.Cog):
                             channel = await guild.fetch_channel(int(channel))  # Get the channel object
                         except discord.NotFound:  # If the guild/channel is not found (deleted)
                             console.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
-                            self.cur.execute(
-                                f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
+                            self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
                             self.con.commit()
                             continue
                         except discord.Forbidden:  # If the bot can not get the guild/channel
@@ -434,6 +433,23 @@ class Owners(commands.Cog):
             pages=pages, disable_on_timeout=True, timeout=120
         )
         await paginator.respond(ctx.interaction, ephemeral=True)
+
+    @owners.command(name="setmessage", description="Set a message for the next circular embed.")
+    async def set_message(self, ctx, message: str):
+        if ctx.author.id not in owner_ids:
+            return await ctx.respond("You are not allowed to use this command.")
+        await ctx.defer()
+
+        self.cur.execute(f"SELECT * FROM cache where title = 'circular_message'")
+        circular_message = self.cur.fetchone()
+
+        if circular_message is None:
+            self.cur.execute(f"INSERT INTO cache VALUES ('circular_message', 'None', '{message}')")
+        else:
+            self.cur.execute(f"UPDATE cache SET value = '{message}' WHERE title = 'circular_message'")
+        self.con.commit()
+
+        await ctx.send("Successfully set the message for the next circular embed.", ephemerical=True)
 
 
 def setup(client):
