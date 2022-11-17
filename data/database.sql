@@ -19,15 +19,12 @@ CREATE TABLE if not exists "logs" (
 	"msg"	TEXT
 );
 
-CREATE TABLE if not exists "suggestions" (
-	"user_id"	INTEGER NOT NULL,
-	"message_id"	INTEGER,
-	"message"	TEXT
-);
-
 CREATE TABLE if not exists "search_feedback" (
 	"user_id"	INTEGER,
 	"message_id"	INTEGER,
 	"search_query"	TEXT,
 	"response"	TEXT
 );
+
+
+--CREATE TABLE if not exists "cache" TODO: this sql
