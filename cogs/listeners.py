@@ -132,7 +132,7 @@ class Listeners(commands.Cog):
         if exam:
             new_circular_objects["exam"] = exam
 
-        console.info(f"Found {len(new_circular_objects['general'])} new general circulars, {len(new_circular_objects['ptm'])} new PTM circulars and {len(new_circular_objects['exam'])} new exam circulars.")
+        console.info(f"Found {len(new_circular_objects['general']) + len(new_circular_objects['ptm']) + len(new_circular_objects['exam'])} new circulars.")
         console.debug(f"New Circulars: {new_circular_objects}")
 
         if new_circular_objects["ptm"] or new_circular_objects["general"] or new_circular_objects["exam"]:
@@ -195,6 +195,8 @@ class Listeners(commands.Cog):
 
         if circular_message:
             embed.add_field(name="Message from the Developer", value=circular_message[0], inline=False)
+            self.cur.execute(f"DELETE FROM cache WHERE title = 'circular_message'")  # Delete the circular message
+            self.conn.commit()
 
         embed_list = []
 

@@ -154,7 +154,6 @@ async def log(level, category, msg, *args):
     if args:
         msg %= args
     msg.replace('"', "")
-    # TODO: finish this
 
     # This code logs the message using the correct level's logger based on the level parameter
     console.debug(msg) if level.upper() == "DEBUG" else console.info(msg) if level.upper() == "INFO" else \

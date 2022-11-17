@@ -446,10 +446,10 @@ class Owners(commands.Cog):
         if circular_message is None:
             self.cur.execute(f"INSERT INTO cache VALUES ('circular_message', 'None', '{message}')")
         else:
-            self.cur.execute(f"UPDATE cache SET value = '{message}' WHERE title = 'circular_message'")
+            self.cur.execute(f"UPDATE cache SET data = ? WHERE title = 'circular_message'", (message,))
         self.con.commit()
 
-        await ctx.send("Successfully set the message for the next circular embed.", ephemerical=True)
+        await ctx.respond("Successfully set the message for the next circular embed.")
 
 
 def setup(client):
