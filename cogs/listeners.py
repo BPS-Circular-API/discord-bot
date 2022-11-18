@@ -145,13 +145,15 @@ class Listeners(commands.Cog):
             console.debug(f"[Listeners] | No new circulars found.")
 
     async def notify(self, _circular_category, _circular_obj):
-        self.cur.execute("SELECT * FROM guild_notify")  # Get all the guilds that have enabled notifications
+        # Gather all the guilds
+        self.cur.execute("SELECT * FROM guild_notify")  # Get from DB
         guild_notify = self.cur.fetchall()
 
         guilds = [x[0] for x in guild_notify]
         channels = [x[1] for x in guild_notify]
         messages = [x[2] for x in guild_notify]
 
+        # Gather all the DMs
         self.cur.execute(f"SELECT * FROM dm_notify")  # Get the DM notify list
         users = self.cur.fetchall()
 
@@ -159,20 +161,12 @@ class Listeners(commands.Cog):
         user_message = [x[1] for x in users]
         del users, guild_notify  # Delete the variables to save memory
 
-        link = _circular_obj['link']  # Get the link of the new circular
-        title = _circular_obj['title']  # Get the title of the new circular
-        id_ = _circular_obj['id']  # Get the id of the new circular
-        notify_log = {
-            "guild": {
-                "id": [],
-                "channel": [],
-            },
+        notif_msgs = {"guild": [], "dm": []}
 
-            "dm": {
-                "id": [],
-                "name": [],
-            }
-        }
+        # Get the circular info and prepare the embed
+        link = _circular_obj['link']
+        title = _circular_obj['title']
+        id_ = _circular_obj['id']
 
         png_url = await get_png(link)  # Get the PNG of the circular
 
@@ -180,8 +174,7 @@ class Listeners(commands.Cog):
         error_embed = discord.Embed(title=f"Error!", color=embed_color)
         error_embed.description = "Please make sure that I have the adequate permissions to send messages in the " \
                                   "channel you set for notifications."
-        error_embed.set_footer(text=embed_footer)  # Set the footer
-        error_embed.set_author(name=embed_title)  # Set the author
+        error_embed.set_footer(text=embed_footer).set_author(name=embed_title)  # Set the footer and author
 
         # Create the main embed
         embed = discord.Embed(title=f"New Circular | **{_circular_category.capitalize()}**", color=embed_color, url=embed_url)
@@ -190,49 +183,48 @@ class Listeners(commands.Cog):
         embed.set_image(url=png_url[0])  # Set the image to the attachment
         embed.add_field(name=f"[{id_}] `{title}`", value=link, inline=False)
 
+        # If there is a custom message set by the bot dev, add it to the embed
         self.cur.execute(f"SELECT data FROM cache WHERE title = 'circular_message'")  # Get the circular message
         circular_message = self.cur.fetchone()
 
         if circular_message:
             embed.add_field(name="Message from the Developer", value=circular_message[0], inline=False)
             self.cur.execute(f"DELETE FROM cache WHERE title = 'circular_message'")  # Delete the circular message
-            self.conn.commit()
+            self.con.commit()
 
         embed_list = []
 
-        if len(png_url) != 1:
+        if len(png_url) != 1:   # If the circular has more than 1 page
             for i in range(len(png_url)):
                 if i == 0:
                     continue
-                if i == 0:
-                    continue
-                if i > 3:
+                elif i > 3:   # If the circular has more than 4 pages, send the first 4 pages only (discord embed limit)
                     break
+
                 temp_embed = discord.Embed(url=embed_url)  # Create a new embed
                 temp_embed.set_image(url=png_url[i])
                 embed_list.append(temp_embed.copy())
 
+        # Gather all guilds and send the embed
         for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
+            # Set the custom message if there is one
             console.debug(f"[Listeners] | Message: {message}")
             embed.description = message  # Set the description of the embed to the message
 
-            try:  # Try to get the channel and guild
+            try:    # Try to fetch the guild and channel from the discord API
                 guild = await self.client.fetch_guild(int(guild))  # Get the guild object
                 channel = await guild.fetch_channel(int(channel))  # Get the channel object
 
             except discord.NotFound:  # If the channel or guild is not found (deleted)
                 console.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
-                self.cur.execute(
-                    f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
+                self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")
                 self.con.commit()
                 continue
 
             except discord.Forbidden:  # If the bot can not get the channel or guild
-                console.warning(
-                    f"Could not get channel. Guild: {guild}, Channel: {channel}. Seems like I was kicked from the server.")
-                self.cur.execute(
-                    f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")  # Delete the guild from the database
+                console.warning(f"Could not get channel. Guild: {guild}, Channel: {channel}. Seems like I was kicked from the server.")
+                self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")
                 self.con.commit()
                 continue
 
@@ -241,26 +233,30 @@ class Listeners(commands.Cog):
                 continue
 
             try:  # Try to send the message
-                await channel.send(embeds=[embed.copy(), *embed_list])  # Send the embed
+                _msg = await channel.send(embeds=[embed.copy(), *embed_list])  # Send the embed
                 console.debug(f"Sent Circular Embed to {guild.id} | {channel.id}")
-                notify_log['guild']['id'].append(guild.id)  # Add the guild to the list of notified guilds
-                notify_log['guild']['channel'].append(channel.id)  # Add the channel to the list of notified channels
 
             except discord.Forbidden:  # If the bot doesn't have permission to send messages in the channel
                 for _channel in guild.text_channels:  # Find a channel where it can send messages
 
                     try:  # Try to send the error embed
                         await _channel.send(embed=error_embed)  # Send the error embed
-                        await _channel.send(embeds=[embed.copy(), *embed_list])  # Send the circular embed
-                        console.warning(
-                            f"Could not send message to {channel.id} in {guild.id}. Sent to {channel.id} instead.")
-                        break  # Break the loop
+                        _msg = await _channel.send(embeds=[embed.copy(), *embed_list])  # Send the circular embed
+                        console.warning(f"Could not send message to {channel.id} in {guild.id}. Sent to {channel.id} instead.")
+                        break
 
                     except Exception as e:  # If it can't send the error embed
                         console.error(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
+                        continue
 
             except Exception as e:  # If it can't send the circular embed
                 console.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden." + str(e))
+                continue
+
+            try:
+                notif_msgs["guild"].append(_msg.id)     # TODO: check if this works
+            except Exception as e:
+                console.error(f"Error: {e}")
 
         for user, message in zip(user_id, user_message):  # For each user in the database
 
@@ -281,35 +277,35 @@ class Listeners(commands.Cog):
             embed.description = message
 
             try:  # Try to send the embed to the user
-                await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed to the user
+                _msg = await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed to the user
                 console.debug(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
-
-                notify_log['dm']['id'].append(str(user.id))  # Add the user to the list of notified users
-                notify_log['dm']['name'].append(f"{user.name}#{user.discriminator}")
 
             except discord.Forbidden:  # If the user has DMs disabled
                 console.error(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
-
-                # Delete the user from the database
-                self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")
+                self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")    # Delete the user from the database
                 self.con.commit()
-                console.info(f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
+                await log('info', 'listener', f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
+                continue
 
             except Exception as e:  # If the user has DMs disabled
                 console.error(f"Couldn't send Circular Embed to User: {user.id}")
                 console.error(e)
+                continue
 
-        await log('info', "listener", f"Notified {len(notify_log['guild']['id'])} guilds and {len(notify_log['dm']['id'])} users about the new circular.")
-        try:
-            # TODO: fix this
-            console.info(f"Guilds: {', '.join(notify_log['guild']['id'])}")
-            console.info(f"Users: {', '.join(notify_log['dm']['name'])}")
-        except:
-            pass
-        console.debug(notify_log)
+            try:
+                notif_msgs["dm"].append(_msg.id)     # TODO: check if this works
+            except Exception as e:
+                console.error(f"Error: {e}")
+
+        await log('info', "listener", f"Notified {len(notif_msgs['guild'])} guilds and {len(notif_msgs['dm'])} users about the new circular. ({id_})")
+
+        # Insert the notification log into the database
+        for item in [*notif_msgs["guild"], *notif_msgs["dm"]]:
+            self.cur.execute(f"INSERT INTO notification_log (circular_id, message_id) VALUES ({id_}, {item})")
+        self.con.commit()
 
     @tasks.loop(minutes=backup_interval * 60)
-    async def backup(self): # TODO: Fix this not working after using package
+    async def backup(self):  # TODO: Fix this not working after using package
         # Close the DB
         self.con.commit()
         self.con.close()
@@ -320,7 +316,7 @@ class Listeners(commands.Cog):
         if not os.path.exists('./data/backups/'):  # If the directory does not exist
             os.mkdir("./data/backups/")
 
-        shutil.copyfile("./data/data.db",f"./data/backups/data-{date_time}.db")  # Copy the current file to the new directory
+        shutil.copyfile("./data/data.db", f"./data/backups/data-{date_time}.db")  # Copy the current file to the new directory
         await log('info', "etc", f"Backed up the database to ./data/backups/data-{date_time}.db")
 
         # open DB
