@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS "search_feedback" (
 
 
 CREATE TABLE IF NOT EXISTS "notif_msgs" (
-	"circular_id"	INTEGER,
-	"msg_id"	INTEGER UNIQUE
+	"circular_id"	INTEGER NOT NULL,
+	"type"	TEXT NOT NULL,
+	"msg_id"	INTEGER NOT NULL UNIQUE,
+	"channel_id"	INTEGER,
+	"guild_id"	INTEGER
 );

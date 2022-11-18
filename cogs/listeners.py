@@ -8,7 +8,7 @@ import asyncio
 import pybpsapi
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, get_cached, \
-    set_cached, get_circular_list, status_interval, log, embed_url
+    set_cached, get_circular_list, status_interval, log, embed_url, base_api_url
 
 
 class Listeners(commands.Cog):
@@ -17,9 +17,9 @@ class Listeners(commands.Cog):
         self.con = sqlite3.connect('./data/data.db')
         self.cur = self.con.cursor()
 
-        general = pybpsapi.CircularChecker('general', cache_method='database', db_name='data', db_path='./data', db_table='cache')
-        ptm = pybpsapi.CircularChecker('ptm', cache_method='database', db_name='data', db_path='./data', db_table='cache')
-        exam = pybpsapi.CircularChecker('exam', cache_method='database', db_name='data', db_path='./data', db_table='cache')
+        general = pybpsapi.CircularChecker('general', cache_method='database', db_name='data', db_path='./data', db_table='cache', url=base_api_url)
+        ptm = pybpsapi.CircularChecker('ptm', cache_method='database', db_name='data', db_path='./data', db_table='cache', url=base_api_url)
+        exam = pybpsapi.CircularChecker('exam', cache_method='database', db_name='data', db_path='./data', db_table='cache', url=base_api_url)
 
         self.group = pybpsapi.CircularCheckerGroup(general, ptm, exam)
 
@@ -121,6 +121,7 @@ class Listeners(commands.Cog):
 
     @tasks.loop(seconds=3600)
     async def check_for_circular(self):
+        print(self.group._checkers)
         new_circular_objects = self.group.check()
 
         console.info(f"Found {len(new_circular_objects['general']) + len(new_circular_objects['ptm']) + len(new_circular_objects['exam'])} new circulars.")
@@ -234,18 +235,22 @@ class Listeners(commands.Cog):
                         await _channel.send(embed=error_embed)  # Send the error embed
                         _msg = await _channel.send(embeds=[embed.copy(), *embed_list])  # Send the circular embed
                         console.warning(f"Could not send message to {channel.id} in {guild.id}. Sent to {channel.id} instead.")
+                        channel = _channel  # Set the channel to the new channel
                         break
 
-                    except Exception as e:  # If it can't send the error embed
-                        console.error(f"Couldn't send Circular to a Fallback channel in {guild.id}'s {channel.id} | {e}")
+                    except discord.Forbidden:  # If the bot can't send messages in the channel
                         continue
+
+                else:  # If it can't send the message in any channel
+                    console.error(f"Couldn't send Circular to {guild.id}'s {channel.id}")
+                    continue
 
             except Exception as e:  # If it can't send the circular embed
                 console.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden." + str(e))
                 continue
 
             try:
-                notif_msgs["guild"].append(_msg.id)     # TODO: check if this works
+                notif_msgs["guild"].append((_msg.id,  channel.id, guild.id))     # TODO: check if this works
             except Exception as e:
                 console.error(f"Error: {e}")
 
@@ -284,15 +289,18 @@ class Listeners(commands.Cog):
                 continue
 
             try:
-                notif_msgs["dm"].append(_msg.id)     # TODO: check if this works
+                notif_msgs["dm"].append((_msg.id, user.id))
             except Exception as e:
                 console.error(f"Error: {e}")
 
         await log('info', "listener", f"Notified {len(notif_msgs['guild'])} guilds and {len(notif_msgs['dm'])} users about the new circular. ({id_})")
 
+        # tuple (message_id [0], channel_id [1], guild_id [2] optional)
         # Insert the notification log into the database
-        for item in [*notif_msgs["guild"], *notif_msgs["dm"]]:
-            self.cur.execute(f"INSERT INTO notification_log (circular_id, message_id) VALUES ({id_}, {item})")
+        for item in notif_msgs["dm"]:
+            self.cur.execute(f"INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES ({id_}, {item[0]}, 'dm', {item[1]})")
+        for item in notif_msgs["guild"]:
+            self.cur.execute(f"INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) VALUES ({id_}, {item[0]}, 'guild', {item[1]}, {item[2]})")
         self.con.commit()
 
     @tasks.loop(minutes=backup_interval * 60)
