@@ -17,9 +17,11 @@ class Listeners(commands.Cog):
         self.con = sqlite3.connect('./data/data.db')
         self.cur = self.con.cursor()
 
-        self.general = pybpsapi.CircularChecker('general', cache_method='database', db_name='data', db_path='./data', db_table='cache')
-        self.ptm = pybpsapi.CircularChecker('ptm', cache_method='database', db_name='data', db_path='./data', db_table='cache')
-        self.exam = pybpsapi.CircularChecker('exam', cache_method='database', db_name='data', db_path='./data', db_table='cache')
+        general = pybpsapi.CircularChecker('general', cache_method='database', db_name='data', db_path='./data', db_table='cache')
+        ptm = pybpsapi.CircularChecker('ptm', cache_method='database', db_name='data', db_path='./data', db_table='cache')
+        exam = pybpsapi.CircularChecker('exam', cache_method='database', db_name='data', db_path='./data', db_table='cache')
+
+        self.group = pybpsapi.CircularCheckerGroup(general, ptm, exam)
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -119,18 +121,7 @@ class Listeners(commands.Cog):
 
     @tasks.loop(seconds=3600)
     async def check_for_circular(self):
-        new_circular_objects = {"general": [], "ptm": [], "exam": []}
-
-        ptm = self.ptm.check()
-        general = self.general.check()
-        exam = self.exam.check()
-
-        if ptm:
-            new_circular_objects["ptm"] = ptm
-        if general:
-            new_circular_objects["general"] = general
-        if exam:
-            new_circular_objects["exam"] = exam
+        new_circular_objects = self.group.check()
 
         console.info(f"Found {len(new_circular_objects['general']) + len(new_circular_objects['ptm']) + len(new_circular_objects['exam'])} new circulars.")
         console.debug(f"New Circulars: {new_circular_objects}")

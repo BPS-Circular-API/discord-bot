@@ -3,6 +3,7 @@ import sys
 from backend import client, discord_token, console
 import discord.utils
 
+
 @client.event
 async def on_ready():
     print("Connected to Discord!")
