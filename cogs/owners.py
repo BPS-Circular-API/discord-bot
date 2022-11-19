@@ -3,7 +3,7 @@ import math
 import sqlite3
 from discord.ext import commands
 from backend import owner_ids, embed_title, embed_footer, embed_color, console, owner_guilds, get_png, ConfirmButton, \
-    DeleteButton, log
+    DeleteButton, log, search, embed_url
 
 
 class Owners(commands.Cog):
@@ -450,6 +450,91 @@ class Owners(commands.Cog):
         self.con.commit()
 
         await ctx.respond("Successfully set the message for the next circular embed.")
+
+    @owners.command()
+    async def edit_notif(self, ctx, id_: int,
+                         update_type: discord.Option(choices=
+                         [
+                             discord.OptionChoice("Reload Image", value="image"),
+                             discord.OptionChoice("Delete", value="delete")
+                         ])):
+
+        if ctx.author.id not in owner_ids:
+            return await ctx.respond("You are not allowed to use this command.")
+        await ctx.defer()
+
+        msg_list = []
+
+        # Get the message ids of the circular embeds
+        self.cur.execute(f"SELECT msg_id, channel_id FROM notif_msgs WHERE circular_id = {id_} AND type = 'dm'")
+        dm_msgs = self.cur.fetchall()
+        self.cur.execute(f"SELECT msg_id, channel_id, guild_id FROM notif_msgs WHERE circular_id = {id_} AND type = 'guild'")
+        guild_msgs = self.cur.fetchall()
+
+        for msg in dm_msgs:
+            try:
+                user = await self.client.fetch_user(msg[1])
+                message = await user.fetch_message(msg[0])
+                msg_list.append(message)
+
+            except discord.NotFound:
+                console.warning(f"Could not find DM message with id {msg[0]}")
+                self.cur.execute(f"DELETE FROM notif_msgs WHERE circular_id = {id_} AND msg_id = {msg[0]}")
+                self.con.commit()
+                continue
+
+            except discord.Forbidden:
+                console.warning(f"Could not fetch DM message with id {msg[0]}")
+                self.cur.execute(f"DELETE FROM notif_msgs WHERE circular_id = {id_} AND msg_id = {msg[0]}")
+                self.con.commit()
+                continue
+
+            except Exception as e:
+                console.error(f"Could not fetch DM message with id {msg[0]}")
+                console.error(e)
+                continue
+
+        for msg in guild_msgs:
+            try:
+                channel = self.client.fetch_guild(msg[2]).fetch_channel(msg[1])
+                message = discord.utils.get(await channel.history(limit=100).flatten(), id=msg[0])
+                msg_list.append(message)
+
+            except discord.NotFound:
+                console.warning(f"Could not find guild message with id {msg[0]}")
+                self.cur.execute(f"DELETE FROM notif_msgs WHERE circular_id = {id_} AND msg_id = {msg[0]}")
+                continue
+
+        if update_type == "image":
+            for msg in msg_list:
+                current_embed = msg.embeds[0]
+                embed_list = []
+
+                data = await search(id_)
+                png = await get_png(data['link'])
+
+                current_embed.set_image(url=png[0])
+
+                if len(png) != 1:
+                    for i in range(png):
+                        if i == 0:
+                            continue
+                        if i > 3:
+                            break
+
+                        temp_embed = discord.Embed(url=embed_url)
+                        temp_embed.set_image(url=png[i])
+                        embed_list.append(temp_embed.copy())
+
+                await msg.edit(embeds=[current_embed, *embed_list])
+
+        elif update_type == "delete":
+            for msg in msg_list:
+                await msg.delete()
+            self.cur.execute(f"DELETE FROM notif_msgs WHERE circular_id = {id_}")
+            self.con.commit()
+
+        await ctx.respond("Successfully updated the messages.")
 
 
 def setup(client):
