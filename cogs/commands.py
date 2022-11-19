@@ -116,8 +116,6 @@ class Commands(commands.Cog):
             for i in range(len(png_url)):
                 if i == 0:
                     continue
-                if i == 0:
-                    continue
                 if i > 3:
                     break
                 temp_embed = discord.Embed(url=embed_url)  # Create a new embed
@@ -131,7 +129,6 @@ class Commands(commands.Cog):
 
     @circular.command(name="search", description="Searches for a particular circular in a particular category.")
     async def search(self, ctx, circular_title: str):
-        # check log level
         await ctx.defer()
         start = time.time()
 

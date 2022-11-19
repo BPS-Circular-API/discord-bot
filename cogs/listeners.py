@@ -16,6 +16,7 @@ class Listeners(commands.Cog):
         self.client = client
         self.con = sqlite3.connect('./data/data.db')
         self.cur = self.con.cursor()
+        self.member_count = -1
 
         general = pybpsapi.CircularChecker('general', cache_method='database', db_name='data', db_path='./data', db_table='cache', url=base_api_url)
         ptm = pybpsapi.CircularChecker('ptm', cache_method='database', db_name='data', db_path='./data', db_table='cache', url=base_api_url)
@@ -27,9 +28,6 @@ class Listeners(commands.Cog):
     async def on_ready(self):
         console.info(f"Cog : Listeners.py loaded.")
 
-        global member_count
-        member_count = -1
-
         if not self.get_member_count.is_running():
             self.get_member_count.start()
 
@@ -40,10 +38,10 @@ class Listeners(commands.Cog):
             if backup_interval >= 0.5:
                 self.backup.start()
 
-        while not member_count > -1:
+        while not self.member_count > -1:
             await asyncio.sleep(1)
 
-        console.info(f"I am in {len(self.client.guilds)} guilds. They have {member_count} members.")
+        console.info(f"I am in {len(self.client.guilds)} guilds. They have {self.member_count} members.")
         self.random_status.start()
 
     @commands.Cog.listener()
@@ -55,7 +53,7 @@ class Listeners(commands.Cog):
             embed.set_footer(text=embed_footer)
             embed.set_author(name=embed_title)
             embed.add_field(name="Prefix", value="This bot uses slash commands, which are prefixed with `/circular`", inline=False)
-            embed.add_field(name="For help", value="Use </help:1017654494009491476>  to get a list of all the commands.", inline=False)
+            embed.add_field(name="For help", value="Use </help:1017654494009491476> to get a list of all the commands.", inline=False)
 
             try:
                 msg = await ctx.reply(embed=embed)
@@ -75,7 +73,7 @@ class Listeners(commands.Cog):
     @tasks.loop(seconds=status_interval*60)
     async def random_status(self):
         activities = (
-            f"{member_count} Users!",
+            f"{self.member_count} Users!",
             f"{len(self.client.guilds)} Guilds!",
             "/circular help",
             "Made by Raj Dave#3215",
@@ -108,9 +106,8 @@ class Listeners(commands.Cog):
             guild = await self.client.fetch_guild(guild.id, with_counts=True)
             _member_count += guild.approximate_member_count
 
-        global member_count
-        member_count = _member_count
-        console.debug(f"[Listeners] | Member Count: {member_count}")
+        self.member_count = _member_count
+        console.debug(f"[Listeners] | Member Count: {self.member_count}")
 
     async def get_circulars(self, _cats, final_dict):
         for item in _cats:
@@ -121,7 +118,6 @@ class Listeners(commands.Cog):
 
     @tasks.loop(seconds=3600)
     async def check_for_circular(self):
-        print(self.group._checkers)
         new_circular_objects = self.group.check()
 
         console.info(f"Found {len(new_circular_objects['general']) + len(new_circular_objects['ptm']) + len(new_circular_objects['exam'])} new circulars.")
@@ -305,10 +301,6 @@ class Listeners(commands.Cog):
 
     @tasks.loop(minutes=backup_interval * 60)
     async def backup(self):  # TODO: Fix this not working after using package
-        # Close the DB
-        self.con.commit()
-        self.con.close()
-
         now = datetime.datetime.now()
         date_time = now.strftime("%d-%m-%Y-%H-%M")
 
@@ -317,10 +309,6 @@ class Listeners(commands.Cog):
 
         shutil.copyfile("./data/data.db", f"./data/backups/data-{date_time}.db")  # Copy the current file to the new directory
         await log('info', "etc", f"Backed up the database to ./data/backups/data-{date_time}.db")
-
-        # open DB
-        self.con = sqlite3.connect("./data/data.db")
-        self.cur = self.con.cursor()
 
     @random_status.before_loop
     @check_for_circular.before_loop
