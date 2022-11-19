@@ -44,6 +44,9 @@ class Commands(commands.Cog):
 
         raw_res = await get_circular_list(category)  # Get the list of circulars from API
 
+        if raw_res is None:
+            await ctx.respond("There was a bit of an issue on our end. Please try again later.")
+
         titles, links = [], []  # Define 3 empty lists
         loop_int = 1  # The variable which will be used to add numbers into the embed
 
@@ -64,12 +67,12 @@ class Commands(commands.Cog):
             embed.add_field(name=title, value=link, inline=False)  # Add a field to the embed
             count += 1
             if count % 10 == 0:  # If the count is divisible by 10 (It has reached 10 fields)
-                console.debug('[Commands] | ', count)
+                console.debug(f"[Commands] | {count}")
                 embed.description = f"Format - `number [id] title`\nPage **{int(count / 10)}**\n"  # Set the description of the embed
                 page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
                 embed.clear_fields()  # Clear the fields of the embed
             elif count == len(titles):
-                console.debug('[Commands] | ', count)
+                console.debug(f"[Commands] | {count}")
                 embed.description = f"Format - `number [id] title`\nPage **{int(math.ceil(count / 10))}**\n"  # Set the description of the embed
                 page_list.append(embed.copy())
                 embed.clear_fields()
