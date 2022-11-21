@@ -8,22 +8,22 @@ CREATE TABLE IF NOT EXISTS "dm_notify" (
 
 CREATE TABLE IF NOT EXISTS "guild_notify" (
 	"guild_id"	INTEGER NOT NULL UNIQUE,
-	"channel_id"	INTEGER UNIQUE,
+	"channel_id"	INTEGER NOT NULL UNIQUE,
 	"message"	TEXT DEFAULT "There's a new circular up on the website!"
 );
 
 CREATE TABLE IF NOT EXISTS "logs" (
 	"timestamp"	INTEGER NOT NULL,
-	"log_level"	TEXT DEFAULT 'debug',
-	"category"	TEXT,
+	"log_level"	TEXT NOT NULL DEFAULT 'debug',
+	"category"	TEXT NOT NULL,
 	"msg"	TEXT
 );
 
 CREATE TABLE IF NOT EXISTS "search_feedback" (
-	"user_id"	INTEGER,
-	"message_id"	INTEGER,
-	"search_query"	TEXT,
-	"response"	TEXT
+	"user_id"	INTEGER NOT NULL,
+	"message_id"	INTEGER NOT NULL UNIQUE,
+	"search_query"	TEXT NOT NULL,
+	"response"	TEXT NOT NULL
 );
 
 

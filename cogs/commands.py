@@ -224,10 +224,9 @@ class Commands(commands.Cog):
 
         if message:  # If the message is not None
             message = message.replace("<", "").replace(">", "").replace('"', "")  # Remove the <> and " from the message
-            self.cur.execute(
-                f'INSERT INTO guild_notify (guild_id, channel_id, message) VALUES ({guild.id}, {channel.id}, "{message}");')
+            self.cur.execute(f'INSERT INTO guild_notify (guild_id, channel_id, message) VALUES ({guild.id}, {channel.id}, ?)', (message,))
         else:  # If the message is None
-            self.cur.execute(f"INSERT INTO guild_notify (guild_id, channel_id) VALUES ({guild.id}, {channel.id});")
+            self.cur.execute(f"INSERT INTO guild_notify (guild_id, channel_id) VALUES ({guild.id}, {channel.id})")
 
         self.con.commit()  # Commit the changes to the database
 
@@ -249,24 +248,25 @@ class Commands(commands.Cog):
     @admin.command(name="delete", description="Delete the server's circular reminder configuration.")
     async def delete(self, ctx):
         await ctx.defer()
-        guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
+
+        guild = await self.client.fetch_guild(ctx.guild.id)
+        author = await guild.fetch_member(ctx.author.id)
+
         await log("info", "notification", f"{ctx.author.id} in {guild.id} is deleting the notification configuration.")
 
-        guild = await self.client.fetch_guild(ctx.guild.id)  # Get the guild from the discord API
-        author = await guild.fetch_member(ctx.author.id)
-        if not author.guild_permissions.administrator:
-            if author.id not in owner_ids:
-                await ctx.followup.send(
-                    embed=discord.Embed(title="Error!", description="You do not have permission to use this command!",
-                                        color=embed_color))
-                return
+        if not author.guild_permissions.administrator:  # Check if the author has admin permissions
+            if author.id not in owner_ids:  # Check if the author is a bot over (overridden)
+                return await ctx.followup.send(
+                    embed=discord.Embed(title="Error!",
+                                        description="You do not have permission to use this command!",
+                                        color=embed_color)
+                )
 
-        self.cur.execute(
-            f"SELECT * FROM guild_notify WHERE guild_id = {ctx.guild.id}"
-        )  # Check if the guild is already in the database
-        res = self.cur.fetchone()  # Get the result from the database
+        # Check if the guild is in the database
+        self.cur.execute(f"SELECT * FROM guild_notify WHERE guild_id = {ctx.guild.id}")
+        res = self.cur.fetchone()
 
-        if not res:  # If the guild is not in the database
+        if not res:
             e_embed = discord.Embed(title="Server Setup", description=f"The server has no reminder configuration!",
                                     color=embed_color)
             e_embed.set_author(name=embed_title)
