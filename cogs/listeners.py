@@ -142,7 +142,7 @@ class Listeners(commands.Cog):
         messages = [x[2] for x in guild_notify]
 
         # Gather all the DMs
-        self.cur.execute(f"SELECT * FROM dm_notify")  # Get the DM notify list
+        self.cur.execute("SELECT * FROM dm_notify")  # Get the DM notify list
         users = self.cur.fetchall()
 
         user_id = [x[0] for x in users]
@@ -172,12 +172,12 @@ class Listeners(commands.Cog):
         embed.add_field(name=f"[{id_}] `{title}`", value=link, inline=False)
 
         # If there is a custom message set by the bot dev, add it to the embed
-        self.cur.execute(f"SELECT data FROM cache WHERE title = 'circular_message'")  # Get the circular message
+        self.cur.execute("SELECT data FROM cache WHERE title = 'circular_message'")  # Get the circular message
         circular_message = self.cur.fetchone()
 
         if circular_message:
             embed.add_field(name="Message from the Developer", value=circular_message[0], inline=False)
-            self.cur.execute(f"DELETE FROM cache WHERE title = 'circular_message'")  # Delete the circular message
+            self.cur.execute("DELETE FROM cache WHERE title = 'circular_message'")  # Delete the circular message
             self.con.commit()
 
         embed_list = []
@@ -205,14 +205,17 @@ class Listeners(commands.Cog):
                 channel = await guild.fetch_channel(int(channel))  # Get the channel object
 
             except discord.NotFound:  # If the channel or guild is not found (deleted)
-                console.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
-                self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")
+                console.warning(f"Guild or channel not found. Guild: {guild.id}, Channel: {channel.id}")
+                self.cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
+                                 (guild.id, channel.id))
                 self.con.commit()
                 continue
 
             except discord.Forbidden:  # If the bot can not get the channel or guild
-                console.warning(f"Could not get channel. Guild: {guild}, Channel: {channel}. Seems like I was kicked from the server.")
-                self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")
+                console.warning(f"Could not get channel. Guild: {guild.id}, Channel: {channel.id}. "
+                                "Seems like I was kicked from the server.")
+                self.cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
+                                 (guild.id, channel.id))
                 self.con.commit()
                 continue
 
@@ -246,7 +249,7 @@ class Listeners(commands.Cog):
                 continue
 
             try:
-                notif_msgs["guild"].append((_msg.id,  channel.id, guild.id))     # TODO: check if this works
+                notif_msgs["guild"].append((_msg.id, channel.id, guild.id))     # TODO: check if this works
             except Exception as e:
                 console.error(f"Error: {e}")
 
@@ -257,7 +260,7 @@ class Listeners(commands.Cog):
 
             except discord.NotFound:  # If the user is not found (deleted)
                 console.warning(f"User not found. User: {user}")
-                self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user}")  # Delete the user from the database
+                self.cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
                 self.con.commit()
                 continue
 
@@ -274,7 +277,7 @@ class Listeners(commands.Cog):
 
             except discord.Forbidden:  # If the user has DMs disabled
                 console.error(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
-                self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")    # Delete the user from the database
+                self.cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
                 self.con.commit()
                 await log('info', 'listener', f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
                 continue
@@ -294,10 +297,11 @@ class Listeners(commands.Cog):
         # tuple (message_id [0], channel_id [1], guild_id [2] optional)
         # Insert the notification log into the database
         for item in notif_msgs["dm"]:
-            self.cur.execute(f"INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES ({id_}, {item[0]}, 'dm', {item[1]})")
+            self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES (?, ?, ?, ?)", (id_, item[0], "dm", item[1]))
         for item in notif_msgs["guild"]:
-            self.cur.execute(f"INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) VALUES ({id_}, {item[0]}, 'guild', {item[1]}, {item[2]})")
-        self.con.commit()
+            self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
+                             "VALUES (?, ?, ?, ?, ?)", (id_, item[0], "guild", item[1], item[2]))
+        self.con.commit()   # TODO: use cur.executemany() instead of looping
 
     @tasks.loop(minutes=backup_interval * 60)
     async def backup(self):  # TODO: Fix this not working after using package
