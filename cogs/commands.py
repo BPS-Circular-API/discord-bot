@@ -224,9 +224,10 @@ class Commands(commands.Cog):
 
         if message:  # If the message is not None
             message = message.replace("<", "").replace(">", "").replace('"', "")  # Remove the <> and " from the message
-            self.cur.execute(f'INSERT INTO guild_notify (guild_id, channel_id, message) VALUES ({guild.id}, {channel.id}, ?)', (message,))
+            self.cur.execute("INSERT INTO guild_notify (guild_id, channel_id, message) "
+                             "VALUES (?, ?, ?)", (guild.id, channel.id, message))
         else:  # If the message is None
-            self.cur.execute(f"INSERT INTO guild_notify (guild_id, channel_id) VALUES ({guild.id}, {channel.id})")
+            self.cur.execute("INSERT INTO guild_notify (guild_id, channel_id) VALUES (?, ?)", (guild.id, channel.id))
 
         self.con.commit()  # Commit the changes to the database
 
@@ -263,23 +264,22 @@ class Commands(commands.Cog):
                 )
 
         # Check if the guild is in the database
-        self.cur.execute(f"SELECT * FROM guild_notify WHERE guild_id = {ctx.guild.id}")
+        self.cur.execute("SELECT * FROM guild_notify WHERE guild_id = ?", (guild.id,))
         res = self.cur.fetchone()
 
         if not res:
-            e_embed = discord.Embed(title="Server Setup", description=f"The server has no reminder configuration!",
-                                    color=embed_color)
+            e_embed = discord.Embed(title="Server Setup",
+                                    description=f"The server has no reminder configuration!", color=embed_color)
             e_embed.set_author(name=embed_title)
             e_embed.set_footer(text=embed_footer)
             await ctx.followup.send(embed=e_embed)
             return
 
-        self.cur.execute(
-            f"DELETE FROM guild_notify WHERE guild_id = {ctx.guild.id}")  # Delete the guild from the database
+        self.cur.execute("DELETE FROM guild_notify WHERE guild_id = ?", (ctx.guild.id,))
         self.con.commit()  # Commit the changes to the database
 
-        d_embed = discord.Embed(title="Success!", description="The reminder has successfully been deleted.",
-                                color=embed_color)
+        d_embed = discord.Embed(title="Success!",
+                                description="The reminder has successfully been deleted.", color=embed_color)
         d_embed.set_author(name=embed_title)
         d_embed.set_footer(text=embed_footer)
 
@@ -290,8 +290,9 @@ class Commands(commands.Cog):
     async def invite(self, ctx):
         await log("info", "command", f"{ctx.author.id} in {ctx.guild.id} is getting the invite link.")
         embed = discord.Embed(title="Invite",
-                              description=f"Click the below button to add the bot to your server. Alternatively you can use this URL too.\n https://bpsapi.rajtech.me/r/discord-bot-invite",
-                              color=embed_color)
+                              description=f"Click the below button to add the bot to your server. "
+                                          f"Alternatively you can use this URL too.\n "
+                                          f"https://bpsapi.rajtech.me/r/discord-bot-invite", color=embed_color)
         embed.set_author(name=embed_title)
         embed.set_footer(text=embed_footer)
 
@@ -332,7 +333,7 @@ class Commands(commands.Cog):
         r_embed.set_author(name=embed_title)
         r_embed.set_footer(text=embed_footer)
 
-        self.cur.execute(f"SELECT * FROM dm_notify WHERE user_id = {ctx.user.id}")
+        self.cur.execute("SELECT * FROM dm_notify WHERE user_id = ?", (ctx.author.id,))
         res = self.cur.fetchone()
         if res:  # If the user is already in the database
             r_embed.title = "Unsubscribe"  # Set the title to Unsubscribe
@@ -361,16 +362,15 @@ class Commands(commands.Cog):
             return
 
         if message:  # If the message is not None, add the message to the embed
-            message = message.replace("<", "").replace(">", "").replace('"', "")  # Remove the <, > and " from the message
-            self.cur.execute(
-                f'INSERT INTO dm_notify (user_id, message) VALUES ({ctx.user.id}, "{message}");'
-            )  # Add the user to the database
+            message = message.replace("<", "").replace(">", "").replace('"', "")
+            self.cur.execute("INSERT INTO dm_notify (user_id, message) VALUES (?, ?)", (ctx.author.id, message))
         else:  # If the message is None, add the default message to the embed
-            self.cur.execute(f"INSERT INTO dm_notify (user_id) VALUES ({ctx.user.id});")
+            self.cur.execute("INSERT INTO dm_notify (user_id) VALUES (?)", (ctx.author.id,))
         self.con.commit()
 
         r_embed.title = "Success!"  # Set the title to Success
-        r_embed.description = "You successfully subscribed to DM reminders! </circular remindme:1010911588703817808> to unsubscribe."
+        r_embed.description = "You successfully subscribed to DM reminders! " \
+                              "</circular remindme:1010911588703817808> to unsubscribe."
 
         try:    # Try to send the user a DM
             await ctx.author.send(embed=r_embed)  # Send the embed to the user in DMs
