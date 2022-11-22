@@ -156,9 +156,17 @@ async def log(level, category, msg, *args):
     msg.replace('"', "")
 
     # This code logs the message using the correct level's logger based on the level parameter
-    console.debug(msg) if level.upper() == "DEBUG" else console.info(msg) if level.upper() == "INFO" else \
-        console.warning(msg) if level.upper() == "WARNING" else console.error(msg) if level.upper() == "ERROR" \
-            else console.critical(msg) if level.upper() == "CRITICAL" else console.info(msg)
+    match level.upper():
+        case "DEBUG":
+            console.debug(msg)
+        case "INFO":
+            console.info(msg)
+        case "WARNING":
+            console.warning(msg)
+        case "ERROR":
+            console.error(msg)
+        case "CRITICAL":
+            console.critical(msg)
 
     if category not in ["command", "notification", "listener", "backend", "etc"]:
         category = "etc"
@@ -166,7 +174,7 @@ async def log(level, category, msg, *args):
     db = sqlite3.connect('./data/data.db')
     cursor = db.cursor()
 
-    cursor.execute(f'INSERT INTO logs VALUES ({current_time}, "{level}", "{category}", "{msg}");')
+    cursor.execute('INSERT INTO logs VALUES (?, ?, ?, ?)', (current_time, level, category, msg))
     db.commit()
 
 
