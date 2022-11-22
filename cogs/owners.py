@@ -140,7 +140,7 @@ class Owners(commands.Cog):
         embed_list = []
         notif_msgs = {"guild": [], "dm": []}
 
-        if len(png_url) != 1:   # If there is more than a single page in the circular
+        if len(png_url) != 1:  # If there is more than a single page in the circular
             for i in range(len(png_url)):
                 if i == 0:
                     continue
@@ -421,13 +421,15 @@ class Owners(commands.Cog):
 
         await ctx.respond("Successfully set the message for the next circular embed.")
 
-    @owners.command()
+    @owners.command(name="editnotif", description="Edit a notification message.")
     async def edit_notif(self, ctx, id_: int,
-                         update_type: discord.Option(choices=
-                         [
+                         update_type: discord.Option(choices=[
                              discord.OptionChoice("Reload Image", value="image"),
-                             discord.OptionChoice("Delete", value="delete")
-                         ])):
+                             discord.OptionChoice("Delete", value="delete"),
+                             discord.OptionChoice("Set Dev Message", value="dev_message")
+                         ]),
+                         dev_message: str = None
+                         ):
 
         if ctx.author.id not in owner_ids:
             return await ctx.respond("You are not allowed to use this command.")
@@ -475,34 +477,42 @@ class Owners(commands.Cog):
                 self.cur.execute(f"DELETE FROM notif_msgs WHERE circular_id = {id_} AND msg_id = {msg[0]}")
                 continue
 
-        if update_type == "image":
-            for msg in msg_list:
-                current_embed = msg.embeds[0]
-                embed_list = []
+        match update_type:
+            case "image":
 
-                data = await search(id_)
-                png = await get_png(data['link'])
+                for msg in msg_list:
+                    current_embed = msg.embeds[0]
+                    embed_list = []
 
-                current_embed.set_image(url=png[0])
+                    data = await search(id_)
+                    png = await get_png(data['link'])
 
-                if len(png) != 1:
-                    for i in range(png):
-                        if i == 0:
-                            continue
-                        if i > 3:
-                            break
+                    current_embed.set_image(url=png[0])
 
-                        temp_embed = discord.Embed(url=embed_url)
-                        temp_embed.set_image(url=png[i])
-                        embed_list.append(temp_embed.copy())
+                    if len(png) != 1:
+                        for i in range(png):
+                            if i == 0:
+                                continue
+                            if i > 3:
+                                break
 
-                await msg.edit(embeds=[current_embed, *embed_list])
+                            temp_embed = discord.Embed(url=embed_url)
+                            temp_embed.set_image(url=png[i])
+                            embed_list.append(temp_embed.copy())
 
-        elif update_type == "delete":
-            for msg in msg_list:
-                await msg.delete()
-            self.cur.execute(f"DELETE FROM notif_msgs WHERE circular_id = {id_}")
-            self.con.commit()
+                    await msg.edit(embeds=[current_embed, *embed_list])
+
+            case "delete":
+                for msg in msg_list:
+                    await msg.delete()
+                self.cur.execute(f"DELETE FROM notif_msgs WHERE circular_id = {id_}")
+                self.con.commit()
+
+            case "dev_message":
+                for msg in msg_list:
+                    current_embed = msg.embeds[0]
+                    current_embed.add_field(name="Dev Message", value="This is a dev message.")
+                    await msg.edit(embed=current_embed)
 
         await ctx.respond("Successfully updated the messages.")
 
