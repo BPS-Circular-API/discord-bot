@@ -151,8 +151,7 @@ class Owners(commands.Cog):
                 embed_list.append(temp_embed.copy())
 
         if debug_guild:  # If a debug guild is specified, send the message to ONLY that guild.
-            self.cur.execute(  # Get the server message from the database
-                f"SELECT message FROM guild_notify WHERE guild_id = {debug_guild}")
+            self.cur.execute("SELECT message FROM guild_notify WHERE guild_id = ?", (debug_guild,))
             message = self.cur.fetchone()  # Get the reminder-message for the guild from the DB
             console.debug(f"[Owners] | Message: {message}")
 
@@ -161,7 +160,7 @@ class Owners(commands.Cog):
             embed.description = message[0]  # Set the description of the embed to the message
 
             guild = await self.client.fetch_guild(int(debug_guild))  # Get the guild object
-            self.cur.execute(f"SELECT channel_id FROM guild_notify WHERE guild_id = {guild.id}")
+            self.cur.execute("SELECT channel_id FROM guild_notify WHERE guild_id = ?", (guild.id,))
             channel_id = self.cur.fetchone()[0]  # Get the channel_id for the guild from the DB
 
             channel = await guild.fetch_channel(int(channel_id))  # Get the channel object
@@ -170,12 +169,12 @@ class Owners(commands.Cog):
             return await ctx.respond(f"Notified the `{debug_guild}` server.")  # Respond to the user and return
 
         elif debug_user:  # If a debug user is specified, send the message to ONLY that user.
-            self.cur.execute(f"SELECT message FROM dm_notify WHERE user_id = {debug_user}")
+            self.cur.execute("SELECT message FROM dm_notify WHERE user_id = ?", (debug_user,))
             message = self.cur.fetchone()  # Get the reminder-message for the user from the DB
             console.debug(f"[Owners] | Message: {message}")
 
-            if not message:  # If the message is not found
-                message = "A new circular is out!"  # Set the message to the default message
+            if not message:
+                message = "A new circular is out!"
             embed.description = message[0]  # Set the description of the embed to the message
 
             user = await self.client.fetch_user(int(debug_user))  # Get the user object
@@ -204,7 +203,7 @@ class Owners(commands.Cog):
             channels = [x[1] for x in guild_notify]  # Get all the channel_id s from the database
             messages = [x[2] for x in guild_notify]  # Get all the messages from the database
 
-            self.cur.execute(f"SELECT * FROM dm_notify")  # Get all the users from the database
+            self.cur.execute("SELECT * FROM dm_notify")  # Get all the users from the database
             users = self.cur.fetchall()  # Get all the user_id s from the database
 
             user_ids = [x[0] for x in users]  # Get all the user_id s from the database
@@ -229,14 +228,14 @@ class Owners(commands.Cog):
                         channel = await guild.fetch_channel(int(channel))  # Get the channel object
 
                     except discord.NotFound:  # If the channel or guild is not found (deleted)
-                        console.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
-                        self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")
+                        console.warning(f"Guild or channel not found. Guild: {guild.id}, Channel: {channel.id}")
+                        self.cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?", (guild.id, channel.id))
                         self.con.commit()
                         continue
 
                     except discord.Forbidden:  # If the bot can not get the channel or guild
-                        console.warning(f"Could not get channel. Guild: {guild}, Channel: {channel}. Seems like I was kicked from the server.")
-                        self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = {guild} AND channel_id = {channel}")
+                        console.warning(f"Could not get channel. Guild: {guild.id}, Channel: {channel.id}. Seems like I was kicked from the server.")
+                        self.cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?", (guild.id, channel.id))
                         self.con.commit()
                         continue
 
@@ -280,8 +279,8 @@ class Owners(commands.Cog):
                         user = await self.client.fetch_user(int(user))  # Get the user object
 
                     except discord.NotFound:  # If the user is not found (deleted)
-                        console.warning(f"User not found. User: {user}")
-                        self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user}")  # Delete the user from the database
+                        console.warning(f"User not found. User: {user.id}")
+                        self.cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))  # Delete the user from the database
                         self.con.commit()
                         continue
 
@@ -299,9 +298,9 @@ class Owners(commands.Cog):
 
                     except discord.Forbidden:  # If the user has DMs disabled
                         console.error(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
-                        self.cur.execute(f"DELETE FROM dm_notify WHERE user_id = {user.id}")  # Delete the user from the database
+                        self.cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))  # Delete the user from the database
                         self.con.commit()
-                        await log('info', 'listener',f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
+                        await log('info', 'listener', f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
                         continue
 
                     except Exception as e:  # If the user has DMs disabled
@@ -327,9 +326,10 @@ class Owners(commands.Cog):
 
             # Insert the notification log into the database
             for item in notif_msgs["dm"]:
-                self.cur.execute(f"INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES ({id_}, {item[0]}, 'dm', {item[1]})")
+                self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES (?, ?, ?, ?)", (id_, item[0], "dm", item[1]))
             for item in notif_msgs["guild"]:
-                self.cur.execute(f"INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) VALUES ({id_}, {item[0]}, 'guild', {item[1]}, {item[2]})")
+                self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
+                                 "VALUES (?, ?, ?, ?, ?)", (id_, item[0], 'guild', item[1], item[2]))
             self.con.commit()
 
             console.info(f"Sent Circular to {len(notif_msgs['dm'])} users and {len(notif_msgs['guild'])} guilds.")
@@ -366,14 +366,13 @@ class Owners(commands.Cog):
 
         # get logs from sql
         if level is None and category is None:
-            self.cur.execute(f"SELECT * FROM logs ORDER BY timestamp DESC LIMIT {amount}")
+            self.cur.execute("SELECT * FROM logs ORDER BY timestamp DESC LIMIT ?", (amount,))
         elif level is None:
-            self.cur.execute(f"SELECT * FROM logs WHERE category = '{category}' ORDER BY timestamp DESC LIMIT {amount}")
+            self.cur.execute("SELECT * FROM logs WHERE category = ? ORDER BY timestamp DESC LIMIT ?", (category, amount))
         elif category is None:
-            self.cur.execute(f"SELECT * FROM logs WHERE log_level = '{level}' ORDER BY timestamp DESC LIMIT {amount}")
+            self.cur.execute("SELECT * FROM logs WHERE log_level = ? ORDER BY timestamp DESC LIMIT ?", (level, amount))
         else:
-            self.cur.execute(
-                f"SELECT * FROM logs WHERE log_level = '{level}' AND category = '{category}' ORDER BY timestamp DESC LIMIT {amount}")
+            self.cur.execute("SELECT * FROM logs WHERE log_level = ? AND category = ? ORDER BY timestamp DESC LIMIT ?", (level, category, amount))
 
         logs = self.cur.fetchall()
 
@@ -410,13 +409,13 @@ class Owners(commands.Cog):
             return await ctx.respond("You are not allowed to use this command.")
         await ctx.defer()
 
-        self.cur.execute(f"SELECT * FROM cache where title = 'circular_message'")
+        self.cur.execute("SELECT * FROM cache where title = 'circular_message'")
         circular_message = self.cur.fetchone()
 
         if circular_message is None:
-            self.cur.execute(f"INSERT INTO cache VALUES ('circular_message', 'None', '{message}')")
+            self.cur.execute("INSERT INTO cache VALUES ('circular_message', 'None', ?)", (message,))
         else:
-            self.cur.execute(f"UPDATE cache SET data = ? WHERE title = 'circular_message'", (message,))
+            self.cur.execute("UPDATE cache SET data = ? WHERE title = 'circular_message'", (message,))
         self.con.commit()
 
         await ctx.respond("Successfully set the message for the next circular embed.")
@@ -438,9 +437,9 @@ class Owners(commands.Cog):
         msg_list = []
 
         # Get the message ids of the circular embeds
-        self.cur.execute(f"SELECT msg_id, channel_id FROM notif_msgs WHERE circular_id = {id_} AND type = 'dm'")
+        self.cur.execute("SELECT msg_id, channel_id FROM notif_msgs WHERE circular_id = ? AND type = 'dm'", (id_,))
         dm_msgs = self.cur.fetchall()
-        self.cur.execute(f"SELECT msg_id, channel_id, guild_id FROM notif_msgs WHERE circular_id = {id_} AND type = 'guild'")
+        self.cur.execute("SELECT msg_id, channel_id, guild_id FROM notif_msgs WHERE circular_id = ? AND type = 'guild'", (id_,))
         guild_msgs = self.cur.fetchall()
 
         for msg in dm_msgs:
@@ -451,13 +450,13 @@ class Owners(commands.Cog):
 
             except discord.NotFound:
                 console.warning(f"Could not find DM message with id {msg[0]}")
-                self.cur.execute(f"DELETE FROM notif_msgs WHERE circular_id = {id_} AND msg_id = {msg[0]}")
+                self.cur.execute("DELETE FROM notif_msgs WHERE circular_id = ? AND msg_id = ?", (id_, msg[0]))
                 self.con.commit()
                 continue
 
             except discord.Forbidden:
                 console.warning(f"Could not fetch DM message with id {msg[0]}")
-                self.cur.execute(f"DELETE FROM notif_msgs WHERE circular_id = {id_} AND msg_id = {msg[0]}")
+                self.cur.execute("DELETE FROM notif_msgs WHERE circular_id = ? AND msg_id = ?", (id_, msg[0]))
                 self.con.commit()
                 continue
 
@@ -474,7 +473,7 @@ class Owners(commands.Cog):
 
             except discord.NotFound:
                 console.warning(f"Could not find guild message with id {msg[0]}")
-                self.cur.execute(f"DELETE FROM notif_msgs WHERE circular_id = {id_} AND msg_id = {msg[0]}")
+                self.cur.execute("DELETE FROM notif_msgs WHERE circular_id = ? AND msg_id = ?", (id_, msg[0]))
                 continue
 
         match update_type:
@@ -505,7 +504,7 @@ class Owners(commands.Cog):
             case "delete":
                 for msg in msg_list:
                     await msg.delete()
-                self.cur.execute(f"DELETE FROM notif_msgs WHERE circular_id = {id_}")
+                self.cur.execute("DELETE FROM notif_msgs WHERE circular_id = ?", (id_,))
                 self.con.commit()
 
             case "dev_message":
