@@ -203,8 +203,7 @@ class Commands(commands.Cog):
                 )
                 return
 
-        self.cur.execute(
-            f"SELECT * FROM guild_notify WHERE guild_id = {guild.id}")  # Check if the guild is already in the database
+        self.cur.execute("SELECT * FROM guild_notify WHERE guild_id = ?", (guild.id,))
         res = self.cur.fetchone()
 
         if res:  # If the guild is in the database
@@ -351,8 +350,7 @@ class Commands(commands.Cog):
                 await ctx.followup.send("Cancelled.")
                 return
 
-            self.cur.execute(
-                f"DELETE FROM dm_notify WHERE user_id = {ctx.user.id}")  # Delete the user from the database
+            self.cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (ctx.author.id,))
             self.con.commit()  # Commit the changes to the database
 
             r_embed.title = "Unsubscribed"
