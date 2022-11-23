@@ -20,25 +20,22 @@ class Owners(commands.Cog):
 
     @owners.command(name='status', description='Change the bot status.')
     async def status(self, ctx, status: str, message: str):
-        if ctx.author.id in owner_ids:
-            if status == 'playing':
-                await self.client.change_presence(activity=discord.Game(name=message))
-            elif status == 'streaming':
-                await self.client.change_presence(activity=discord.Streaming(name=message, url='https://twitch.tv/'))
-            elif status == 'listening':
-                await self.client.change_presence(
-                    activity=discord.Activity(type=discord.ActivityType.listening, name=message))
-            elif status == 'watching':
-                await self.client.change_presence(
-                    activity=discord.Activity(type=discord.ActivityType.watching, name=message))
-            else:
-                await ctx.respond("Invalid status.")
-                return
-            await ctx.respond("Status changed.")
-            # stop the status changer loop
-
-        else:
+        if ctx.author.id not in owner_ids:
             await ctx.respond("You are not a bot owner.")
+            return
+        
+        match status:
+            case 'playing':
+                await self.client.change_presence(activity=discord.Game(name=message))
+            case 'streaming':
+                await self.client.change_presence(activity=discord.Streaming(name=message, url='https://twitch.tv/'))
+            case 'listening':
+                await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=message))
+            case 'watching':
+                await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=message))
+            # TODO: stop the status changer loop
+
+        await ctx.respond("Status changed.")
 
     @owners.command(name='reload', description='Reload a cog.')
     async def reload(self, ctx, cog: str):

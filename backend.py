@@ -190,6 +190,108 @@ def set_cached(obj):
         pickle.dump(obj, f)
 
 
+async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed):
+    for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
+
+        # Set the custom message if there is one
+        console.debug(f"Message: {message}")
+        embed.description = message  # Set the description of the embed to the message
+
+        try:  # Try to fetch the guild and channel from the discord API
+            guild = await self.client.fetch_guild(int(guild))  # Get the guild object
+            channel = await guild.fetch_channel(int(channel))  # Get the channel object
+
+        except discord.NotFound:  # If the channel or guild is not found (deleted)
+            console.warning(f"Guild or channel not found. Guild: {guild.id}, Channel: {channel.id}")
+            self.cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
+                             (guild.id, channel.id))
+            self.con.commit()
+            continue
+
+        except discord.Forbidden:  # If the bot can not get the channel or guild
+            console.warning(f"Could not get channel. Guild: {guild.id}, Channel: {channel.id}. "
+                            "Seems like I was kicked from the server.")
+            self.cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
+                             (guild.id, channel.id))
+            self.con.commit()
+            continue
+
+        except Exception as e:  # If there is any other error
+            console.error(f"Error: {e}")
+            continue
+
+        try:  # Try to send the message
+            _msg = await channel.send(embeds=[embed.copy(), *embed_list])  # Send the embed
+            console.debug(f"Sent Circular Embed to {guild.id} | {channel.id}")
+
+        except discord.Forbidden:  # If the bot doesn't have permission to send messages in the channel
+            for _channel in guild.text_channels:  # Find a channel where it can send messages
+
+                try:  # Try to send the error embed
+                    await _channel.send(embed=error_embed)  # Send the error embed
+                    _msg = await _channel.send(embeds=[embed.copy(), *embed_list])  # Send the circular embed
+                    console.warning(f"Could not send message to {channel.id} in {guild.id}. Sent to {channel.id} instead.")
+                    channel = _channel  # Set the channel to the new channel
+                    break
+
+                except discord.Forbidden:  # If the bot can't send messages in the channel
+                    continue
+
+            else:  # If it can't send the message in any channel
+                console.error(f"Couldn't send Circular to {guild.id}'s {channel.id}")
+                continue
+
+        except Exception as e:  # If it can't send the circular embed
+            console.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden." + str(e))
+            continue
+
+        try:
+            notif_msgs["guild"].append((_msg.id, channel.id, guild.id))  # TODO: check if this works
+        except Exception as e:
+            console.error(f"Error: {e}")
+
+
+async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list):
+    for user, message in zip(user_id, user_message):  # For each user in the database
+
+        try:  # Try to get the user
+            user = await self.client.fetch_user(int(user))  # Get the user object
+
+        except discord.NotFound:  # If the user is not found (deleted)
+            console.warning(f"User not found. User: {user}")
+            self.cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
+            self.con.commit()
+            continue
+
+        except Exception as e:  # If there is any other error
+            console.error(f"Could get fetch a user {user}. Error: {e}")
+            continue
+
+        console.debug(f"[Listeners] | Message: {message}")
+        embed.description = message
+
+        try:  # Try to send the embed to the user
+            _msg = await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed to the user
+            console.debug(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+
+        except discord.Forbidden:  # If the user has DMs disabled
+            console.error(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
+            self.cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
+            self.con.commit()
+            await log('info', 'listener', f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
+            continue
+
+        except Exception as e:  # If the user has DMs disabled
+            console.error(f"Couldn't send Circular Embed to User: {user.id}")
+            console.error(e)
+            continue
+
+        try:
+            notif_msgs["dm"].append((_msg.id, user.id))
+        except Exception as e:
+            console.error(f"Error: {e}")
+
+
 # Confirm Button Discord View
 class ConfirmButton(discord.ui.View):  # Confirm Button Class
     def __init__(self, author):
