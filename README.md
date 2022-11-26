@@ -4,7 +4,7 @@
 ---
 
 # BPS Circular Discord Bot
-The official BPS Circular API Discord Bot is a bot that allows you to get the latest circulars from the BPS Circular API. It is written in Python using the discord.py library.
+The official BPS Circular API Discord Bot is a bot that allows you to get the latest circulars from the BPS Circular API. It is written in Python using the `py-cord` library. It uses my own [BPS Circular API](https://github.com/BPS-Circular-API/api)
 
 It uses my own BPS Circular API to get the latest circulars.
 
