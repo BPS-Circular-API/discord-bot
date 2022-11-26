@@ -3,7 +3,8 @@ import sqlite3
 import discord
 import discord.ext.pages
 from discord.ext import commands
-from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url, FeedbackButton
+from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, \
+    search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url, FeedbackButton
 from discord import SlashCommandGroup
 import time
 
@@ -230,20 +231,32 @@ class Commands(commands.Cog):
 
         self.con.commit()  # Commit the changes to the database
 
-        c_embed = discord.Embed(title="Success!",
-                                description="The reminder configuration for this server has successfully been added!",
+        c_embed = discord.Embed(title="Circular Notification Setup!",
+                                description="I'll send a notification in this channel on a new circular being posted!",
                                 color=embed_color)
         c_embed.set_author(name=embed_title)
         c_embed.set_footer(text=embed_footer)
-        c_embed.add_field(name="Channel", value=f"{channel.mention}", inline=False)
 
         if message:  # If the message is not None, add the message to the embed
             c_embed.add_field(name="Message", value=f"`{message}`", inline=False)
 
-        await ctx.followup.send(embed=c_embed)  # Send the embed to the user
-        c_embed.title = "Circular Notification Setup!"  # Change the title of the embed
-        c_embed.description = "I will now send a notification in this channel, when a circular is available!"  # Change the description of the embed
-        await channel.send(embed=c_embed)
+        try:
+            await channel.send(embed=c_embed)
+
+            c_embed.title = "Success!"
+            c_embed.description = "The reminder configuration for this server has successfully been added!"
+            c_embed.add_field(name="Channel", value=f"{channel.mention}", inline=False)
+
+            await ctx.followup.send(embed=c_embed)
+
+        except discord.Forbidden:
+            error_embed = discord.Embed(title="Error!", color=discord.Color.red(), url=embed_url)
+            embed.set_footer(text=embed_footer)
+            error_embed.description = f"I do not have permission to send messages in that channel! (<#{channel.id}>).\n" \
+                                      f"Please give me permission to send messages in that channel, " \
+                                      f"or use another channel."
+
+            await ctx.followup.send(error_embed)
 
     @admin.command(name="delete", description="Delete the server's circular reminder configuration.")
     async def delete(self, ctx):
@@ -297,7 +310,9 @@ class Commands(commands.Cog):
 
         class InviteButton(discord.ui.Button):
             def __init__(self):
-                super().__init__(label="Invite", url="https://discord.com/api/oauth2/authorize?client_id=1009533262533767258&permissions=16&scope=bot%20applications.commands", style=discord.ButtonStyle.link)
+                super().__init__(label="Invite",
+                                 url="https://discord.com/api/oauth2/authorize?client_id=1009533262533767258&permissions=16&scope=bot%20applications.commands",
+                                 style=discord.ButtonStyle.link)
 
         view = discord.ui.View()
         view.add_item(InviteButton())
@@ -370,14 +385,14 @@ class Commands(commands.Cog):
         r_embed.description = "You successfully subscribed to DM reminders! " \
                               "</circular remindme:1010911588703817808> to unsubscribe."
 
-        try:    # Try to send the user a DM
+        try:  # Try to send the user a DM
             await ctx.author.send(embed=r_embed)  # Send the embed to the user in DMs
 
-        except discord.Forbidden:   # If the user has DMs disabled
+        except discord.Forbidden:  # If the user has DMs disabled
             r_embed.description = "Error: I couldn't send you a DM. Please enable DMs from server members."
             await ctx.followup.send(embed=r_embed)
 
-        else:   # If the user has DMs enabled
+        else:  # If the user has DMs enabled
             await ctx.followup.send(embed=r_embed)
             await log("info", "notification", f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
 
