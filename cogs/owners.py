@@ -277,7 +277,7 @@ class Owners(commands.Cog):
         logs = self.cur.fetchall()
 
         if not logs:
-            return await ctx.send("No logs found.", ephemerical=True)
+            return await ctx.respond("No logs found.", ephemeral=True)
 
         embed = discord.Embed(title="Logs", color=embed_color)
         embed.set_footer(text=embed_footer)
@@ -414,6 +414,18 @@ class Owners(commands.Cog):
                     await msg.edit(embed=current_embed)
 
         await ctx.respond("Successfully updated the messages.")
+
+    @owners.command()
+    async def send_msg(self, ctx, user_id: str, msg: str):
+        if ctx.author.id not in owner_ids:
+            return await ctx.respond("You are not allowed to use this command.")
+        await ctx.defer()
+
+        user = await self.client.fetch_user(int(user_id))
+        embed_ = discord.Embed(title="Message from the Developer", description=msg.replace(" nl ", "\n"))
+        embed_.set_footer(text=embed_footer)
+        await user.send(embed=embed_)
+        await ctx.respond("Successfully sent the message.")
 
 
 def setup(client):
