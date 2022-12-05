@@ -186,7 +186,8 @@ class Commands(commands.Cog):
     # Admin commands
     @admin.command(
         name="setup",
-        description="Set up the bot to guild_notify the user when a circular is available in a channel."
+        description="Set up the bot to guild_notify the user when a circular is available in a channel.",
+        guild_only=True
     )
     async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
         await ctx.defer()
