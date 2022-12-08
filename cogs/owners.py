@@ -222,7 +222,7 @@ class Owners(commands.Cog):
 
                 case _:
                     await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed)
-                    await send_to_users(user_id, user_message, notif_msgs, embed, embed_list)
+                    await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list)
 
             # Insert the notification log into the database
             for item in notif_msgs["dm"]:

@@ -191,6 +191,9 @@ def set_cached(obj):
 
 
 async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed):
+    con = sqlite3.connect('./data/data.db')
+    cursor = con.cursor()
+
     for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
         # Set the custom message if there is one
@@ -198,22 +201,22 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
         embed.description = message  # Set the description of the embed to the message
 
         try:  # Try to fetch the guild and channel from the discord API
-            guild = await self.client.fetch_guild(int(guild))  # Get the guild object
+            guild = await client.fetch_guild(int(guild))  # Get the guild object
             channel = await guild.fetch_channel(int(channel))  # Get the channel object
 
         except discord.NotFound:  # If the channel or guild is not found (deleted)
             console.warning(f"Guild or channel not found. Guild: {guild.id}, Channel: {channel.id}")
-            self.cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
+            cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
                              (guild.id, channel.id))
-            self.con.commit()
+            con.commit()
             continue
 
         except discord.Forbidden:  # If the bot can not get the channel or guild
             console.warning(f"Could not get channel. Guild: {guild.id}, Channel: {channel.id}. "
                             "Seems like I was kicked from the server.")
-            self.cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
+            cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
                              (guild.id, channel.id))
-            self.con.commit()
+            con.commit()
             continue
 
         except Exception as e:  # If there is any other error
@@ -250,17 +253,21 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
         except Exception as e:
             console.error(f"Error: {e}")
 
+    con.close()
 
+    
 async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list):
+    con = sqlite3.connect('./data/data.db')
+    cur = con.cursor()
     for user, message in zip(user_id, user_message):  # For each user in the database
 
         try:  # Try to get the user
-            user = await self.client.fetch_user(int(user))  # Get the user object
+            user = await client.fetch_user(int(user))  # Get the user object
 
         except discord.NotFound:  # If the user is not found (deleted)
             console.warning(f"User not found. User: {user}")
-            self.cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
-            self.con.commit()
+            cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
+            con.commit()
             continue
 
         except Exception as e:  # If there is any other error
@@ -276,8 +283,8 @@ async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list):
 
         except discord.Forbidden:  # If the user has DMs disabled
             console.error(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
-            self.cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
-            self.con.commit()
+            cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
+            con.commit()
             await log('info', 'listener', f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
             continue
 
@@ -290,6 +297,8 @@ async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list):
             notif_msgs["dm"].append((_msg.id, user.id))
         except Exception as e:
             console.error(f"Error: {e}")
+
+    con.close()
 
 
 # Confirm Button Discord View
