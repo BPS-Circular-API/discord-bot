@@ -30,9 +30,11 @@ class Owners(commands.Cog):
             case 'streaming':
                 await self.client.change_presence(activity=discord.Streaming(name=message, url='https://twitch.tv/'))
             case 'listening':
-                await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=message))
+                await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening,
+                                                                            name=message))
             case 'watching':
-                await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=message))
+                await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
+                                                                            name=message))
             # TODO: stop the status changer loop
 
         await ctx.respond("Status changed.")
@@ -122,7 +124,7 @@ class Owners(commands.Cog):
             return await ctx.respond("You are not allowed to use this command.")
         await ctx.defer()
 
-        embed = discord.Embed(title=f"New Circular | **{category.capitalize()}** ", color=embed_color, url=embed_url)  # Create the embed
+        embed = discord.Embed(title=f"New Circular | **{category.capitalize()}** ", color=embed_color, url=embed_url)
         embed.set_footer(text=embed_footer)  # Set the footer
         embed.set_author(name=embed_title)  # Set the author
 
@@ -182,7 +184,7 @@ class Owners(commands.Cog):
         else:
             button = ConfirmButton(ctx.author)  # Create a ConfirmButton object
 
-            await ctx.followup.send(embeds=[embed.copy(), *embed_list], view=button)  # Send the embed to the user for confirmation
+            await ctx.followup.send(embeds=[embed.copy(), *embed_list], view=button)
             await button.wait()  # Wait for the user to confirm
 
             if button.value is None:  # Timeout
@@ -208,7 +210,8 @@ class Owners(commands.Cog):
             del users, guild_notify  # Delete the variables to free up memory
 
             error_embed = discord.Embed(title=f"Error!",
-                                        description=f"Please make sure that I have the permission to send messages in the channel you set for notifications.",
+                                        description=f"Please make sure that I have the permission "
+                                                    f"to send messages in the channel you set for notifications.",
                                         color=embed_color)
             error_embed.set_footer(text=embed_footer)
             error_embed.set_author(name=embed_title)
@@ -226,7 +229,8 @@ class Owners(commands.Cog):
 
             # Insert the notification log into the database
             for item in notif_msgs["dm"]:
-                self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES (?, ?, ?, ?)", (id_, item[0], "dm", item[1]))
+                self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES (?, ?, ?, ?)",
+                                 (id_, item[0], "dm", item[1]))
             for item in notif_msgs["guild"]:
                 self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
                                  "VALUES (?, ?, ?, ?, ?)", (id_, item[0], 'guild', item[1], item[2]))
@@ -268,11 +272,14 @@ class Owners(commands.Cog):
         if level is None and category is None:
             self.cur.execute("SELECT * FROM logs ORDER BY timestamp DESC LIMIT ?", (amount,))
         elif level is None:
-            self.cur.execute("SELECT * FROM logs WHERE category = ? ORDER BY timestamp DESC LIMIT ?", (category, amount))
+            self.cur.execute("SELECT * FROM logs WHERE category = ? ORDER BY timestamp DESC LIMIT ?",
+                             (category, amount))
         elif category is None:
-            self.cur.execute("SELECT * FROM logs WHERE log_level = ? ORDER BY timestamp DESC LIMIT ?", (level, amount))
+            self.cur.execute("SELECT * FROM logs WHERE log_level = ? ORDER BY timestamp DESC LIMIT ?",
+                             (level, amount))
         else:
-            self.cur.execute("SELECT * FROM logs WHERE log_level = ? AND category = ? ORDER BY timestamp DESC LIMIT ?", (level, category, amount))
+            self.cur.execute("SELECT * FROM logs WHERE log_level = ? AND category = ? ORDER BY timestamp DESC LIMIT ?",
+                             (level, category, amount))
 
         logs = self.cur.fetchall()
 
@@ -410,7 +417,7 @@ class Owners(commands.Cog):
             case "dev_message":
                 for msg in msg_list:
                     current_embed = msg.embeds[0]
-                    current_embed.add_field(name="Dev Message", value="This is a dev message.")
+                    current_embed.add_field(name="Dev Message", value=dev_message)
                     await msg.edit(embed=current_embed)
 
         await ctx.respond("Successfully updated the messages.")

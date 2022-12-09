@@ -7,8 +7,9 @@ import datetime
 import asyncio
 import pybpsapi
 from discord.ext import commands, tasks
-from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, get_cached, \
-    set_cached, get_circular_list, status_interval, log, embed_url, base_api_url, send_to_guilds, send_to_users
+from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, \
+    get_cached, set_cached, get_circular_list, status_interval, log, embed_url, base_api_url, send_to_guilds, \
+    send_to_users
 
 
 class Listeners(commands.Cog):
@@ -18,9 +19,12 @@ class Listeners(commands.Cog):
         self.cur = self.con.cursor()
         self.member_count = -1
 
-        general = pybpsapi.CircularChecker('general', cache_method='database', db_name='data', db_path='./data', db_table='cache', url=base_api_url)
-        ptm = pybpsapi.CircularChecker('ptm', cache_method='database', db_name='data', db_path='./data', db_table='cache', url=base_api_url)
-        exam = pybpsapi.CircularChecker('exam', cache_method='database', db_name='data', db_path='./data', db_table='cache', url=base_api_url)
+        general = pybpsapi.CircularChecker('general', cache_method='database', db_name='data', db_path='./data',
+                                           db_table='cache', url=base_api_url)
+        ptm = pybpsapi.CircularChecker('ptm', cache_method='database', db_name='data', db_path='./data',
+                                       db_table='cache', url=base_api_url)
+        exam = pybpsapi.CircularChecker('exam', cache_method='database', db_name='data', db_path='./data',
+                                        db_table='cache', url=base_api_url)
 
         self.group = pybpsapi.CircularCheckerGroup(general, ptm, exam)
 
@@ -49,28 +53,34 @@ class Listeners(commands.Cog):
         # Ignore if message is from a bot or a reply
         if (not ctx.author.bot) & (self.client.user.mentioned_in(ctx)) & (ctx.reference is None):
 
-            embed = discord.Embed(title="Mention Message", description="Hello! Thanks for using this bot.", color=embed_color)
+            embed = discord.Embed(title="Mention Message", description="Hello! Thanks for using this bot.",
+                                  color=embed_color)
             embed.set_footer(text=embed_footer)
             embed.set_author(name=embed_title)
-            embed.add_field(name="Prefix", value="This bot uses slash commands, which are prefixed with `/circular`", inline=False)
-            embed.add_field(name="For help", value="Use </help:1017654494009491476> to get a list of all the commands.", inline=False)
+            embed.add_field(name="Prefix", value="This bot uses slash commands, which are prefixed with `/circular`",
+                            inline=False)
+            embed.add_field(name="For help", value="Use </help:1017654494009491476> to get a list of all the commands.",
+                            inline=False)
 
             try:
                 msg = await ctx.reply(embed=embed)
                 await msg.edit(embed=embed, view=DeleteButton(ctx, msg, author_only=False))
-                await log('info', 'command', f"Sent mention message to {ctx.author.name}#{ctx.author.discriminator} ({ctx.author.id})")
+                await log('info', 'command',
+                          f"Sent mention message to {ctx.author.name}#{ctx.author.discriminator} ({ctx.author.id})")
 
-            except discord.Forbidden:   # If the bot doesn't have permission to send messages
-                await log('warning', 'command', f"Missing permissions to send mention message in {ctx.channel.id} in {ctx.guild.id}")
+            except discord.Forbidden:  # If the bot doesn't have permission to send messages
+                await log('warning', 'command',
+                          f"Missing permissions to send mention message in {ctx.channel.id} in {ctx.guild.id}")
 
             except Exception as e:
-                await log('warning', 'command', f"Error in sending mention message in {ctx.channel.id} in {ctx.guild.id} : {e}")
+                await log('warning', 'command',
+                          f"Error in sending mention message in {ctx.channel.id} in {ctx.guild.id} : {e}")
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         await log('info', 'listener', f"Joined guild {guild.id}")
 
-    @tasks.loop(seconds=status_interval*60)
+    @tasks.loop(seconds=status_interval * 60)
     async def random_status(self):
         activities = (
             f"{self.member_count} Users!",
@@ -93,7 +103,8 @@ class Listeners(commands.Cog):
         rand_int = random.randint(0, len(activities) - 1)
 
         try:
-            await self.client.change_presence(activity=discord.Activity(type=types[rand_int], name=activities[rand_int]))
+            await self.client.change_presence(
+                activity=discord.Activity(type=types[rand_int], name=activities[rand_int]))
         except Exception as e:
             await log('warning', 'listener', f"Error in changing status : {e}")
         console.debug(f"Changed status to {activities[rand_int]}")
@@ -165,7 +176,8 @@ class Listeners(commands.Cog):
         error_embed.set_footer(text=embed_footer).set_author(name=embed_title)  # Set the footer and author
 
         # Create the main embed
-        embed = discord.Embed(title=f"New Circular | **{_circular_category.capitalize()}**", color=embed_color, url=embed_url)
+        embed = discord.Embed(title=f"New Circular | **{_circular_category.capitalize()}**", color=embed_color,
+                              url=embed_url)
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
         embed.set_image(url=png_url[0])  # Set the image to the attachment
@@ -182,11 +194,11 @@ class Listeners(commands.Cog):
 
         embed_list = []
 
-        if len(png_url) != 1:   # If the circular has more than 1 page
+        if len(png_url) != 1:  # If the circular has more than 1 page
             for i in range(len(png_url)):
                 if i == 0:
                     continue
-                elif i > 3:   # If the circular has more than 4 pages, send the first 4 pages only (discord embed limit)
+                elif i > 3:  # If the circular has more than 4 pages, send the first 4 pages only (discord embed limit)
                     break
 
                 temp_embed = discord.Embed(url=embed_url)  # Create a new embed
@@ -197,16 +209,21 @@ class Listeners(commands.Cog):
         await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed)
         await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list)
 
-        await log('info', "listener", f"Notified {len(notif_msgs['guild'])} guilds and {len(notif_msgs['dm'])} users about the new circular. ({id_})")
+        await log(
+            'info', "listener",
+            f"Notified {len(notif_msgs['guild'])} guilds and {len(notif_msgs['dm'])} "
+            f"users about the new circular. ({id_})"
+        )
 
         # tuple (message_id [0], channel_id [1], guild_id [2] optional)
         # Insert the notification log into the database
         for item in notif_msgs["dm"]:
-            self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES (?, ?, ?, ?)", (id_, item[0], "dm", item[1]))
+            self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES (?, ?, ?, ?)",
+                             (id_, item[0], "dm", item[1]))
         for item in notif_msgs["guild"]:
             self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
                              "VALUES (?, ?, ?, ?, ?)", (id_, item[0], "guild", item[1], item[2]))
-        self.con.commit()   # TODO: use cur.executemany() instead of looping
+        self.con.commit()  # TODO: use cur.executemany() instead of looping
 
     @tasks.loop(minutes=backup_interval * 60)
     async def backup(self):  # TODO: Fix this not working after using package

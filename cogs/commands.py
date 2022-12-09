@@ -2,11 +2,14 @@ import math
 import sqlite3
 import discord
 import discord.ext.pages
+import io
 from discord.ext import commands
 from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, \
     search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url, FeedbackButton
 from discord import SlashCommandGroup
 import time
+import aiohttp
+
 
 category_options = []
 for i in categories:
@@ -69,12 +72,12 @@ class Commands(commands.Cog):
             count += 1
             if count % 10 == 0:  # If the count is divisible by 10 (It has reached 10 fields)
                 console.debug(f"[Commands] | {count}")
-                embed.description = f"Format - `number [id] title`\nPage **{int(count / 10)}**\n"  # Set the description of the embed
+                embed.description = f"Format - `number [id] title`\nPage **{int(count / 10)}**\n"
                 page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
                 embed.clear_fields()  # Clear the fields of the embed
             elif count == len(titles):
                 console.debug(f"[Commands] | {count}")
-                embed.description = f"Format - `number [id] title`\nPage **{int(math.ceil(count / 10))}**\n"  # Set the description of the embed
+                embed.description = f"Format - `number [id] title`\nPage **{int(math.ceil(count / 10))}**\n"
                 page_list.append(embed.copy())
                 embed.clear_fields()
 
@@ -85,7 +88,7 @@ class Commands(commands.Cog):
         paginator = discord.ext.pages.Paginator(
             pages=page_list, disable_on_timeout=True, timeout=120
         )
-        await paginator.respond(ctx.interaction, ephemeral=False)
+        await paginator.respond(ctx.interaction)
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
@@ -103,7 +106,7 @@ class Commands(commands.Cog):
         link = raw_res['link']  # Get the link
         id_ = raw_res['id']  # Get the id
 
-        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color, url=embed_url)  # Create the embed
+        embed = discord.Embed(title=f"Latest Circular | {category.capitalize()}", color=embed_color, url=embed_url)
         embed.set_author(name=embed_title)  # Set the author
         embed.add_field(name="Title", value=f"`{title}`", inline=False)  # Add the title field
         embed.add_field(name="Circular ID", value=f"`{id_}`", inline=False)  # Add the id field
@@ -112,8 +115,7 @@ class Commands(commands.Cog):
 
         png_url = list(await get_png(link))  # Get the png file from the download url
         embed.set_image(url=png_url[0])  # Set the image to the embed
-        embed.description = f"Searched took {round(time.time() - start, 2)} second(s). Requested by {author.mention}"  # Set the description
-
+        embed.description = f"Searched took {round(time.time() - start, 2)} second(s). Requested by {author.mention}"
         embed_list = [embed]
 
         if len(png_url) != 1:
@@ -180,7 +182,7 @@ class Commands(commands.Cog):
                 embed_list.append(temp_embed.copy())
 
         msg = await ctx.followup.send(embeds=embed_list)
-        await msg.edit(embeds=embed_list, view=FeedbackButton(msg, author, circular_title, searched))  # Edit the embed and add the delete button
+        await msg.edit(embeds=embed_list, view=FeedbackButton(msg, author, circular_title, searched))
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     # Admin commands
@@ -218,7 +220,8 @@ class Commands(commands.Cog):
             e_embed.add_field(name="Channel", value=f"`{res[1]}`", inline=False)
             e_embed.add_field(name="Message", value=f"`{res[2]}`", inline=True)
             e_embed.add_field(name="To delete!",
-                              value=f"Use </circular admin delete:1010911588703817808> to delete this existing configuration!",
+                              value=f"Use </circular admin delete:1010911588703817808> "
+                                    f"to delete this existing configuration!",
                               inline=False)
             await ctx.followup.send(embed=e_embed)
             return
@@ -312,7 +315,8 @@ class Commands(commands.Cog):
         class InviteButton(discord.ui.Button):
             def __init__(self):
                 super().__init__(label="Invite",
-                                 url="https://discord.com/api/oauth2/authorize?client_id=1009533262533767258&permissions=16&scope=bot%20applications.commands",
+                                 url="https://discord.com/api/oauth2/authorize?client_id="
+                                     "1009533262533767258&permissions=16&scope=bot%20applications.commands",
                                  style=discord.ButtonStyle.link)
 
         view = discord.ui.View()
@@ -331,13 +335,21 @@ class Commands(commands.Cog):
                               color=embed_color)
         embed.set_author(name=embed_title)
         embed.set_footer(text=embed_footer)
-        embed.add_field(name="</circular list:1010911588703817808>", value="List all circulars in a particular category.", inline=False)
-        embed.add_field(name="</circular latest:1010911588703817808>", value="Sends the latest circular, the download URL and a the preview of a particular category.", inline=False)
-        embed.add_field(name="</circular search:1010911588703817808>", value="Searches for a circular from input and gives preview and circular details", inline=False)
-        embed.add_field(name="</circular remindme:1010911588703817808>", value="Remind you in DMs whenever a new circular is posted.", inline=False)
-        embed.add_field(name="</circular admin setup:1010911588703817808>", value="Set up a channel to remind in, when a new circular is posted", inline=False)
-        embed.add_field(name="</circular admin delete:1010911588703817808>", value="Delete the server's circular reminder configuration", inline=False)
-        embed.add_field(name="</circular invite:1010911588703817808>", value="Invite the bot to your server", inline=False)
+        embed.add_field(name="</circular list:1010911588703817808>",
+                        value="List all circulars in a particular category.", inline=False)
+        embed.add_field(name="</circular latest:1010911588703817808>",
+                        value="Sends the latest circular, the download URL and a the preview of a particular category.",
+                        inline=False)
+        embed.add_field(name="</circular search:1010911588703817808>",
+                        value="Searches for a circular from input and gives preview and circular details", inline=False)
+        embed.add_field(name="</circular remindme:1010911588703817808>",
+                        value="Remind you in DMs whenever a new circular is posted.", inline=False)
+        embed.add_field(name="</circular admin setup:1010911588703817808>",
+                        value="Set up a channel to remind in, when a new circular is posted", inline=False)
+        embed.add_field(name="</circular admin delete:1010911588703817808>",
+                        value="Delete the server's circular reminder configuration", inline=False)
+        embed.add_field(name="</circular invite:1010911588703817808>",
+                        value="Invite the bot to your server", inline=False)
         await ctx.followup.send(embed=embed)
 
     @circular.command(name="remindme", description="Subscribe to DM reminders for the latest circular.")
