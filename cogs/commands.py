@@ -127,9 +127,16 @@ class Commands(commands.Cog):
                 temp_embed = discord.Embed(url=embed_url)  # Create a new embed
                 temp_embed.set_image(url=png_url[i])
                 embed_list.append(temp_embed.copy())
+                
+        # This part adds a .pdf file to the message
+        # async with aiohttp.ClientSession() as session:  # creates session
+        #     async with session.get(link) as resp:  # gets image from url
+        #         img = await resp.read()  # reads image from response
+        #         with io.BytesIO(img) as file:  # converts to file-like object
+        #             file = discord.File(file, filename=f"{id_}.pdf")
 
-        msg = await ctx.followup.send(embeds=embed_list)  # Send the embed
-        await msg.edit(embeds=embed_list, view=DeleteButton(ctx, msg))  # Edit the embed and add the delete button
+        msg = await ctx.followup.send(embeds=embed_list, file=file)
+        await msg.edit(embeds=embed_list, view=DeleteButton(ctx, msg))
 
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} second(s).")
 

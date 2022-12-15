@@ -233,8 +233,19 @@ class Listeners(commands.Cog):
         if not os.path.exists('./data/backups/'):  # If the directory does not exist
             os.mkdir("./data/backups/")
 
-        shutil.copyfile("./data/data.db", f"./data/backups/data-{date_time}.db")  # Copy the current file to the new directory
+        shutil.copyfile("./data/data.db",
+                        f"./data/backups/data-{date_time}.db")  # Copy the current file to the new directory
         await log('info', "etc", f"Backed up the database to ./data/backups/data-{date_time}.db")
+
+    @commands.Cog.listener()
+    async def on_application_command_error(self, ctx: discord.ApplicationContext, error: Exception):
+        if isinstance(error, discord.errors.Forbidden):
+            await ctx.respond("I don't have the permission to do that!")
+        # elif isinstance(error, discord.errors.ApplicationCommandInvokeError):
+        #     pass
+        else:
+            console.error(error)
+            raise error
 
     @random_status.before_loop
     @check_for_circular.before_loop
