@@ -1,10 +1,11 @@
+import asyncio
 import configparser
 import sqlite3
 import time
 import discord
 import logging
-import requests
 import pickle
+import aiohttp
 import sys
 from discord.ext import commands
 from colorlog import ColoredFormatter
@@ -80,12 +81,13 @@ async def get_circular_list(category: str) -> tuple or None:
 
     params = {'category': category}
 
-    request = requests.get(url, params=params)
-    console.debug(request.json())
-    if int(request.json()['http_status']) == 500:
-        console.error("The API returned 500 Internal Server Error. Please check the API logs.")
-        return
-    return tuple(request.json()['data'])
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, params=params) as resp:
+            if resp.status == 200:
+                return tuple((await resp.json())['data'])
+            elif resp.status == 500:
+                console.error("The API returned 500 Internal Server Error. Please check the API logs.")
+                return
 
 
 async def get_latest_circular(category: str, cached=False) -> dict or None:
@@ -94,21 +96,27 @@ async def get_latest_circular(category: str, cached=False) -> dict or None:
     if category == "all":
         info = {}
         for i in categories:
-            params = {'category': i}
-            request = requests.get(url, params=params)
-            res = request.json()
-            info[i] = res['data']
+
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params={'category': i}) as resp:
+                    if resp.status == 200:
+                        info[i] = (await resp.json())['data']
+                    elif resp.status == 500:
+                        console.error("The API returned 500 Internal Server Error. Please check the API logs.")
+                        return
+
     elif category in ['ptm', 'general', 'exam']:
-        params = {'category': category}
-        request = requests.get(url, params=params)
-        try:
-            info = request.json()['data']
-        except Exception as errr:
-            console.error(f"Error in get_latest_circular: {errr}")
-            return
-        if int(request.json()['http_status']) == 500:
-            console.error("The API returned 500 Internal Server Error. Please check the API logs.")
-            return
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params={'category': category}) as resp:
+                if resp.status == 200:
+                    info = (await resp.json())['data']
+                elif resp.status == 500:
+                    console.error("The API returned 500 Internal Server Error. Please check the API logs.")
+                    return
+                else:
+                    return
+
     else:
         return
 
@@ -118,29 +126,26 @@ async def get_latest_circular(category: str, cached=False) -> dict or None:
 
 async def get_png(download_url: str) -> list or None:
     url = base_api_url + "getpng"
-    params = {'url': download_url}
 
-    request = requests.get(url, params=params)
-    console.debug(request.json())
-
-    if int(request.json()['http_status']) == 500:
-        console.error("The API returned 500 Internal Server Error. Please check the API logs.")
-        return
-    return list(request.json()['data'])
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, params={'url': download_url}) as resp:
+            if resp.status == 200:
+                return list((await resp.json())['data'])
+            elif resp.status == 500:
+                console.error("The API returned 500 Internal Server Error. Please check the API logs.")
+                return
 
 
 async def search(title: str) -> dict or None:
     url = base_api_url + "search"
 
-    params = {'title': title}
-
-    request = requests.get(url, params=params)
-    console.debug(request.json())
-
-    if int(request.json()['http_status']) == 500:
-        console.error("The API returned 500 Internal Server Error. Please check the API logs.")
-        return
-    return request.json()['data']
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, params={'title': title}) as resp:
+            if resp.status == 200:
+                return (await resp.json())['data']
+            elif resp.status == 500:
+                console.error("The API returned 500 Internal Server Error. Please check the API logs.")
+                return
 
 
 async def log(level, category, msg, *args):
@@ -192,7 +197,7 @@ def set_cached(obj):
 
 async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed):
     con = sqlite3.connect('./data/data.db')
-    cursor = con.cursor()
+    cur = con.cursor()
 
     for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
@@ -207,7 +212,7 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
         except discord.NotFound:  # If the channel or guild is not found (deleted)
             console.warning(f"Guild or channel not found. Guild: {guild.id}, Channel: {channel.id}")
             cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
-                             (guild.id, channel.id))
+                        (guild.id, channel.id))
             con.commit()
             continue
 
@@ -215,7 +220,7 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
             console.warning(f"Could not get channel. Guild: {guild.id}, Channel: {channel.id}. "
                             "Seems like I was kicked from the server.")
             cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
-                             (guild.id, channel.id))
+                        (guild.id, channel.id))
             con.commit()
             continue
 
@@ -233,7 +238,8 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
                 try:  # Try to send the error embed
                     await _channel.send(embed=error_embed)  # Send the error embed
                     _msg = await _channel.send(embeds=[embed.copy(), *embed_list])  # Send the circular embed
-                    console.warning(f"Could not send message to {channel.id} in {guild.id}. Sent to {channel.id} instead.")
+                    console.warning(
+                        f"Could not send message to {channel.id} in {guild.id}. Sent to {channel.id} instead.")
                     channel = _channel  # Set the channel to the new channel
                     break
 
@@ -245,7 +251,8 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
                 continue
 
         except Exception as e:  # If it can't send the circular embed
-            console.error(f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden." + str(e))
+            console.error(
+                f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden." + str(e))
             continue
 
         try:
@@ -255,7 +262,7 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
 
     con.close()
 
-    
+
 async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list):
     con = sqlite3.connect('./data/data.db')
     cur = con.cursor()
@@ -282,10 +289,12 @@ async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list):
             console.debug(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
 
         except discord.Forbidden:  # If the user has DMs disabled
-            console.error(f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
+            console.error(
+                f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
             cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
             con.commit()
-            await log('info', 'listener', f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
+            await log('info', 'listener',
+                      f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
             continue
 
         except Exception as e:  # If the user has DMs disabled
@@ -386,7 +395,10 @@ class FeedbackButton(discord.ui.View):
         cur = con.cursor()
         self.search_query = self.search_query.replace('"', "")
         cur.execute(
-            f"INSERT INTO search_feedback VALUES ({interaction.user.id}, {self.msg.id}, \"{self.search_query}\", {True})")
+            f"INSERT INTO search_feedback VALUES (?, ?, ?, ?)",
+            (interaction.user.id, self.msg.id, self.search_query, True)
+        )
+
         con.commit()
         con.close()
 
@@ -408,14 +420,15 @@ class FeedbackButton(discord.ui.View):
         cur = con.cursor()
         self.search_query = self.search_query.replace('"', "")
         cur.execute(
-            f"INSERT INTO search_feedback VALUES ({interaction.user.id}, {self.msg.id}, \"{self.search_query}\", {False})")
+            f"INSERT INTO search_feedback VALUES (?, ?, ?, ?)",
+            (interaction.user.id, self.msg.id, self.search_query, False)
+        )
         con.commit()
         con.close()
 
         await interaction.response.send_message(
             "We're sorry to about hear that. Please let us know what went wrong! Feel free to DM <@837584356988944396>",
             ephemeral=True)
-        # edit the message to add the feedback button
 
         for child in self.children:
             child.disabled = True
