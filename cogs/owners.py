@@ -346,7 +346,8 @@ class Owners(commands.Cog):
         # Get the message ids of the circular embeds
         self.cur.execute("SELECT msg_id, channel_id FROM notif_msgs WHERE circular_id = ? AND type = 'dm'", (id_,))
         dm_msgs = self.cur.fetchall()
-        self.cur.execute("SELECT msg_id, channel_id, guild_id FROM notif_msgs WHERE circular_id = ? AND type = 'guild'", (id_,))
+        self.cur.execute("SELECT msg_id, channel_id, guild_id FROM notif_msgs WHERE circular_id = ? AND type = 'guild'",
+                         (id_,))
         guild_msgs = self.cur.fetchall()
 
         for msg in dm_msgs:

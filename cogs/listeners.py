@@ -247,6 +247,10 @@ class Listeners(commands.Cog):
             console.error(error)
             raise error
 
+    @commands.Cog.listener()
+    async def on_application_command(self, ctx: discord.ApplicationContext):
+        await log('info', "command", f"{ctx.author} ({ctx.author.id}) used the command {ctx.command.full_parent_name}")
+
     @random_status.before_loop
     @check_for_circular.before_loop
     @backup.before_loop

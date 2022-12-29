@@ -41,10 +41,9 @@ class Commands(commands.Cog):
         await ctx.defer()
         start = time.time()
 
-        guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
 
-        await log('info', 'command', f"{author.id} in {guild.id} has requested a list of circulars in {category}")
+        await log('info', 'command', f"{author.id} has requested a list of circulars in {category}")
 
         raw_res = await get_circular_list(category)  # Get the list of circulars from API
 
@@ -96,10 +95,9 @@ class Commands(commands.Cog):
         await ctx.defer()  # Defer the interaction
         start = time.time()
 
-        guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
 
-        await log("info", "command", f"{author.id} in {guild.id} requested the latest circular of category {category}.")
+        await log("info", "command", f"{author.id} requested the latest circular of category {category}.")
 
         raw_res = await get_latest_circular(category, cached=True)  # Get the latest circular from API
         title = raw_res['title']  # Get the title
@@ -135,7 +133,7 @@ class Commands(commands.Cog):
         #         with io.BytesIO(img) as file:  # converts to file-like object
         #             file = discord.File(file, filename=f"{id_}.pdf")
 
-        msg = await ctx.followup.send(embeds=embed_list, file=file)
+        msg = await ctx.followup.send(embeds=embed_list)
         await msg.edit(embeds=embed_list, view=DeleteButton(ctx, msg))
 
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} second(s).")
@@ -145,10 +143,9 @@ class Commands(commands.Cog):
         await ctx.defer()
         start = time.time()
 
-        guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
 
-        await log("info", "command", f"{author.id} in {guild.id} searched for {circular_title}")
+        await log("info", "command", f"{author.id} searched for {circular_title}")
         searched = await search(circular_title)  # Search for the circular from the backend function
 
         embed = discord.Embed(title="Circular Search", color=embed_color, url=embed_url)  # Create an embed
@@ -201,7 +198,10 @@ class Commands(commands.Cog):
     async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
         await ctx.defer()
 
-        guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
+        try:
+            guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
+        except:
+            return await ctx.followup.send("You need to be in a server to use this command.")
         author = await guild.fetch_member(ctx.author.id)  # Fetch the member object
 
         await log("info", "notification", f"{author.id} in {guild.id} is setting up the bot in {channel.name}.")
@@ -273,7 +273,10 @@ class Commands(commands.Cog):
     async def delete(self, ctx):
         await ctx.defer()
 
-        guild = await self.client.fetch_guild(ctx.guild.id)
+        try:
+            guild = await self.client.fetch_guild(ctx.guild.id)
+        except:
+            return await ctx.followup.send("You need to be in a server to use this command.")
         author = await guild.fetch_member(ctx.author.id)
 
         await log("info", "notification", f"{ctx.author.id} in {guild.id} is deleting the notification configuration.")
@@ -335,7 +338,11 @@ class Commands(commands.Cog):
     async def help(self, ctx):
         await ctx.defer()
 
-        guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
+        try:
+            guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
+        except:
+            guild = None
+            guild.id = None
         await log("info", "command", f"{ctx.author.id} in {guild.id} is getting the help message.")
 
         embed = discord.Embed(title="Circular Commands", description="Here is the list of commands for the circulars.",
