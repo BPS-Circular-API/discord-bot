@@ -210,31 +210,31 @@ class Owners(commands.Cog):
             del users, guild_notify  # Delete the variables to free up memory
 
             error_embed = discord.Embed(title=f"Error!",
-                                        description=f"Please make sure that I have the permission "
-                                                    f"to send messages in the channel you set for notifications.",
+                                        description="Please make sure that I have the permission "
+                                                    "to send messages in the channel you set for notifications.",
                                         color=embed_color)
             error_embed.set_footer(text=embed_footer)
             error_embed.set_author(name=embed_title)
 
             match send_only_to:  # If it has been specified to send the notifications to only servers/dms
                 case "dms":  # Send notifications to dms
-                    await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list)
+                    await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_)
 
                 case "servers":  # Send notifications to servers
-                    await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed)
+                    await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed, id_)
 
                 case _:
-                    await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed)
-                    await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list)
+                    await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed, id_)
+                    await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_)
 
             # Insert the notification log into the database
-            for item in notif_msgs["dm"]:
-                self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES (?, ?, ?, ?)",
-                                 (id_, item[0], "dm", item[1]))
-            for item in notif_msgs["guild"]:
-                self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
-                                 "VALUES (?, ?, ?, ?, ?)", (id_, item[0], 'guild', item[1], item[2]))
-            self.con.commit()
+            # for item in notif_msgs["dm"]:
+            #     self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES (?, ?, ?, ?)",
+            #                      (id_, item[0], "dm", item[1]))
+            # for item in notif_msgs["guild"]:
+            #     self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
+            #                      "VALUES (?, ?, ?, ?, ?)", (id_, item[0], 'guild', item[1], item[2]))
+            # self.con.commit()
 
             console.info(f"Sent Circular to {len(notif_msgs['dm'])} users and {len(notif_msgs['guild'])} guilds.")
 

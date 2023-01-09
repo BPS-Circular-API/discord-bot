@@ -206,8 +206,8 @@ class Listeners(commands.Cog):
                 embed_list.append(temp_embed.copy())
 
         # Gather all guilds and send the embed
-        await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed)
-        await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list)
+        await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed, id_)
+        await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_)
 
         await log(
             'info', "listener",
@@ -217,13 +217,13 @@ class Listeners(commands.Cog):
 
         # tuple (message_id [0], channel_id [1], guild_id [2] optional)
         # Insert the notification log into the database
-        for item in notif_msgs["dm"]:
-            self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES (?, ?, ?, ?)",
-                             (id_, item[0], "dm", item[1]))
-        for item in notif_msgs["guild"]:
-            self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
-                             "VALUES (?, ?, ?, ?, ?)", (id_, item[0], "guild", item[1], item[2]))
-        self.con.commit()  # TODO: use cur.executemany() instead of looping
+        # for item in notif_msgs["dm"]:
+        #     self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES (?, ?, ?, ?)",
+        #                      (id_, item[0], "dm", item[1]))
+        # for item in notif_msgs["guild"]:
+        #     self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
+        #                      "VALUES (?, ?, ?, ?, ?)", (id_, item[0], "guild", item[1], item[2]))
+        # self.con.commit()  # TODO: use cur.executemany() instead of looping
 
     @tasks.loop(minutes=backup_interval * 60)
     async def backup(self):  # TODO: Fix this not working after using package
@@ -249,7 +249,7 @@ class Listeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_application_command(self, ctx: discord.ApplicationContext):
-        await log('info', "command", f"{ctx.author} ({ctx.author.id}) used the command {ctx.command.full_parent_name}")
+        await log('info', "command", f"{ctx.author} ({ctx.author.id}) used the command /{ctx.command.qualified_name}")
 
     @random_status.before_loop
     @check_for_circular.before_loop

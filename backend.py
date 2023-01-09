@@ -195,7 +195,7 @@ def set_cached(obj):
         pickle.dump(obj, f)
 
 
-async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed):
+async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed, id_):
     con = sqlite3.connect('./data/data.db')
     cur = con.cursor()
 
@@ -256,6 +256,9 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
             continue
 
         try:
+            cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
+                             "VALUES (?, ?, ?, ?, ?)", (id_, _msg.id, "guild", channel.id, guild.id))
+            con.commit()
             notif_msgs["guild"].append((_msg.id, channel.id, guild.id))  # TODO: check if this works
         except Exception as e:
             console.error(f"Error: {e}")
@@ -263,7 +266,7 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
     con.close()
 
 
-async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list):
+async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list, id_):
     con = sqlite3.connect('./data/data.db')
     cur = con.cursor()
     for user, message in zip(user_id, user_message):  # For each user in the database
@@ -304,6 +307,9 @@ async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list):
 
         try:
             notif_msgs["dm"].append((_msg.id, user.id))
+            cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) "
+                             "VALUES (?, ?, ?, ?, ?)", (id_, _msg.id, "dm", user.id))
+            con.commit()
         except Exception as e:
             console.error(f"Error: {e}")
 
