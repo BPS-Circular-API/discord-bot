@@ -10,7 +10,6 @@ from discord import SlashCommandGroup
 import time
 import aiohttp
 
-
 category_options = []
 for i in categories:
     category_options.append(discord.OptionChoice(i.capitalize().strip(), value=i.strip().lower()))
@@ -40,10 +39,6 @@ class Commands(commands.Cog):
     async def list(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
         start = time.time()
-
-        author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
-
-        await log('info', 'command', f"{author.id} has requested a list of circulars in {category}")
 
         raw_res = await get_circular_list(category)  # Get the list of circulars from API
 
@@ -97,8 +92,6 @@ class Commands(commands.Cog):
 
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
 
-        await log("info", "command", f"{author.id} requested the latest circular of category {category}.")
-
         raw_res = await get_latest_circular(category, cached=True)  # Get the latest circular from API
         title = raw_res['title']  # Get the title
         link = raw_res['link']  # Get the link
@@ -125,7 +118,7 @@ class Commands(commands.Cog):
                 temp_embed = discord.Embed(url=embed_url)  # Create a new embed
                 temp_embed.set_image(url=png_url[i])
                 embed_list.append(temp_embed.copy())
-                
+
         # This part adds a .pdf file to the message
         # async with aiohttp.ClientSession() as session:  # creates session
         #     async with session.get(link) as resp:  # gets image from url
@@ -145,7 +138,6 @@ class Commands(commands.Cog):
 
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
 
-        await log("info", "command", f"{author.id} searched for {circular_title}")
         searched = await search(circular_title)  # Search for the circular from the backend function
 
         embed = discord.Embed(title="Circular Search", color=embed_color, url=embed_url)  # Create an embed
@@ -200,11 +192,10 @@ class Commands(commands.Cog):
 
         try:
             guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
-        except:
+        except discord.NotFound:
             return await ctx.followup.send("You need to be in a server to use this command.")
-        author = await guild.fetch_member(ctx.author.id)  # Fetch the member object
 
-        await log("info", "notification", f"{author.id} in {guild.id} is setting up the bot in {channel.name}.")
+        author = await guild.fetch_member(ctx.author.id)  # Fetch the member object
 
         if not author.guild_permissions.administrator:  # Check if the author has admin permissions
             if author.id not in owner_ids:  # Check if the author is an owner
@@ -267,7 +258,7 @@ class Commands(commands.Cog):
                                       f"Please give me permission to send messages in that channel, " \
                                       f"or use another channel."
 
-            await ctx.followup.send(error_embed)
+            await ctx.followup.send(embed=error_embed)
 
     @admin.command(name="delete", description="Delete the server's circular reminder configuration.")
     async def delete(self, ctx):
@@ -275,18 +266,18 @@ class Commands(commands.Cog):
 
         try:
             guild = await self.client.fetch_guild(ctx.guild.id)
-        except:
+        except discord.NotFound:
             return await ctx.followup.send("You need to be in a server to use this command.")
         author = await guild.fetch_member(ctx.author.id)
-
-        await log("info", "notification", f"{ctx.author.id} in {guild.id} is deleting the notification configuration.")
 
         if not author.guild_permissions.administrator:  # Check if the author has admin permissions
             if author.id not in owner_ids:  # Check if the author is a bot over (overridden)
                 return await ctx.followup.send(
-                    embed=discord.Embed(title="Error!",
-                                        description="You do not have permission to use this command!",
-                                        color=embed_color)
+                    embed=discord.Embed(
+                        title="Error!",
+                        description="You do not have permission to use this command!",
+                        color=embed_color,
+                    ).set_footer(text=embed_footer)
                 )
 
         # Check if the guild is in the database
@@ -314,7 +305,6 @@ class Commands(commands.Cog):
     @commands.slash_command(name="invite", description="Get the invite link for the bot.")
     @circular.command(name="invite", description="Invite the bot to your server.")
     async def invite(self, ctx):
-        await log("info", "command", f"{ctx.author.id} in {ctx.guild.id} is getting the invite link.")
         embed = discord.Embed(title="Invite",
                               description=f"Click the below button to add the bot to your server. "
                                           f"Alternatively you can use this URL too.\n "
@@ -337,13 +327,6 @@ class Commands(commands.Cog):
     @circular.command(name="help", description="Shows the help message for the circular commands.")
     async def help(self, ctx):
         await ctx.defer()
-
-        try:
-            guild = await self.client.fetch_guild(ctx.guild.id)  # Fetch the guild object
-        except:
-            guild = None
-            guild.id = None
-        await log("info", "command", f"{ctx.author.id} in {guild.id} is getting the help message.")
 
         embed = discord.Embed(title="Circular Commands", description="Here is the list of commands for the circulars.",
                               color=embed_color)
@@ -397,7 +380,6 @@ class Commands(commands.Cog):
 
             r_embed.title = "Unsubscribed"
             r_embed.description = "You have been unsubscribed from reminders."
-            await log("info", "notification", f"{ctx.author.id} in {ctx.guild.id} is un-subscribing from DM reminders.")
             await msg.edit(embed=r_embed)  # Edit the message to show that the user has been unsubscribed
             return
 
@@ -421,7 +403,6 @@ class Commands(commands.Cog):
 
         else:  # If the user has DMs enabled
             await ctx.followup.send(embed=r_embed)
-            await log("info", "notification", f"{ctx.author.id} in {ctx.guild.id} is subscribing to DM reminders.")
 
 
 def setup(client):
