@@ -308,7 +308,7 @@ async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list, id
         try:
             notif_msgs["dm"].append((_msg.id, user.id))
             cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) "
-                             "VALUES (?, ?, ?, ?, ?)", (id_, _msg.id, "dm", user.id))
+                             "VALUES (?, ?, ?, ?)", (id_, _msg.id, "dm", user.id))
             con.commit()
         except Exception as e:
             console.error(f"Error: {e}")
