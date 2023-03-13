@@ -2,13 +2,11 @@ import math
 import sqlite3
 import discord
 import discord.ext.pages
-import io
 from discord.ext import commands
 from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, \
     search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url, FeedbackButton
 from discord import SlashCommandGroup
 import time
-import aiohttp
 
 category_options = []
 for i in categories:
@@ -253,12 +251,13 @@ class Commands(commands.Cog):
 
         except discord.Forbidden:
             error_embed = discord.Embed(title="Error!", color=discord.Color.red(), url=embed_url)
-            embed.set_footer(text=embed_footer)
+            error_embed.set_footer(text=embed_footer)
             error_embed.description = f"I do not have permission to send messages in that channel! (<#{channel.id}>).\n" \
                                       f"Please give me permission to send messages in that channel, " \
                                       f"or use another channel."
 
             await ctx.followup.send(embed=error_embed)
+            return
 
     @admin.command(name="delete", description="Delete the server's circular reminder configuration.")
     async def delete(self, ctx):
