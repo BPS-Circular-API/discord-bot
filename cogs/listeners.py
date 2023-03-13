@@ -8,7 +8,7 @@ import asyncio
 import pybpsapi
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, \
-    get_cached, set_cached, get_circular_list, status_interval, log, embed_url, base_api_url, send_to_guilds, \
+    get_circular_list, status_interval, log, embed_url, base_api_url, send_to_guilds, \
     send_to_users
 
 
@@ -120,19 +120,16 @@ class Listeners(commands.Cog):
         self.member_count = _member_count
         console.debug(f"[Listeners] | Member Count: {self.member_count}")
 
-    async def get_circulars(self, _cats, final_dict):
-        for item in _cats:
-            res = await get_circular_list(item)
-            final_dict[item] = res
-
-        set_cached(final_dict)
-
     @tasks.loop(seconds=3600)
     async def check_for_circular(self):
         new_circular_objects = self.group.check()
 
         console.info(f"Found {len(new_circular_objects['general']) + len(new_circular_objects['ptm']) + len(new_circular_objects['exam'])} new circulars.")
         console.debug(f"New Circulars: {new_circular_objects}")
+
+        if len(new_circular_objects["general"]) + len(new_circular_objects["ptm"]) + len(new_circular_objects["exam"]) > 19:
+            console.warning(f"Found more than 19 new circulars. Skipping notification.")
+            return
 
         if new_circular_objects["ptm"] or new_circular_objects["general"] or new_circular_objects["exam"]:
             for cat in new_circular_objects:
