@@ -375,7 +375,8 @@ class Owners(commands.Cog):
 
         for msg in guild_msgs:
             try:
-                channel = self.client.fetch_guild(msg[2]).fetch_channel(msg[1])
+                guild = await self.client.fetch_guild(msg[2])
+                channel = await guild.fetch_channel(msg[1])
                 message = discord.utils.get(await channel.history(limit=100).flatten(), id=msg[0])
                 msg_list.append(message)
 
