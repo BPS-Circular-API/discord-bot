@@ -34,7 +34,7 @@ class Commands(commands.Cog):
     admin = circular.create_subgroup("admin", "Admin commands for the bot.")
 
     @circular.command(name='list', description='List all circulars in a particular category.')
-    async def list(self, ctx, category: discord.Option(choices=category_options)):
+    async def list_(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
         start = time.time()
 
@@ -48,7 +48,7 @@ class Commands(commands.Cog):
 
         # Loop through the raw API output
         for item in raw_res:
-            titles.append(f"**{loop_int}**. [{item['id']}] `{item['title']}`")  # Add the title to the list
+            titles.append(f"**{loop_int}**. [{item['id']}]  `{item['title'].strip()}`")  # Add the title to the list
             links.append(f"{item['link']}")  # Add the link to the list
             loop_int += 1
 
@@ -64,12 +64,12 @@ class Commands(commands.Cog):
             count += 1
             if count % 10 == 0:  # If the count is divisible by 10 (It has reached 10 fields)
                 console.debug(f"[Commands] | {count}")
-                embed.description = f"Format - `number [id] title`\nPage **{int(count / 10)}**\n"
+                embed.description = f"Format - `[ID] Circular Title`\nPage **{int(count / 10)}**\n"
                 page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
                 embed.clear_fields()  # Clear the fields of the embed
             elif count == len(titles):
                 console.debug(f"[Commands] | {count}")
-                embed.description = f"Format - `number [id] title`\nPage **{int(math.ceil(count / 10))}**\n"
+                embed.description = f"Format - `[ID] Circular Title`\nPage **{int(math.ceil(count / 10))}**\n"
                 page_list.append(embed.copy())
                 embed.clear_fields()
 
