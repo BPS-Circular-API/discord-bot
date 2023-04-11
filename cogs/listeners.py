@@ -19,14 +19,11 @@ class Listeners(commands.Cog):
         self.cur = self.con.cursor()
         self.member_count = -1
 
-        general = pybpsapi.CircularChecker('general', cache_method='database', db_name='data', db_path='./data',
-                                           db_table='cache', url=base_api_url)
-        ptm = pybpsapi.CircularChecker('ptm', cache_method='database', db_name='data', db_path='./data',
-                                       db_table='cache', url=base_api_url)
-        exam = pybpsapi.CircularChecker('exam', cache_method='database', db_name='data', db_path='./data',
-                                        db_table='cache', url=base_api_url)
-
-        self.group = pybpsapi.CircularCheckerGroup(general, ptm, exam)
+        self.group = pybpsapi.CircularCheckerGroup()
+        for thing in [pybpsapi.CircularChecker(
+                cat, cache_method='database', db_name='data', db_path='./data', db_table='cache', url=base_api_url
+        ) for cat in categories]:
+            self.group.add(thing)
 
     @commands.Cog.listener()
     async def on_ready(self):
