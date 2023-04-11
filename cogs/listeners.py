@@ -9,7 +9,7 @@ import pybpsapi
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, \
     get_circular_list, status_interval, log, embed_url, base_api_url, send_to_guilds, \
-    send_to_users
+    send_to_users, categories
 
 
 class Listeners(commands.Cog):

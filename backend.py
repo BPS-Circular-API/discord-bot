@@ -9,9 +9,9 @@ import aiohttp
 import sys
 from discord.ext import commands
 from colorlog import ColoredFormatter
+import requests
 
-categories = ["general", "exam", "ptm"]
-receives = ["all", "links", "titles"]
+receives = ("all", "links", "titles")
 
 # Loading config.ini
 config = configparser.ConfigParser()
@@ -71,12 +71,18 @@ console.debug(owner_guilds)
 if base_api_url[-1] != "/":  # For some very bright people who don't know how to read
     base_api_url += "/"
 
+json = requests.get(base_api_url + "categories").json()
+if json['http_status'] == 200:
+    categories = json['data']
+else:
+    raise ConnectionError("Invalid API Response. API says there are no categories.")
+
 client = commands.Bot(help_command=None)  # Setting prefix
 
 
 async def get_circular_list(category: str) -> tuple or None:
     url = base_api_url + "list"
-    if category not in ["ptm", "general", "exam"]:
+    if category not in categories:
         return None
 
     params = {'category': category}
@@ -105,7 +111,7 @@ async def get_latest_circular(category: str, cached=False) -> dict or None:
                         console.error("The API returned 500 Internal Server Error. Please check the API logs.")
                         return
 
-    elif category in ['ptm', 'general', 'exam']:
+    elif category in categories:
 
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params={'category': category}) as resp:
