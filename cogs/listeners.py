@@ -121,14 +121,17 @@ class Listeners(commands.Cog):
     async def check_for_circular(self):
         new_circular_objects = self.group.check()
 
-        console.info(f"Found {len(new_circular_objects['general']) + len(new_circular_objects['ptm']) + len(new_circular_objects['exam'])} new circulars.")
+        # console.info(f"Found {len(new_circular_objects['general']) + len(new_circular_objects['ptm']) + len(new_circular_objects['exam'])} new circulars.")
+        console.info(f"Found {sum((i for i in map(len, new_circular_objects.values())))} new circulars.")
         console.debug(f"New Circulars: {new_circular_objects}")
 
-        if len(new_circular_objects["general"]) + len(new_circular_objects["ptm"]) + len(new_circular_objects["exam"]) > 19:
+        if sum(len(cat) for cat in categories) > 19:
             console.warning(f"Found more than 19 new circulars. Skipping notification.")
             return
 
-        if new_circular_objects["ptm"] or new_circular_objects["general"] or new_circular_objects["exam"]:
+        # if new_circular_objects["ptm"] or new_circular_objects["general"] or new_circular_objects["exam"]:
+        #   rewrite the above line to a dynamic one
+        if sum((i for i in map(len, new_circular_objects.values()))) > 0:
             for cat in new_circular_objects:
                 if cat:
                     for obj in new_circular_objects[cat]:
