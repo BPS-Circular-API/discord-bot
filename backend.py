@@ -265,7 +265,7 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
             cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
                              "VALUES (?, ?, ?, ?, ?)", (id_, _msg.id, "guild", channel.id, guild.id))
             con.commit()
-            notif_msgs["guild"].append((_msg.id, channel.id, guild.id))  # TODO: check if this works
+            notif_msgs["guild"].append((_msg.id, channel.id, guild.id))
         except Exception as e:
             console.error(f"Error: {e}")
 

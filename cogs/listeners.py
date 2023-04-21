@@ -85,7 +85,6 @@ class Listeners(commands.Cog):
             "/circular help",
             "Made by Raj Dave#3215",
             "Fully Open Source!",
-            "Now on Telegram! @bps_circular_bot"
         )
 
         types = (
@@ -94,14 +93,16 @@ class Listeners(commands.Cog):
             discord.ActivityType.playing,
             discord.ActivityType.playing,
             discord.ActivityType.playing,
-            discord.ActivityType.playing
         )
 
+        # Choose a random activity
         rand_int = random.randint(0, len(activities) - 1)
 
         try:
+            # Change the status
             await self.client.change_presence(
-                activity=discord.Activity(type=types[rand_int], name=activities[rand_int]))
+                activity=discord.Activity(type=types[rand_int], name=activities[rand_int])
+            )
         except Exception as e:
             await log('warning', 'listener', f"Error in changing status : {e}")
         console.debug(f"Changed status to {activities[rand_int]}")
@@ -119,18 +120,18 @@ class Listeners(commands.Cog):
 
     @tasks.loop(seconds=3600)
     async def check_for_circular(self):
+        # Check for new circulars
         new_circular_objects = self.group.check()
 
-        # console.info(f"Found {len(new_circular_objects['general']) + len(new_circular_objects['ptm']) + len(new_circular_objects['exam'])} new circulars.")
         console.info(f"Found {sum((i for i in map(len, new_circular_objects.values())))} new circulars.")
         console.debug(f"New Circulars: {new_circular_objects}")
 
+        # If there are more than 19 new circulars, skip notification (bug)
         if sum(len(cat) for cat in categories) > 19:
             console.warning(f"Found more than 19 new circulars. Skipping notification.")
             return
 
-        # if new_circular_objects["ptm"] or new_circular_objects["general"] or new_circular_objects["exam"]:
-        #   rewrite the above line to a dynamic one
+        # if there are actually any new circulars, notify
         if sum((i for i in map(len, new_circular_objects.values()))) > 0:
             for cat in new_circular_objects:
                 if cat:
@@ -142,7 +143,7 @@ class Listeners(commands.Cog):
 
     async def notify(self, _circular_category, _circular_obj):
         # Gather all the guilds
-        self.cur.execute("SELECT * FROM guild_notify")  # Get from DB
+        self.cur.execute("SELECT * FROM guild_notify")
         guild_notify = self.cur.fetchall()
 
         guilds = [x[0] for x in guild_notify]
@@ -150,27 +151,31 @@ class Listeners(commands.Cog):
         messages = [x[2] for x in guild_notify]
 
         # Gather all the DMs
-        self.cur.execute("SELECT * FROM dm_notify")  # Get the DM notify list
+        self.cur.execute("SELECT * FROM dm_notify")
         users = self.cur.fetchall()
 
+        # Make the lists
         user_ids = [x[0] for x in users]
         user_messages = [x[1] for x in users]
-        del users, guild_notify  # Delete the variables to save memory
+        del users, guild_notify
 
+        # Create an empty dict for logging
         notif_msgs = {"guild": [], "dm": []}
 
         # Get the circular info and prepare the embed
-        link = _circular_obj['link']
-        title = _circular_obj['title']
+        link: str = _circular_obj['link']
+        title: str = _circular_obj['title']
         id_ = _circular_obj['id']
 
-        png_url = await get_png(link)  # Get the PNG of the circular
+        # Get the circular image
+        png_url = await get_png(link)
 
         # Create the error embed
         error_embed = discord.Embed(title=f"Error!", color=embed_color)
         error_embed.description = "Please make sure that I have the adequate permissions to send messages in the " \
                                   "channel you set for notifications."
-        error_embed.set_footer(text=embed_footer).set_author(name=embed_title)  # Set the footer and author
+        error_embed.set_footer(text=embed_footer)
+        error_embed.set_author(name=embed_title)  # Set the footer and author
 
         # Create the main embed
         embed = discord.Embed(title=f"New Circular | **{_circular_category.capitalize()}**", color=embed_color,
@@ -178,12 +183,13 @@ class Listeners(commands.Cog):
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
         embed.set_image(url=png_url[0])  # Set the image to the attachment
-        embed.add_field(name=f"[{id_}] `{title}`", value=link, inline=False)
+        embed.add_field(name=f"[{id_}]  `{title.strip()}`", value=link, inline=False)
 
         # If there is a custom message set by the bot dev, add it to the embed
         self.cur.execute("SELECT data FROM cache WHERE title = 'circular_message'")  # Get the circular message
         circular_message = self.cur.fetchone()
 
+        # If there is a circular dev message, add it to the embed
         if circular_message:
             embed.add_field(name="Message from the Developer", value=circular_message[0], inline=False)
             self.cur.execute("DELETE FROM cache WHERE title = 'circular_message'")  # Delete the circular message
@@ -191,18 +197,22 @@ class Listeners(commands.Cog):
 
         embed_list = []
 
-        if len(png_url) != 1:  # If the circular has more than 1 page
+        # If the circular has more than 1 page
+        if len(png_url) != 1:
             for i in range(len(png_url)):
                 if i == 0:
                     continue
-                elif i > 3:  # If the circular has more than 4 pages, send the first 4 pages only (discord embed limit)
+
+                # If the circular has more than 4 pages, only send the first 4
+                # This is due to the discord embed limit of 4 images.
+                elif i > 3:
                     break
 
-                temp_embed = discord.Embed(url=embed_url)  # Create a new embed
+                temp_embed = discord.Embed(url=embed_url)
                 temp_embed.set_image(url=png_url[i])
                 embed_list.append(temp_embed.copy())
 
-        # Gather all guilds and send the embed
+        # Gather all guilds/users and send the embed
         await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed, id_)
         await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_)
 
@@ -212,26 +222,18 @@ class Listeners(commands.Cog):
             f"users about the new circular. ({id_})"
         )
 
-        # tuple (message_id [0], channel_id [1], guild_id [2] optional)
-        # Insert the notification log into the database
-        # for item in notif_msgs["dm"]:
-        #     self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES (?, ?, ?, ?)",
-        #                      (id_, item[0], "dm", item[1]))
-        # for item in notif_msgs["guild"]:
-        #     self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
-        #                      "VALUES (?, ?, ?, ?, ?)", (id_, item[0], "guild", item[1], item[2]))
-        # self.con.commit()  # TODO: use cur.executemany() instead of looping
-
     @tasks.loop(minutes=backup_interval * 60)
-    async def backup(self):  # TODO: Fix this not working after using package
+    async def backup(self):
         now = datetime.datetime.now()
         date_time = now.strftime("%d-%m-%Y-%H-%M")
 
-        if not os.path.exists('./data/backups/'):  # If the directory does not exist
+        # If the directory doesn't exist, create it
+        if not os.path.exists('./data/backups/'):
             os.mkdir("./data/backups/")
 
+        # Copy the current db to the new directory
         shutil.copyfile("./data/data.db",
-                        f"./data/backups/data-{date_time}.db")  # Copy the current file to the new directory
+                        f"./data/backups/data-{date_time}.db")
         await log('info', "etc", f"Backed up the database to ./data/backups/data-{date_time}.db")
 
     @commands.Cog.listener()
