@@ -1,22 +1,23 @@
 import math
 import sqlite3
 import discord
+import time
+import threading
+import asyncio
 import discord.ext.pages
 from discord.ext import commands
-from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, receives, get_png, \
-    search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url, FeedbackButton
+from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, get_png, \
+    search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url, FeedbackButton, ignored_circulars
 from discord import SlashCommandGroup
-import time
+
 
 category_options = []
 for i in categories:
     category_options.append(discord.OptionChoice(i.capitalize().strip(), value=i.strip().lower()))
 del categories
 
-receive_options = []
-for i in receives:
-    receive_options.append(discord.OptionChoice(i.capitalize().strip(), value=i.strip().lower()))
-del receives
+category_options_with_all = category_options.copy()
+category_options_with_all.insert(0, discord.OptionChoice("All", value="all"))
 
 
 class Commands(commands.Cog):
@@ -34,11 +35,24 @@ class Commands(commands.Cog):
     admin = circular.create_subgroup("admin", "Admin commands for the bot.")
 
     @circular.command(name='list', description='List all circulars in a particular category.')
-    async def list_(self, ctx, category: discord.Option(choices=category_options)):
+    async def list_(self, ctx, category: discord.Option(choices=category_options_with_all)):
         await ctx.defer()
         start = time.time()
 
-        raw_res = await get_circular_list(category)  # Get the list of circulars from API
+        if category != "all":
+            raw_res = await get_circular_list(category)  # Get the list of circulars from API
+        else:
+            raw_res = []
+
+            for i in category_options:  # TODO make this faster
+                raw_res += await get_circular_list(i.value)
+
+            raw_res.sort(key=lambda x: x['id'], reverse=True)
+
+        #  get rid of ignored circulars
+        print(ignored_circulars)
+
+        raw_res = [i for i in raw_res if i['id'] not in ignored_circulars]
 
         if raw_res is None:
             await ctx.respond("There was a bit of an issue on our end. Please try again later.")
@@ -90,7 +104,7 @@ class Commands(commands.Cog):
 
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
 
-        raw_res = await get_latest_circular(category, cached=True)  # Get the latest circular from API
+        raw_res = await get_latest_circular(category, cached=False)  # Get the latest circular from API
         title = raw_res['title']  # Get the title
         link = raw_res['link']  # Get the link
         id_ = raw_res['id']  # Get the id
