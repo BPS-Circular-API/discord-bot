@@ -127,8 +127,8 @@ class Listeners(commands.Cog):
         console.debug(f"New Circulars: {new_circular_objects}")
 
         # If there are more than 19 new circulars, skip notification (bug)
-        if sum(len(cat) for cat in categories) > 19:
-            console.warning(f"Found more than 19 new circulars. Skipping notification.")
+        if sum((i for i in map(len, new_circular_objects.values()))) > 19:
+            console.warning(f"[Listeners] | More than 19 new circulars found. Skipping notification.")
             return
 
         # if there are actually any new circulars, notify
