@@ -3,7 +3,12 @@ import math
 import sqlite3
 from discord.ext import commands
 from backend import owner_ids, embed_title, embed_footer, embed_color, console, owner_guilds, get_png, ConfirmButton, \
-    DeleteButton, log, search, embed_url, send_to_guilds, send_to_users
+    DeleteButton, log, search, embed_url, send_to_guilds, send_to_users, categories
+
+category_options = []
+for i in categories:
+    category_options.append(discord.OptionChoice(i.capitalize().strip(), value=i.strip().lower()))
+del categories
 
 
 class Owners(commands.Cog):
@@ -108,11 +113,7 @@ class Owners(commands.Cog):
 
     @owners.command(name="manualnotify", description="Notify all users in a server.")
     async def send_manual_notification(self, ctx, circular_name: str, url: str, id_: int,
-                                       category: discord.Option(choices=[
-                                           discord.OptionChoice("General", value="general"),
-                                           discord.OptionChoice("PTM", value="ptm"),
-                                           discord.OptionChoice("Exam", value="exam")
-                                       ]),
+                                       category: discord.Option(choices=category_options),
                                        custom_message: str = None,
                                        send_only_to: discord.Option(choices=[
                                            discord.OptionChoice("DMs", value="dms"),

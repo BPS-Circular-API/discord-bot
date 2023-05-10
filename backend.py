@@ -11,8 +11,6 @@ from discord.ext import commands
 from colorlog import ColoredFormatter
 import requests
 
-receives = ("all", "links", "titles")
-
 # Loading config.ini
 config = configparser.ConfigParser()
 
@@ -51,6 +49,8 @@ try:
     embed_color: int = int(config.get('discord', 'embed_color'), base=16)
     embed_title: str = config.get('discord', 'embed_title')
     embed_url: str = config.get('discord', 'embed_url')
+
+    ignored_circulars: list = ['1347']
 
 except Exception as err:
     console.critical("Error reading the config.ini file. Error: " + str(err))
