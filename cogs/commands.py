@@ -7,9 +7,9 @@ import asyncio
 import discord.ext.pages
 from discord.ext import commands
 from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, get_png, \
-    search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url, FeedbackButton, ignored_circulars
+    search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url, FeedbackButton, \
+    ignored_circulars, create_search_dropdown
 from discord import SlashCommandGroup
-
 
 category_options = []
 for i in categories:
@@ -148,9 +148,9 @@ class Commands(commands.Cog):
         await ctx.defer()
         start = time.time()
 
+        msg = None
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
-
-        searched = await search(circular_title)  # Search for the circular from the backend function
+        searched = tuple(await search(circular_title))  # Search for the circular from the backend function
 
         embed = discord.Embed(title="Circular Search", color=embed_color, url=embed_url)  # Create an embed
         embed.set_author(name=embed_title)  # Set the author
@@ -164,6 +164,42 @@ class Commands(commands.Cog):
             await ctx.followup.send(embed=embed)
             return
 
+        end = time.time()
+
+        if len(searched) > 1:
+            _embed = embed.copy()
+            _embed.description = f"Select the circular you want to view using the dropdown. Requested by {author.mention}."
+
+            options = [
+                discord.SelectOption(
+                    label=f"Circular ID: {i['id']}",
+                    description=f"{i['title']}"
+                ) for i in searched
+            ]
+
+            msg = await ctx.followup.send(embed=_embed)
+            dropdown = await create_search_dropdown(options, msg)
+            await msg.edit(embed=_embed, view=dropdown)
+
+            # wait for the user to select an option
+            await dropdown.wait()
+
+            if dropdown.value is None:  # Timeout
+                return
+
+            res = dropdown.value  # Get the value of the dropdown
+
+            # res is the circular id, find the circular from the id
+            for i in searched:
+                if i['id'] == res:
+                    searched = i
+                    break
+
+            if type(searched) == int:
+                return
+        else:
+            searched = searched[0]
+
         title = searched['title']  # Get the title
         link = searched['link']  # Get the link
         id_ = searched['id']  # Get the id
@@ -174,7 +210,7 @@ class Commands(commands.Cog):
 
         png_url = await get_png(link)  # Get the png file from the download url
         embed.set_image(url=png_url[0])  # Set the image to the embed
-        embed.description = f"Search took {round(time.time() - start, 2)} seconds. Requested by {author.mention}."
+        embed.description = f"Search took {round(end - start, 2)} seconds. Requested by {author.mention}."
 
         embed_list = [embed]
         console.debug(png_url)
@@ -189,7 +225,11 @@ class Commands(commands.Cog):
                 temp_embed.set_image(url=png_url[i])
                 embed_list.append(temp_embed.copy())
 
-        msg = await ctx.followup.send(embeds=embed_list)
+        if msg is None:
+            msg = await ctx.followup.send(embeds=embed_list)
+        else:
+            await msg.edit(embeds=embed_list)
+
         await msg.edit(embeds=embed_list, view=FeedbackButton(msg, author, circular_title, searched))
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
