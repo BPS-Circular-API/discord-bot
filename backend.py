@@ -146,7 +146,7 @@ async def search(title: str) -> dict or None:
     url = base_api_url + "search"
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(url, params={'title': title}) as resp:
+        async with session.get(url, params={'title': title, "amount": 3}) as resp:
             if resp.status == 200:
                 return (await resp.json())['data']
             elif resp.status == 500:
@@ -263,7 +263,7 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
 
         try:
             cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
-                             "VALUES (?, ?, ?, ?, ?)", (id_, _msg.id, "guild", channel.id, guild.id))
+                        "VALUES (?, ?, ?, ?, ?)", (id_, _msg.id, "guild", channel.id, guild.id))
             con.commit()
             notif_msgs["guild"].append((_msg.id, channel.id, guild.id))
         except Exception as e:
@@ -314,7 +314,7 @@ async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list, id
         try:
             notif_msgs["dm"].append((_msg.id, user.id))
             cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) "
-                             "VALUES (?, ?, ?, ?)", (id_, _msg.id, "dm", user.id))
+                        "VALUES (?, ?, ?, ?)", (id_, _msg.id, "dm", user.id))
             con.commit()
         except Exception as e:
             console.error(f"Error: {e}")
@@ -446,3 +446,35 @@ class FeedbackButton(discord.ui.View):
             child.disabled = True
         await self.msg.edit(view=self)
         self.stop()
+
+
+async def create_search_dropdown(options: list or tuple, msg):
+    class SearchDropdown(discord.ui.View):
+        def __init__(self, msg):
+            super().__init__(timeout=60)
+            self.value = None
+            self.msg = msg
+
+        @discord.ui.select(
+            placeholder="Select a circular",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+        async def select_callback(self, select, interaction):
+            self.value = select.values[0][-4:]
+
+            for child in self.children:
+                child.disabled = True
+
+            await interaction.response.edit_message(view=self)
+
+            self.stop()
+
+        async def on_timeout(self):
+            for child in self.children:
+                child.disabled = True
+            await self.msg.edit(view=self)
+            self.stop()
+
+    return SearchDropdown(msg)
