@@ -48,7 +48,9 @@ class Listeners(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, ctx):
         # Ignore if message is from a bot or a reply
-        if (not ctx.author.bot) & (self.client.user.mentioned_in(ctx)) & (ctx.reference is None) & (not message.mention_everyone):
+        if (not ctx.author.bot) & (self.client.user.mentioned_in(ctx)) & (ctx.reference is None):
+            if ctx.mention_everyone:
+                return
 
             embed = discord.Embed(title="Mention Message", description="Hello! Thanks for using this bot.",
                                   color=embed_color)
