@@ -34,3 +34,9 @@ CREATE TABLE IF NOT EXISTS "notif_msgs" (
 	"channel_id"	INTEGER,
 	"guild_id"	INTEGER
 );
+
+CREATE TABLE IF NOT EXISTS "cache" (
+	"title"	TEXT,
+	"category"	TEXT,
+	"data"	BLOB
+);
