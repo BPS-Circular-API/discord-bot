@@ -118,7 +118,7 @@ class Commands(commands.Cog):
 
         png_url = list(await get_png(link))  # Get the png file from the download url
         embed.set_image(url=png_url[0])  # Set the image to the embed
-        embed.description = f"Searched took {round(time.time() - start, 2)} second(s). Requested by {author.mention}"
+        embed.description = f"Search took {round(time.time() - start, 2)} second(s). Requested by {author.mention}"
         embed_list = [embed]
 
         if len(png_url) != 1:
