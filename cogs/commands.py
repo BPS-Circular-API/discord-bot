@@ -150,7 +150,7 @@ class Commands(commands.Cog):
 
         msg = None
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
-        searched = tuple(await search(circular_title))  # Search for the circular from the backend function
+        searched: tuple = tuple(await search(circular_title))  # Search for the circular from the backend function
 
         embed = discord.Embed(title="Circular Search", color=embed_color, url=embed_url)  # Create an embed
         embed.set_author(name=embed_title)  # Set the author
@@ -197,8 +197,15 @@ class Commands(commands.Cog):
 
             if type(searched) == int:
                 return
+        elif len(searched) == 1:
+            searched: dict = searched[0]
         else:
-            searched = searched[0]
+            embed.add_field(name="Error",
+                            value="No circular found with that title or id. Maybe specify better search terms, "
+                                  "or find the circular you wanted from </circular list:1010911588703817808>.",
+                            inline=False)
+            await ctx.followup.send(embed=embed)
+            return
 
         title = searched['title']  # Get the title
         link = searched['link']  # Get the link
