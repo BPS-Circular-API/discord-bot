@@ -146,7 +146,7 @@ async def search(title: str) -> dict or None:
     url = base_api_url + "search"
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(url, params={'title': title, "amount": 3}) as resp:
+        async with session.get(url, params={'query': title, "amount": 3}) as resp:
             if resp.status == 200:
                 return (await resp.json())['data']
             elif resp.status == 500:
