@@ -200,7 +200,7 @@ class Listeners(commands.Cog):
         embed_list = []
 
         # If the circular has more than 1 page
-        if len(png_url) != 1:
+        if len(png_url) > 1:
             for i in range(len(png_url)):
                 if i == 0:
                     continue
@@ -208,6 +208,7 @@ class Listeners(commands.Cog):
                 # If the circular has more than 4 pages, only send the first 4
                 # This is due to the discord embed limit of 4 images.
                 elif i > 3:
+                    # embed.add_field(name="Note", value=f"This circular has {len(png_url) - 4} more pages .", inline=False)
                     break
 
                 temp_embed = discord.Embed(url=embed_url)

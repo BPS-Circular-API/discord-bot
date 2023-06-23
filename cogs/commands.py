@@ -399,7 +399,7 @@ class Commands(commands.Cog):
                         inline=False)
         embed.add_field(name="</circular search:1010911588703817808>",
                         value="Searches for a circular from input and gives preview and circular details", inline=False)
-        embed.add_field(name="</circular remindme:1010911588703817808>",
+        embed.add_field(name="</circular notifyme:1010911588703817808>",
                         value="Remind you in DMs whenever a new circular is posted.", inline=False)
         embed.add_field(name="</circular admin setup:1010911588703817808>",
                         value="Set up a channel to remind in, when a new circular is posted", inline=False)
@@ -409,8 +409,8 @@ class Commands(commands.Cog):
                         value="Invite the bot to your server", inline=False)
         await ctx.followup.send(embed=embed)
 
-    @circular.command(name="remindme", description="Subscribe to DM reminders for the latest circular.")
-    async def remindme(self, ctx, message: str = None):
+    @circular.command(name="notifyme", description="Subscribe to DM notifications for the latest circular.")
+    async def notifyme(self, ctx, message: str = None):
         await ctx.defer()
 
         r_embed = discord.Embed(title="", description="", color=embed_color)  # Create the embed
@@ -421,7 +421,7 @@ class Commands(commands.Cog):
         res = self.cur.fetchone()
         if res:  # If the user is already in the database
             r_embed.title = "Unsubscribe"  # Set the title to Unsubscribe
-            r_embed.description = "You are already subscribed to reminders. Do you want to unsubscribe?"
+            r_embed.description = "You are already subscribed to notifications. Do you want to unsubscribe?"
             button = ConfirmButton(ctx.author)
 
             msg = await ctx.followup.send(embed=r_embed, view=button)  # Send the embed and the button to the user
@@ -452,7 +452,7 @@ class Commands(commands.Cog):
 
         r_embed.title = "Success!"  # Set the title to Success
         r_embed.description = "You successfully subscribed to DM reminders! " \
-                              "</circular remindme:1010911588703817808> to unsubscribe."
+                              "</circular notifyme:1010911588703817808> to unsubscribe."
 
         try:  # Try to send the user a DM
             await ctx.author.send(embed=r_embed)  # Send the embed to the user in DMs
