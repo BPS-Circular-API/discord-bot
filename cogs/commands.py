@@ -49,9 +49,6 @@ class Commands(commands.Cog):
 
             raw_res.sort(key=lambda x: x['id'], reverse=True)
 
-        #  get rid of ignored circulars
-        print(ignored_circulars)
-
         raw_res = [i for i in raw_res if i['id'] not in ignored_circulars]
 
         if raw_res is None:
