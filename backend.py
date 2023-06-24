@@ -44,13 +44,13 @@ try:
     base_api_url: str = config.get('main', 'base_api_url')
     backup_interval: int = config.getint('main', 'backup_interval')
     status_interval: int = config.getint('main', 'status_interval')
+    ignored_circulars = config.get('main', 'ignored_circulars').strip().split(',')
 
     embed_footer: str = config.get('discord', 'embed_footer')
     embed_color: int = int(config.get('discord', 'embed_color'), base=16)
     embed_title: str = config.get('discord', 'embed_title')
     embed_url: str = config.get('discord', 'embed_url')
 
-    ignored_circulars: list = ['1347']
 
 except Exception as err:
     console.critical("Error reading the config.ini file. Error: " + str(err))
@@ -67,6 +67,9 @@ console.debug(owner_ids)
 
 owner_guilds = tuple([int(i) for i in owner_guilds])
 console.debug(owner_guilds)
+
+ignored_circulars = tuple([int(i) for i in ignored_circulars])
+console.debug(ignored_circulars)
 
 if base_api_url[-1] != "/":  # For some very bright people who don't know how to read
     base_api_url += "/"
