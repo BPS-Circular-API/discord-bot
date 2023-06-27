@@ -140,14 +140,14 @@ class Commands(commands.Cog):
 
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} second(s).")
 
-    @circular.command(name="search", description="Searches for a particular circular in a particular category.")
-    async def search(self, ctx, circular_title: str):
+    @circular.command(name="search", description="Searches for a circular with a title or id.")
+    async def search(self, ctx, query: str):
         await ctx.defer()
         start = time.time()
 
         msg = None
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
-        searched: tuple = tuple(await search(circular_title))  # Search for the circular from the backend function
+        searched: tuple = tuple(await search(query))  # Search for the circular from the backend function
 
         embed = discord.Embed(title="Circular Search", color=embed_color, url=embed_url)  # Create an embed
         embed.set_author(name=embed_title)  # Set the author
@@ -240,7 +240,7 @@ class Commands(commands.Cog):
     # Admin commands
     @admin.command(
         name="setup",
-        description="Set up the bot to guild_notify the user when a circular is available in a channel.",
+        description="Set up the bot to notify when a new circular is posted.",
         guild_only=True
     )
     async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
@@ -267,7 +267,7 @@ class Commands(commands.Cog):
         if res:  # If the guild is in the database
             console.debug('[Commands] | ', res)
             e_embed = discord.Embed(title="Server Setup",
-                                    description=f"The server has an already existing reminder configuration!",
+                                    description=f"The server has an already existing notification configuration!",
                                     color=embed_color)
             e_embed.set_author(name=embed_title)
             e_embed.set_footer(text=embed_footer)
@@ -302,7 +302,7 @@ class Commands(commands.Cog):
             await channel.send(embed=c_embed)
 
             c_embed.title = "Success!"
-            c_embed.description = "The reminder configuration for this server has successfully been added!"
+            c_embed.description = "The notification configuration for this server has successfully been added!"
             c_embed.add_field(name="Channel", value=f"{channel.mention}", inline=False)
 
             await ctx.followup.send(embed=c_embed)
@@ -317,7 +317,7 @@ class Commands(commands.Cog):
             await ctx.followup.send(embed=error_embed)
             return
 
-    @admin.command(name="delete", description="Delete the server's circular reminder configuration.")
+    @admin.command(name="delete", description="Delete the server's circular notification configuration.")
     async def delete(self, ctx):
         await ctx.defer()
 
@@ -343,7 +343,7 @@ class Commands(commands.Cog):
 
         if not res:
             e_embed = discord.Embed(title="Server Setup",
-                                    description=f"The server has no reminder configuration!", color=embed_color)
+                                    description=f"The server has no notification configuration!", color=embed_color)
             e_embed.set_author(name=embed_title)
             e_embed.set_footer(text=embed_footer)
             await ctx.followup.send(embed=e_embed)
@@ -353,7 +353,7 @@ class Commands(commands.Cog):
         self.con.commit()  # Commit the changes to the database
 
         d_embed = discord.Embed(title="Success!",
-                                description="The reminder has successfully been deleted.", color=embed_color)
+                                description="The configuration has successfully been deleted.", color=embed_color)
         d_embed.set_author(name=embed_title)
         d_embed.set_footer(text=embed_footer)
 
@@ -397,16 +397,16 @@ class Commands(commands.Cog):
         embed.add_field(name="</circular search:1010911588703817808>",
                         value="Searches for a circular from input and gives preview and circular details", inline=False)
         embed.add_field(name="</circular notifyme:1010911588703817808>",
-                        value="Remind you in DMs whenever a new circular is posted.", inline=False)
+                        value="Notify you in DMs whenever a new circular is posted.", inline=False)
         embed.add_field(name="</circular admin setup:1010911588703817808>",
-                        value="Set up a channel to remind in, when a new circular is posted", inline=False)
+                        value="Set up a channel to send a notification when a new circular is posted", inline=False)
         embed.add_field(name="</circular admin delete:1010911588703817808>",
-                        value="Delete the server's circular reminder configuration", inline=False)
+                        value="Delete the server's circular notification configuration", inline=False)
         embed.add_field(name="</circular invite:1010911588703817808>",
                         value="Invite the bot to your server", inline=False)
         await ctx.followup.send(embed=embed)
 
-    @circular.command(name="notifyme", description="Subscribe to DM notifications for the latest circular.")
+    @circular.command(name="notifyme", description="Subscribe to DM notifications for the new circulars")
     async def notifyme(self, ctx, message: str = None):
         await ctx.defer()
 
@@ -436,7 +436,7 @@ class Commands(commands.Cog):
             self.con.commit()  # Commit the changes to the database
 
             r_embed.title = "Unsubscribed"
-            r_embed.description = "You have been unsubscribed from reminders."
+            r_embed.description = "You have been unsubscribed from notifications."
             await msg.edit(embed=r_embed)  # Edit the message to show that the user has been unsubscribed
             return
 
@@ -448,7 +448,7 @@ class Commands(commands.Cog):
         self.con.commit()
 
         r_embed.title = "Success!"  # Set the title to Success
-        r_embed.description = "You successfully subscribed to DM reminders! " \
+        r_embed.description = "You successfully subscribed to DM notifications! " \
                               "</circular notifyme:1010911588703817808> to unsubscribe."
 
         try:  # Try to send the user a DM
