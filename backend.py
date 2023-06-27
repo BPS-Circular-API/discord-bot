@@ -4,7 +4,6 @@ import sqlite3
 import time
 import discord
 import logging
-import pickle
 import aiohttp
 import sys
 from discord.ext import commands
@@ -190,18 +189,6 @@ async def log(level, category, msg, *args):
 
     cursor.execute('INSERT INTO logs VALUES (?, ?, ?, ?)', (current_time, level, category, msg))
     db.commit()
-
-
-def get_cached():
-    # get dict from data/temp.pickle
-    with open("./data/temp.pickle", "rb") as f:
-        return pickle.load(f)
-
-
-def set_cached(obj):
-    # set dict to data/temp.pickle
-    with open("./data/temp.pickle", "wb") as f:
-        pickle.dump(obj, f)
 
 
 async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed, id_):

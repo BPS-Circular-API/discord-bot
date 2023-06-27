@@ -1,7 +1,6 @@
 import os
 import sys
 from backend import client, discord_token, console
-import discord.utils
 
 
 @client.event
