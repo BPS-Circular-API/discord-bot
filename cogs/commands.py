@@ -2,8 +2,6 @@ import math
 import sqlite3
 import discord
 import time
-import threading
-import asyncio
 import discord.ext.pages
 from discord.ext import commands
 from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, get_png, \
@@ -54,7 +52,7 @@ class Commands(commands.Cog):
         if raw_res is None:
             await ctx.respond("There was a bit of an issue on our end. Please try again later.")
 
-        titles, links = [], []  # Define 3 empty lists
+        titles, links = [], []  # Define 2 empty lists
         loop_int = 1  # The variable which will be used to add numbers into the embed
 
         # Loop through the raw API output

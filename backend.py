@@ -1,4 +1,3 @@
-import asyncio
 import configparser
 import sqlite3
 import time
