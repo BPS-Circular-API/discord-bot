@@ -143,24 +143,35 @@ class Commands(commands.Cog):
         await ctx.defer()
         start = time.time()
 
+        # Get the author object
         msg = None
         author = await self.client.fetch_user(ctx.author.id)  # Fetch the user object
-        searched: tuple = tuple(await search(query))  # Search for the circular from the backend function
 
+        # Create the embed
         embed = discord.Embed(title="Circular Search", color=embed_color, url=embed_url)  # Create an embed
         embed.set_author(name=embed_title)  # Set the author
         embed.set_footer(text=embed_footer)  # Set the footer
 
-        if searched is None:
-            embed.add_field(name="Error",
-                            value="No circular found with that title or id. Maybe specify better search terms, "
-                                  "or find the circular you wanted from </circular list:1010911588703817808>.",
-                            inline=False)
+        # Search for the circular through the API
+        searched = await search(query)
+
+        # If no circular is found
+        if not searched:
+            embed.add_field(
+                name="Error",
+                value="No circular found with that title or id. Maybe specify better search terms, "
+                        "or find the circular you wanted from </circular list:1010911588703817808>.",
+                inline=False
+            )
+
             await ctx.followup.send(embed=embed)
             return
+        else:
+            searched = tuple(searched)
 
         end = time.time()
 
+        # If more than one result is found
         if len(searched) > 1:
             _embed = embed.copy()
             _embed.description = f"Select the circular you want to view using the dropdown. Requested by {author.mention}."
@@ -172,6 +183,7 @@ class Commands(commands.Cog):
                 ) for i in searched
             ]
 
+            # Send the message with dropdown
             msg = await ctx.followup.send(embed=_embed)
             dropdown = await create_search_dropdown(options, msg)
             await msg.edit(embed=_embed, view=dropdown)
@@ -179,28 +191,21 @@ class Commands(commands.Cog):
             # wait for the user to select an option
             await dropdown.wait()
 
-            if dropdown.value is None:  # Timeout
+            # If timeout occurs
+            if dropdown.value is None:
                 return
 
-            res = dropdown.value  # Get the value of the dropdown
+            circular_id = dropdown.value
 
-            # res is the circular id, find the circular from the id
+            # circular_id is the circular id, find the circular from the id
             for i in searched:
-                if i['id'] == res:
-                    searched = i
+                if i['id'] == circular_id:
+                    searched: dict = i
                     break
 
-            if type(searched) == int:
-                return
+        # If only one result is found (perhaps the user searched by id)
         elif len(searched) == 1:
             searched: dict = searched[0]
-        else:
-            embed.add_field(name="Error",
-                            value="No circular found with that title or id. Maybe specify better search terms, "
-                                  "or find the circular you wanted from </circular list:1010911588703817808>.",
-                            inline=False)
-            await ctx.followup.send(embed=embed)
-            return
 
         title = searched['title']  # Get the title
         link = searched['link']  # Get the link
@@ -232,7 +237,7 @@ class Commands(commands.Cog):
         else:
             await msg.edit(embeds=embed_list)
 
-        await msg.edit(embeds=embed_list, view=FeedbackButton(msg, author, circular_title, searched))
+        await msg.edit(embeds=embed_list, view=FeedbackButton(msg, author, query, searched))
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     # Admin commands
