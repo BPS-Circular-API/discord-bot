@@ -66,7 +66,10 @@ console.debug(owner_ids)
 owner_guilds = tuple([int(i) for i in owner_guilds])
 console.debug(owner_guilds)
 
-ignored_circulars = tuple([int(i) for i in ignored_circulars])
+if ignored_circulars == ['']:
+    ignored_circulars = tuple()
+else:
+    ignored_circulars = tuple([int(i) for i in ignored_circulars])
 console.debug(ignored_circulars)
 
 if base_api_url[-1] != "/":  # For some very bright people who don't know how to read
@@ -143,11 +146,11 @@ async def get_png(download_url: str) -> list or None:
                 return
 
 
-async def search(title: str) -> dict or None:
+async def search(query: str) -> tuple or None:
     url = base_api_url + "search"
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(url, params={'query': title, "amount": 3}) as resp:
+        async with session.get(url, params={'query': query, "amount": 3}) as resp:
             if resp.status == 200:
                 return (await resp.json())['data']
             elif resp.status == 500:
