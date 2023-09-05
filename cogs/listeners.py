@@ -125,7 +125,7 @@ class Listeners(commands.Cog):
         # Check for new circulars
         new_circular_objects = self.group.check()
 
-        if (new_circulars := sum((i for i in map(len, new_circular_objects.values())))) > 0:
+        if (new_circulars := sum(i for i in map(len, new_circular_objects.values()))) > 0:
             console.info(f"Found {new_circulars} new circulars.")
         else:
             console.debug(f"No new circulars found.")
