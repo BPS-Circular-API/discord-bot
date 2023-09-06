@@ -142,7 +142,11 @@ class Listeners(commands.Cog):
             for cat in new_circular_objects:
                 if cat:
                     for obj in new_circular_objects[cat]:
-                        await self.notify(cat, obj)
+                        try:
+                            await self.notify(cat, obj)
+                        except Exception as err:
+                            console.error(err)
+                            await log('error', 'listener', f"Error in notifying about circular {obj['id']}: {err}")
 
         else:
             console.debug(f"[Listeners] | No new circulars found.")
