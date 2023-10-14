@@ -8,8 +8,7 @@ import asyncio
 import pybpsapi
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, \
-    status_interval, log, embed_url, base_api_url, send_to_guilds, \
-    send_to_users, categories
+    status_interval, log, embed_url, base_api_url, send_to_guilds, send_to_users, categories, statuses
 
 
 class Listeners(commands.Cog):
@@ -81,22 +80,23 @@ class Listeners(commands.Cog):
 
     @tasks.loop(seconds=status_interval * 60)
     async def random_status(self):
-        activities = (
-            f"{self.member_count} Users!",
-            f"{len(self.client.guilds)} Guilds!",
-            "/circular help",
-            "Made by Raj Dave#3215",
-            "Fully Open Source!",
-        )
 
-        types = (
-            discord.ActivityType.watching,
-            discord.ActivityType.watching,
-            discord.ActivityType.playing,
-            discord.ActivityType.playing,
-            discord.ActivityType.playing,
-        )
+        # statuses format: ['type|activity', 'type|activity', 'type|activity']
+        activities = [item[1] for item in statuses]
 
+        types = [
+            discord.ActivityType.playing if item[0] == 'playing' else
+            discord.ActivityType.streaming if item[0] == 'streaming' else
+            discord.ActivityType.listening if item[0] == 'listening' else
+            discord.ActivityType.watching if item[0] == 'watching' else
+            discord.ActivityType.playing for item in statuses
+        ]
+        
+        # replace {xyz} with variable xyz, etc
+        for i in range(len(activities)):
+            activities[i] = activities[i].replace('{guilds}', str(len(self.client.guilds)))
+            activities[i] = activities[i].replace('{members}', str(self.member_count))
+            
         # Choose a random activity
         rand_int = random.randint(0, len(activities) - 1)
 

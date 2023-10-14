@@ -43,6 +43,7 @@ try:
     backup_interval: int = config.getint('main', 'backup_interval')
     status_interval: int = config.getint('main', 'status_interval')
     ignored_circulars = config.get('main', 'ignored_circulars').strip().split(',')
+    statuses: str = config.get('main', 'statuses').strip()
 
     embed_footer: str = config.get('discord', 'embed_footer')
     embed_color: int = int(config.get('discord', 'embed_color'), base=16)
@@ -74,6 +75,11 @@ console.debug(ignored_circulars)
 
 if base_api_url[-1] != "/":  # For some very bright people who don't know how to read
     base_api_url += "/"
+
+statuses: list = statuses.split(',')
+for i in range(len(statuses)):
+    statuses[i] = statuses[i].strip()
+    statuses[i] = statuses[i].split('|')
 
 json = requests.get(base_api_url + "categories").json()
 if json['http_status'] == 200:
