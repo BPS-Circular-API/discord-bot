@@ -180,6 +180,10 @@ class Listeners(commands.Cog):
         # Get the circular image
         png_url = await get_png(link)
 
+        if not png_url:
+            await log('warning', 'listener', f"Error in getting circular image for {id_}. It is None.")
+            return
+
         # Create the error embed
         error_embed = discord.Embed(title=f"Error!", color=embed_color)
         error_embed.description = "Please make sure that I have the adequate permissions to send messages in the " \
@@ -216,7 +220,11 @@ class Listeners(commands.Cog):
                 # If the circular has more than 4 pages, only send the first 4
                 # This is due to the discord embed limit of 4 images.
                 elif i > 3:
-                    # embed.add_field(name="Note", value=f"This circular has {len(png_url) - 4} more pages .", inline=False)
+                    embed.add_field(
+                        name="Note",
+                        value=f"This circular has {len(png_url) - 4} more pages. Please visit the [link]({link}) to view them.",
+                        inline=False
+                    )
                     break
 
                 temp_embed = discord.Embed(url=embed_url)
