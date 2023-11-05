@@ -28,18 +28,21 @@ class Listeners(commands.Cog):
     async def on_ready(self):
         console.info(f"Cog : Listeners.py loaded.")
 
-        if not self.get_member_count.is_running():
-            self.get_member_count.start()
+        try:
+            if not self.get_member_count.is_running():
+                self.get_member_count.start()
 
-        if not self.check_for_circular.is_running():
-            self.check_for_circular.start()
+            if not self.check_for_circular.is_running():
+                self.check_for_circular.start()
 
-        if not self.backup.is_running():
-            if backup_interval >= 0.5:
-                self.backup.start()
+            if not self.backup.is_running():
+                if backup_interval >= 0.5:
+                    self.backup.start()
 
-        while not self.member_count > -1:
-            await asyncio.sleep(1)
+            while not self.member_count > -1:
+                await asyncio.sleep(1)
+        except Exception as e:
+            console.warning(e)
 
         console.info(f"I am in {len(self.client.guilds)} guilds. They have {self.member_count} members.")
         self.random_status.start()
