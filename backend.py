@@ -110,8 +110,8 @@ async def get_circular_list(category: str) -> tuple or None:
                 return
 
 
-async def get_latest_circular(category: str, cached=False) -> dict or None:
-    url = base_api_url + "latest" if not cached else base_api_url + "cached-latest"
+async def get_latest_circular(category: str) -> dict or None:
+    url = base_api_url + "latest"
 
     if category == "all":
         info = {}
