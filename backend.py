@@ -81,11 +81,15 @@ for i in range(len(statuses)):
     statuses[i] = statuses[i].strip()
     statuses[i] = statuses[i].split('|')
 
-json = requests.get(base_api_url + "categories").json()
-if json['http_status'] == 200:
-    categories = json['data']
-else:
-    raise ConnectionError("Invalid API Response. API says there are no categories.")
+try:
+    json = requests.get(base_api_url + "categories", timeout=5000).json()
+    if json['http_status'] == 200:
+        categories = json['data']
+    else:
+        raise ConnectionError("Invalid API Response. API says there are no categories.")
+except Exception as e:
+    console.critical(f"Error while connecting to the API. Error: {e}")
+    sys.exit()
 
 client = commands.Bot(help_command=None)  # Setting prefix
 
