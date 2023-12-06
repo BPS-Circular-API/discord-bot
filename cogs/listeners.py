@@ -143,13 +143,22 @@ class Listeners(commands.Cog):
         # if there are actually any new circulars, notify
         if sum((i for i in map(len, new_circular_objects.values()))) > 0:
             for cat in new_circular_objects:
-                if cat:
-                    for obj in new_circular_objects[cat]:
-                        try:
-                            await self.notify(cat, obj)
-                        except Exception as err:
-                            console.error(err)
-                            await log('error', 'listener', f"Error in notifying about circular {obj['id']}: {err}")
+                for obj in new_circular_objects[cat]:
+
+                    # We need to double check if the circular hasn't been sent before
+                    # To do this, we'll look through the `notif_msgs` table and see if the circular id is there
+                    self.cur.execute("SELECT * FROM notif_msgs WHERE circular_id = ?", (obj['id'],))
+                    if self.cur.fetchone():
+                        console.warning(f"[Listeners] | {obj['id']} has already been notified, but is in new_circular_objects.")
+
+                        continue
+
+
+                    try:
+                        await self.notify(cat, obj)
+                    except Exception as err:
+                        console.error(err)
+                        await log('error', 'listener', f"Error in notifying about circular {obj['id']}: {err}")
 
         else:
             console.debug(f"[Listeners] | No new circulars found.")
