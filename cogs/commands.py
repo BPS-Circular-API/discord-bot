@@ -133,7 +133,14 @@ class Commands(commands.Cog):
         #         with io.BytesIO(img) as file:  # converts to file-like object
         #             file = discord.File(file, filename=f"{id_}.pdf")
 
-        msg = await ctx.followup.send(embeds=embed_list)
+        try:
+            msg = await ctx.followup.send(embeds=embed_list)
+        except discord.Forbidden:
+            try:
+                msg = await author.send(embeds=embed_list)
+            except discord.Forbidden:
+                console.warning(f"[Commands] | {author} has DMs disabled and can't respond to the command.")
+                return
         await msg.edit(embeds=embed_list, view=DeleteButton(ctx, msg))
 
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} second(s).")
