@@ -220,7 +220,7 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
         except discord.NotFound:  # If the channel or guild is not found (deleted)
             console.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")
             cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
-                        (guild, channel))
+                        (guild.id, channel))
             con.commit()
             continue
 
