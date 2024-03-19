@@ -18,11 +18,30 @@ class Listeners(commands.Cog):
         self.cur = self.con.cursor()
         self.member_count = -1
 
+        self.mention_embed = discord.Embed(
+            title="Mention Message", 
+            description="Hello! Thanks for using this bot.",
+            color=embed_color
+            )
+        self.mention_embed.set_footer(text=embed_footer)
+        self.mention_embed.set_author(name=embed_title)
+        self.mention_embed.add_field(
+            name="Prefix", 
+            value="This bot uses slash commands, which are prefixed with `/circular`",
+            inline=False
+            )
+        self.mention_embed.add_field(
+            name="For help", 
+            value="Use </help:1017654494009491476> to get a list of all the commands.",
+            inline=False
+            )
+
+        # Create a circular checker group and add all checkers of all categories to it
         self.group = pybpsapi.CircularCheckerGroup()
-        for thing in [pybpsapi.CircularChecker(
+        for checker in [pybpsapi.CircularChecker(
                 cat, cache_method='database', db_name='data', db_path='./data', db_table='cache', url=base_api_url
         ) for cat in categories]:
-            self.group.add(thing)
+            self.group.add(checker)
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -35,39 +54,35 @@ class Listeners(commands.Cog):
             if not self.check_for_circular.is_running():
                 self.check_for_circular.start()
 
+            if not self.random_status.is_running():
+                self.random_status.start()
+
             if not self.backup.is_running():
                 if backup_interval >= 0.5:
                     self.backup.start()
 
             while not self.member_count > -1:
                 await asyncio.sleep(1)
+
         except Exception as e:
             console.warning(e)
 
         console.info(f"I am in {len(self.client.guilds)} guilds. They have {self.member_count} members.")
-        self.random_status.start()
+
 
     @commands.Cog.listener()
     async def on_message(self, ctx):
         # Ignore if message is from a bot or a reply
         if (not ctx.author.bot) & (self.client.user.mentioned_in(ctx)) & (ctx.reference is None):
+            # Ignore if it's a @everyone or @here
             if ctx.mention_everyone:
-                return
-
-            embed = discord.Embed(title="Mention Message", description="Hello! Thanks for using this bot.",
-                                  color=embed_color)
-            embed.set_footer(text=embed_footer)
-            embed.set_author(name=embed_title)
-            embed.add_field(name="Prefix", value="This bot uses slash commands, which are prefixed with `/circular`",
-                            inline=False)
-            embed.add_field(name="For help", value="Use </help:1017654494009491476> to get a list of all the commands.",
-                            inline=False)
+                return         
 
             try:
-                msg = await ctx.reply(embed=embed)
-                await msg.edit(embed=embed, view=DeleteButton(ctx, msg, author_only=False))
+                msg = await ctx.reply(embed=self.mention_embed)
+                await msg.edit(embed=self.mention_embed, view=DeleteButton(msg, ctx.author.id))
                 await log('info', 'command',
-                          f"Sent mention message to {ctx.author.name}#{ctx.author.discriminator} ({ctx.author.id})")
+                          f"Sent mention message to {ctx.author.name} ({ctx.author.display_name}) | {ctx.author.id}")
 
             except discord.Forbidden:  # If the bot doesn't have permission to send messages
                 await log('warning', 'command',
@@ -133,9 +148,10 @@ class Listeners(commands.Cog):
         else:
             console.debug(f"No new circulars found.")
             return
+        
         console.debug(f"New Circulars: {new_circular_objects}")
 
-        # If there are more than 19 new circulars, skip notification (bug)
+        # If there are more than 19 new circulars, skip notification (bug idk how to fix)
         if sum((i for i in map(len, new_circular_objects.values()))) > 19:
             console.warning(f"[Listeners] | More than 19 new circulars found. Skipping notification.")
             return
@@ -143,28 +159,19 @@ class Listeners(commands.Cog):
         # if there are actually any new circulars, notify
         if sum((i for i in map(len, new_circular_objects.values()))) > 0:
             for cat in new_circular_objects:
-                for obj in new_circular_objects[cat]:
-
-                    # We need to double check if the circular hasn't been sent before
-                    # To do this, we'll look through the `notif_msgs` table and see if the circular id is there
-                    self.cur.execute("SELECT * FROM notif_msgs WHERE circular_id = ?", (obj['id'],))
-                    if self.cur.fetchone():
-                        console.warning(f"[Listeners] | {obj['id']} has already been notified, but is in new_circular_objects.")
-
-                        continue
-
-
-                    try:
-                        await self.notify(cat, obj)
-                    except Exception as err:
-                        console.error(err)
-                        await log('error', 'listener', f"Error in notifying about circular {obj['id']}: {err}")
+                if cat:
+                    for obj in new_circular_objects[cat]:
+                        try:
+                            await self.notify(cat, obj)
+                        except Exception as err:
+                            console.error(err)
+                            await log('error', 'listener', f"Error in notifying about circular {obj['id']}: {err}")
 
         else:
             console.debug(f"[Listeners] | No new circulars found.")
 
     async def notify(self, _circular_category, _circular_obj):
-        # Gather all the guilds
+        # Gather all guilds
         self.cur.execute("SELECT * FROM guild_notify")
         guild_notify = self.cur.fetchall()
 
@@ -172,11 +179,10 @@ class Listeners(commands.Cog):
         channels = [x[1] for x in guild_notify]
         messages = [x[2] for x in guild_notify]
 
-        # Gather all the DMs
+        # Gather all DMs
         self.cur.execute("SELECT * FROM dm_notify")
         users = self.cur.fetchall()
 
-        # Make the lists
         user_ids = [x[0] for x in users]
         user_messages = [x[1] for x in users]
         del users, guild_notify
@@ -193,7 +199,7 @@ class Listeners(commands.Cog):
         png_url = await get_png(link)
 
         if not png_url:
-            await log('warning', 'listener', f"Error in getting circular image for {id_}. It is None.")
+            await log('error', 'listener', f"Error in getting circular image for {id_}. It is None.")
             return
 
         # Create the error embed
@@ -226,6 +232,7 @@ class Listeners(commands.Cog):
         # If the circular has more than 1 page
         if len(png_url) > 1:
             for i in range(len(png_url)):
+                # The first image is already there in the main embed
                 if i == 0:
                     continue
 
@@ -271,8 +278,8 @@ class Listeners(commands.Cog):
     async def on_application_command_error(self, ctx: discord.ApplicationContext, error: Exception):
         if isinstance(error, discord.errors.Forbidden):
             await ctx.respond("I don't have the permission to do that!")
-        # elif isinstance(error, discord.errors.ApplicationCommandInvokeError):
-        #     pass
+        elif isinstance(error, discord.errors.ApplicationCommandInvokeError):
+            return 
         else:
             console.error(error)
             raise error
