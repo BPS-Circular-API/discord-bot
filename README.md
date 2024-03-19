@@ -8,6 +8,28 @@ The official BPS Circular API Discord Bot is a bot that allows you to get the la
 
 It uses my own BPS Circular API to get the latest circulars.
 
+## Project Directory
+
+```
+├───data
+│   ├───data.db
+│   └───config.ini
+├───cogs
+│   ├───commands.py
+│   ├───listeners.py
+│   └───owners.py
+├───main.py
+├───backend.py
+├───requirements.txt
+├───README.md
+```
+- main.py contains the basic discord bot, backend.py contains all bakcend functions that communicate with the API and all reusable code.
+- cogs/commands.py contains all of the user-comamnds. they use the backend functions.
+- cogs/listeners.py contains event listeners and background tasks.
+- cogs/owners.py contains commands to be used only by bot owners.
+- data/config.ini is the main configuration file for this bot.
+- data/data.db stores all the bot's data.
+
 ## Uses 
 
 Here is what the bot can do - https://bpsapi.rajtech.me/docs/discord-bot/using-the-bot/features
