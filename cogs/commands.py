@@ -151,6 +151,11 @@ class Commands(commands.Cog):
                     continue
                 # Only four pages max are supposed in a gallery
                 if i > 3:
+                    embed.add_field(
+                        name="Note",
+                        value=f"This circular has {len(png_url) - 4} more pages. Please visit the [link]({link}) to view them.",
+                        inline=False
+                    )
                     break
 
                 _embed = discord.Embed(url=embed_url)
@@ -172,7 +177,7 @@ class Commands(commands.Cog):
             except discord.Forbidden:
                 console.warning(f"[Commands] | {author} has DMs disabled and can't respond to the command.")
                 return
-        await msg.edit(embeds=embed_list, view=DeleteButton(ctx, msg))
+        await msg.edit(embeds=embed_list, view=DeleteButton(msg, author.id))
 
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} second(s).")
 
