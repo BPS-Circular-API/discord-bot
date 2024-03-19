@@ -515,12 +515,13 @@ class FeedbackButton(discord.ui.View):
         self.stop()
 
 
-async def create_search_dropdown(options: tuple, msg):
+async def create_search_dropdown(options: tuple, msg, user_id: int = None):
     class SearchDropdown(discord.ui.View):
         def __init__(self, msg):
             super().__init__(timeout=60)
             self.value = None
             self.msg = msg
+            self.user_id = user_id
 
         @discord.ui.select(
             placeholder="Select a circular",
@@ -529,6 +530,10 @@ async def create_search_dropdown(options: tuple, msg):
             options=options
         )
         async def select_callback(self, select, interaction):
+            if self.user_id:
+                if interaction.user.id != self.user_id:
+                    return await interaction.response.send_message("This button is not for you", ephemeral=True)
+
             # Get the ID of the selected circular 
             self.value = select.values[0][-4:]
 
