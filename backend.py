@@ -221,7 +221,10 @@ async def log(level, category, msg, *args):
     con.commit()
 
 
-async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed, id_):
+async def send_to_guilds(
+    guilds: list, channels: list, messages: list, notif_msgs: list, embed: discord.Embed, embed_list: list, 
+    error_embed: discord.Embed, id_: int
+):
     con = sqlite3.connect('./data/data.db')
     cur = con.cursor()
 
@@ -229,47 +232,55 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
 
         # Set the custom message if there is one
         console.debug(f"Message: {message}")
-        embed.description = message  # Set the description of the embed to the message
+        embed.description = message
 
-        try:  # Try to fetch the guild and channel from the discord API
-            guild = await client.fetch_guild(int(guild))  # Get the guild object
-            channel = await guild.fetch_channel(int(channel))  # Get the channel object
+        # Try to fetch the guild and channel from the discord API
+        try:  
+            guild = await client.fetch_guild(int(guild))
+            channel = await guild.fetch_channel(int(channel))
 
-        except discord.NotFound:  # If the channel or guild is not found (deleted)
-            if not type(guild) == int:
+        # If the channel or guild is not found (deleted)
+        except discord.NotFound:  
+            if type(guild) is not int:
                 guild = guild.id
                 
-            console.warning(f"Guild or channel not found. Guild: {guild}, Channel: {channel}")   
-            cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
-                        (guild, channel))
+            console.warning(
+                f"Guild or channel not found. Guild: {guild}, Channel: {channel}"
+                "Seems like I was kicked from the server. Deleting from DB"
+                )   
+            cur.execute(
+                "DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
+                (guild, channel)
+            )
             con.commit()
             continue
 
-        except discord.Forbidden:  # If the bot can not get the channel or guild
-            if not type(guild) == int:
+        except discord.Forbidden:   # TODO find out if this can even happen
+            if type(guild) is not int:
                 guild = guild.id
             
-            console.warning(f"Could not get channel. Guild: {guild}, Channel: {channel}. "
-                            "Seems like I was kicked from the server.")
-            cur.execute("DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
-                        (guild, channel))
-            con.commit()
+            console.warning(f"No permission to get guild/channel. Guild: {guild}, Channel: {channel}.")
             continue
 
-        except Exception as e:  # If there is any other error
+        except Exception as e:
             console.error(f"Error: {e}")
             continue
 
-        try:  # Try to send the message
-            _msg = await channel.send(embeds=[embed.copy(), *embed_list])  # Send the embed
+        # Try to send the message
+        try:  
+            _msg = await channel.send(embeds=[embed.copy(), *embed_list])
             console.debug(f"Sent Circular Embed to {guild.id} | {channel.id}")
 
-        except discord.Forbidden:  # If the bot doesn't have permission to send messages in the channel
-            for _channel in guild.text_channels:  # Find a channel where it can send messages
+        # If the bot doesn't have permissions to post in the channel
+        except discord.Forbidden:
+            # Find a channel where it can send messages
+            # TODO: check if this is possible with no intents
+            for _channel in guild.text_channels:  
 
-                try:  # Try to send the error embed
-                    await _channel.send(embed=error_embed)  # Send the error embed
-                    _msg = await _channel.send(embeds=[embed.copy(), *embed_list])  # Send the circular embed
+                try: 
+                    await _channel.send(embed=error_embed)  
+                    _msg = await _channel.send(embeds=[embed.copy(), *embed_list])
+
                     console.warning(
                         f"Could not send message to {channel.id} in {guild.id}. Sent to {channel.id} instead.")
                     channel = _channel  # Set the channel to the new channel
@@ -279,10 +290,10 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
                     continue
 
             else:  # If it can't send the message in any channel
-                console.error(f"Couldn't send Circular to {guild.id}'s {channel.id}")
+                console.error(f"Couldn't send Circular to {guild.id}'s {channel.id} due to discord.Forbidden while attempting to send.")
                 continue
 
-        except Exception as e:  # If it can't send the circular embed
+        except Exception as e:
             console.error(
                 f"Couldn't send Circular Embed to {guild.id}'s | {channel.id}. Not discord.Forbidden." + str(e))
             continue
@@ -301,38 +312,46 @@ async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_li
 async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list, id_):
     con = sqlite3.connect('./data/data.db')
     cur = con.cursor()
-    for user, message in zip(user_id, user_message):  # For each user in the database
 
-        try:  # Try to get the user
-            user = await client.fetch_user(int(user))  # Get the user object
+    for user, message in zip(user_id, user_message):
 
-        except discord.NotFound:  # If the user is not found (deleted)
+        try:
+            user = await client.fetch_user(int(user))
+
+        # If the user is not found (deleted)
+        except discord.NotFound:
             console.warning(f"User not found. User: {user}")
-            cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
+            cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user,))
             con.commit()
             continue
 
-        except Exception as e:  # If there is any other error
+        # If there is any other error
+        except Exception as e:
             console.error(f"Could get fetch a user {user}. Error: {e}")
             continue
 
         console.debug(f"[Listeners] | Message: {message}")
         embed.description = message
 
-        try:  # Try to send the embed to the user
+        # Try to send the embed
+        try:
             _msg = await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed to the user
-            console.debug(f"Successfully sent Circular in DMs to {user.name}#{user.discriminator} | {user.id}")
+            console.debug(f"Successfully sent Circular in DMs to {user.name} ({user.display_name}) | {user.id}")
 
-        except discord.Forbidden:  # If the user has DMs disabled
+        # If their DMs are disabled/bot is blocked
+        except discord.Forbidden:
             console.error(
-                f"Could not send Circular in DMs to {user.name}#{user.discriminator} | {user.id}. DMs are disabled.")
+                f"Could not send Circular in DMs to {user.name} ({user.display_name}) | {user.id}. DMs are disabled.")
+            await log('info', 'listener',
+                      f"Removed {user.name} ({user.display_name}) | {user.id} from the DM notify list.")
+
+            # Remove them from database
             cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
             con.commit()
-            await log('info', 'listener',
-                      f"Removed {user.name}#{user.discriminator} | {user.id} from the DM notify list.")
+            
             continue
 
-        except Exception as e:  # If the user has DMs disabled
+        except Exception as e:
             console.error(f"Couldn't send Circular Embed to User: {user.id}")
             console.error(e)
             continue
@@ -349,7 +368,7 @@ async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list, id
 
 
 # Confirm Button Discord View
-class ConfirmButton(discord.ui.View):  # Confirm Button Class
+class ConfirmButton(discord.ui.View):
     def __init__(self, author):
         super().__init__()
         self.value = None
@@ -357,12 +376,17 @@ class ConfirmButton(discord.ui.View):  # Confirm Button Class
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
     async def confirm_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
-        if not interaction.user.id == self.author.id:
-            return await interaction.response.send_message("This button is not for you", ephemeral=True)
 
+        # If a different user tries to interact with the button
+        if not interaction.user.id == self.author.id:
+            await interaction.response.send_message("This button is not for you", ephemeral=True)
+            return
+
+        # Set the view's value to True (for callback)
         self.value = True
 
-        for child in self.children:  # Disable all buttons
+        # Disable all buttons
+        for child in self.children:
             child.disabled = True
 
         await interaction.response.edit_message(view=self)
@@ -370,11 +394,16 @@ class ConfirmButton(discord.ui.View):  # Confirm Button Class
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey)
     async def cancel_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
+        
+        # If a different user tries to interact with the button
         if not interaction.user.id == self.author.id:
-            return await interaction.response.send_message("This button is not for you", ephemeral=True)
+            await interaction.response.send_message("This button is not for you", ephemeral=True)
+            return
 
+        # Set the view's value to False (for callback)
         self.value = False
 
+        # Disable all buttons
         for child in self.children:
             child.disabled = True
 
@@ -384,49 +413,54 @@ class ConfirmButton(discord.ui.View):  # Confirm Button Class
 
 # Delete Button Discord View
 class DeleteButton(discord.ui.View):
-    def __init__(self, ctx, msg, author_only=True):
-        super().__init__(timeout=300)
+    def __init__(self, msg, user_id: int = None, timeout: int = 60):
+        super().__init__(timeout=timeout)
+
         self.msg = msg
-        self.author = ctx.author
-        self.author_only = author_only
+        self.user_id = user_id
 
     # disable the delete button on timeout
     async def on_timeout(self):
+
         for child in self.children:
             child.disabled = True
+
         await self.msg.edit(view=self)
         self.stop()
 
     @discord.ui.button(label="Delete", style=discord.ButtonStyle.red)
-    async def button_callback(self, button, interaction):  # Don't remove the unused argument, it's used by py-cord
-        if self.author_only:
-            if not interaction.user.id == self.author.id:
-                return await interaction.response.send_message("This button is not for you", ephemeral=True)
+    async def button_callback(self, button, interaction):
+        # If user_id is passed, restrict button usage to that user
+        if self.user_id:
+            if interaction.user.id != self.user_id:
+                await interaction.response.send_message("This button is not for you", ephemeral=True)
+                return
+
         await self.msg.delete()
 
 
 # Feedback Button Discord View
 class FeedbackButton(discord.ui.View):
-    def __init__(self, msg, author, search_query, search_result, author_only=True):
+    def __init__(self, msg, search_query, search_result, user_id: int = None):
         super().__init__(timeout=300)
         self.msg = msg
-        self.author = author
-        self.author_only = author_only
+        self.user_id = user_id
         self.search_query = search_query
         self.search_result = search_result
 
-    # disable the button on timeout
+    # disable the view on timeout
     async def on_timeout(self):
+
         for child in self.children:
             child.disabled = True
+
         await self.msg.edit(view=self)
         self.stop()
 
     @discord.ui.button(label="👍", style=discord.ButtonStyle.green)
-    async def thumbs_up_button_callback(self, button,
-                                        interaction):  # Don't remove the unused argument, it's used by py-cord
-        if self.author_only:
-            if interaction.user.id != self.author.id:
+    async def thumbs_up_button_callback(self, button, interaction):  
+        if self.user_id:
+            if interaction.user.id != self.user_id:
                 return await interaction.response.send_message("This button is not for you", ephemeral=True)
 
         con = sqlite3.connect("./data/data.db")
@@ -442,39 +476,46 @@ class FeedbackButton(discord.ui.View):
 
         await interaction.response.send_message("Thanks for your feedback!", ephemeral=True)
 
+        # Disable all buttons
         for child in self.children:
             child.disabled = True
+
         await self.msg.edit(view=self)
         self.stop()
 
     @discord.ui.button(label="👎", style=discord.ButtonStyle.red)
     async def thumbs_down_button_callback(self, button,
                                           interaction):  # Don't remove the unused argument, it's used by py-cord
-        if self.author_only:
-            if not interaction.user.id == self.author.id:
+        if self.user_id:
+            if interaction.user.id != self.user_id:
                 return await interaction.response.send_message("This button is not for you", ephemeral=True)
+
+        self.search_query = self.search_query.replace('"', "")
 
         con = sqlite3.connect("./data/data.db")
         cur = con.cursor()
-        self.search_query = self.search_query.replace('"', "")
+
         cur.execute(
             f"INSERT INTO search_feedback VALUES (?, ?, ?, ?)",
             (interaction.user.id, self.msg.id, self.search_query, False)
         )
+
         con.commit()
         con.close()
 
         await interaction.response.send_message(
             "We're sorry to about hear that. Please let us know what went wrong! Feel free to DM <@837584356988944396>",
-            ephemeral=True)
+            ephemeral=True
+        )
 
         for child in self.children:
             child.disabled = True
+
         await self.msg.edit(view=self)
         self.stop()
 
 
-async def create_search_dropdown(options: list or tuple, msg):
+async def create_search_dropdown(options: tuple, msg):
     class SearchDropdown(discord.ui.View):
         def __init__(self, msg):
             super().__init__(timeout=60)
@@ -488,19 +529,27 @@ async def create_search_dropdown(options: list or tuple, msg):
             options=options
         )
         async def select_callback(self, select, interaction):
+            # Get the ID of the selected circular 
             self.value = select.values[0][-4:]
 
+            # Disable all views
             for child in self.children:
                 child.disabled = True
 
             await interaction.response.edit_message(view=self)
-
             self.stop()
 
         async def on_timeout(self):
+
             for child in self.children:
                 child.disabled = True
-            await self.msg.edit(view=self)
+
+            embed = discord.Embed(color=discord.Color.red(), title=f"Circular Search | Timed out")
+            embed.description = "Uh oh. Looks like you didn't pick the circular you wanted in time :("
+            embed.set_footer(text=embed_footer)
+            embed.set_author(name=embed_title)
+
+            await self.msg.edit(view=self, embed=embed)
             self.stop()
 
     return SearchDropdown(msg)
