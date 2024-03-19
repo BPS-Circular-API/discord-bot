@@ -173,9 +173,9 @@ async def get_png(download_url: str) -> list | None:
                 return
 
 
-async def search(query: str) -> tuple | None:
+async def search(query: str, amount: int = 3) -> tuple | None:
     url = base_api_url + "search"
-    params = {'query': query, "amount": 3}
+    params = {'query': query, "amount": amount}
 
     async with aiohttp.ClientSession() as session:
         async with session.get(url, params=params) as resp:
