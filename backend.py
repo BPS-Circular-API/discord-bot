@@ -9,31 +9,32 @@ from discord.ext import commands
 from colorlog import ColoredFormatter
 import requests
 
+# Initializing the logger
+def colorlogger(name='bps-circular-bot'):
+    # disabler loggers
+    # for logger in logging.Logger.manager.loggerDict:
+    #    logging.getLogger(logger).disabled = True
+    logger = logging.getLogger(name)
+    stream = logging.StreamHandler()
+    log_format = "%(reset)s%(log_color)s%(levelname)-8s%(reset)s | %(log_color)s%(message)s"
+    stream.setFormatter(ColoredFormatter(log_format))
+    logger.addHandler(stream)
+    return logger
+
+console = colorlogger()
+
+
 # Loading config.ini
 config = configparser.ConfigParser()
 
+# Attempt to open the config file
 try:
     config.read('data/config.ini')
 except Exception as e:
     print("Error reading the config.ini file. Error: " + str(e))
     sys.exit()
 
-
-# Initializing the logger
-def colorlogger(name='bps-circular-bot'):
-    # disabler loggers
-    for logger in logging.Logger.manager.loggerDict:
-        logging.getLogger(logger).disabled = True
-    logger = logging.getLogger(name)
-    stream = logging.StreamHandler()
-    log_format = "%(reset)s%(log_color)s%(levelname)-8s%(reset)s | %(log_color)s%(message)s"
-    stream.setFormatter(ColoredFormatter(log_format))
-    logger.addHandler(stream)
-    return logger  # Return the logger
-
-
-console = colorlogger()
-
+# Attempt to get all required variables
 try:
     discord_token: str = config.get('secret', 'discord_token')
     log_level: str = config.get('main', 'log_level')
@@ -50,54 +51,62 @@ try:
     embed_title: str = config.get('discord', 'embed_title')
     embed_url: str = config.get('discord', 'embed_url')
 
-
 except Exception as err:
     console.critical("Error reading the config.ini file. Error: " + str(err))
     sys.exit()
 
+# Log Level
 if log_level.upper() in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
     console.setLevel(log_level.upper())
 else:
-    console.warning(f"Invalid log level {log_level}. Defaulting to INFO.")
     console.setLevel("INFO")
+    console.warning(f"Invalid log level {log_level}. Defaulting to INFO.")
 
+# Owners' IDs and Guilds
 owner_ids = tuple([int(i) for i in owner_ids])
-console.debug(owner_ids)
-
 owner_guilds = tuple([int(i) for i in owner_guilds])
-console.debug(owner_guilds)
 
+# Ignored Circulars
 if ignored_circulars == ['']:
     ignored_circulars = tuple()
 else:
-    ignored_circulars = tuple([int(i) for i in ignored_circulars])
-console.debug(ignored_circulars)
+    try:
+        ignored_circulars = tuple([int(i) for i in ignored_circulars])
+    except ValueError:
+        console.warning("Could not form a list of ignored circulars. Is it correctly formatted in config.ini?")
 
+# Base API URL
 if base_api_url[-1] != "/":  # For some very bright people who don't know how to read
     base_api_url += "/"
 
+# Bot discord presences
 statuses: list = statuses.split(',')
 for i in range(len(statuses)):
     statuses[i] = statuses[i].strip()
     statuses[i] = statuses[i].split('|')
 
+# Try to get list of categories
 try:
-    json = requests.get(base_api_url + "categories", timeout=5000).json()
+    json = requests.get(base_api_url + "categories", timeout=1000).json()
     if json['http_status'] == 200:
         categories = json['data']
     else:
-        raise ConnectionError("Invalid API Response. API says there are no categories.")
+        raise ConnectionError("Invalid API Response. HTTP status is not 200.")
 except Exception as e:
     console.critical(f"Error while connecting to the API. Error: {e}")
     sys.exit()
 
-client = commands.Bot(help_command=None)  # Setting prefix
+client = commands.Bot(help_command=None)
+
+console.debug("Owner IDs: " + str(owner_ids))
+console.debug("Owner Guilds: " + str(owner_guilds))
+console.debug("Ignored Circulars: " + str(ignored_circulars))
 
 
-async def get_circular_list(category: str) -> tuple or None:
+async def get_circular_list(category: str) -> tuple | None:
     url = base_api_url + "list"
     if category not in categories:
-        return None
+        raise ValueError(f"Invalid Category. `{category}` was passed in while `{categories}` are valid.")
 
     params = {'category': category}
 
@@ -110,23 +119,30 @@ async def get_circular_list(category: str) -> tuple or None:
                 return
 
 
-async def get_latest_circular(category: str) -> dict or None:
+async def get_latest_circular(category: str) -> dict | None:
     url = base_api_url + "latest"
 
+    # If the latest between all categories is requested
     if category == "all":
-        info = {}
-        for i in categories:
 
+        info = []
+
+        for i in categories:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params={'category': i}) as resp:
+
                     if resp.status == 200:
-                        info[i] = (await resp.json())['data']
+                        info.append((await resp.json())['data'])
                     elif resp.status == 500:
                         console.error("The API returned 500 Internal Server Error. Please check the API logs.")
                         return
 
-    elif category in categories:
+        # Get the circular with the highest ID in the latest circulars of each category
+        info = max(info, key=lambda element: element['id'])
 
+        
+    # If the latest between a valid category is requested
+    elif category in categories:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params={'category': category}) as resp:
                 if resp.status == 200:
@@ -138,17 +154,18 @@ async def get_latest_circular(category: str) -> dict or None:
                     return
 
     else:
-        return
+        raise ValueError(f"Invalid Category. `{category}` was passed in while `{categories}` and `all` are valid.")
 
     console.debug(info)
     return info
 
 
-async def get_png(download_url: str) -> list or None:
+async def get_png(download_url: str) -> list | None:
     url = base_api_url + "getpng"
+    params = {'url': download_url}
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(url, params={'url': download_url}) as resp:
+        async with session.get(url, params=params) as resp:
             if resp.status == 200:
                 return list((await resp.json())['data'])
             elif resp.status == 500:
@@ -156,11 +173,12 @@ async def get_png(download_url: str) -> list or None:
                 return
 
 
-async def search(query: str) -> tuple or None:
+async def search(query: str) -> tuple | None:
     url = base_api_url + "search"
+    params = {'query': query, "amount": 3}
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(url, params={'query': query, "amount": 3}) as resp:
+        async with session.get(url, params=params) as resp:
             if resp.status == 200:
                 return (await resp.json())['data']
             elif resp.status == 500:
@@ -196,11 +214,11 @@ async def log(level, category, msg, *args):
     if category not in ["command", "notification", "listener", "backend", "etc"]:
         category = "etc"
 
-    db = sqlite3.connect('./data/data.db')
-    cursor = db.cursor()
+    con = sqlite3.connect('./data/data.db')
+    cur = con.cursor()
 
-    cursor.execute('INSERT INTO logs VALUES (?, ?, ?, ?)', (current_time, level, category, msg))
-    db.commit()
+    cur.execute('INSERT INTO logs VALUES (?, ?, ?, ?)', (current_time, level, category, msg))
+    con.commit()
 
 
 async def send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed, id_):
