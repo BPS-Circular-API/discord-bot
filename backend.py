@@ -25,7 +25,7 @@ console = colorlogger()
 
 
 # Loading config.ini
-config = configparser.ConfigParser()
+config = configparser.RawConfigParser()
 
 # Attempt to open the config file
 try:
@@ -45,6 +45,8 @@ try:
     status_interval: int = config.getint('main', 'status_interval')
     ignored_circulars = config.get('main', 'ignored_circulars').strip().split(',')
     statuses: str = config.get('main', 'statuses').strip()
+    invite_url: str = config.get('main', 'invite_url').strip()
+    discord_invite_url: str = config.get('main', 'discord_invite_url').strip()
 
     embed_footer: str = config.get('discord', 'embed_footer')
     embed_color: int = int(config.get('discord', 'embed_color'), base=16)
@@ -369,16 +371,16 @@ async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list, id
 
 # Confirm Button Discord View
 class ConfirmButton(discord.ui.View):
-    def __init__(self, author):
+    def __init__(self, user_id):
         super().__init__()
         self.value = None
-        self.author = author
+        self.user_id = user_id
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
     async def confirm_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
 
         # If a different user tries to interact with the button
-        if not interaction.user.id == self.author.id:
+        if interaction.user.id != self.user_id:
             await interaction.response.send_message("This button is not for you", ephemeral=True)
             return
 
@@ -396,7 +398,7 @@ class ConfirmButton(discord.ui.View):
     async def cancel_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
         
         # If a different user tries to interact with the button
-        if not interaction.user.id == self.author.id:
+        if interaction.user.id != self.user_id:
             await interaction.response.send_message("This button is not for you", ephemeral=True)
             return
 
