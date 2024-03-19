@@ -26,8 +26,7 @@ class Owners(commands.Cog):
     @owners.command(name='status', description='Change the bot status.')
     async def status(self, ctx, status: str, message: str):
         if ctx.author.id not in owner_ids:
-            await ctx.respond("You are not a bot owner.")
-            return
+            return await ctx.respond("You are not allowed to use this command.")
         
         match status:
             case 'playing':
@@ -58,6 +57,7 @@ class Owners(commands.Cog):
         if ctx.author.id not in owner_ids:
             return await ctx.respond("You are not allowed to use this command.")
         await ctx.defer()
+
         try:
             self.cur.execute(query)
         except Exception as e:
@@ -65,16 +65,21 @@ class Owners(commands.Cog):
                                                         color=discord.colour.Color.red()).set_footer(
                 text=embed_footer).set_author(name=embed_title), ephemeral=True)
             return
+        
         res = self.cur.fetchall()
+
         if len(res) == 0:
             embed = discord.Embed(title="Execute SQL", description="**Success!**\nNo results found.",
                                   color=embed_color).set_footer(text=embed_footer).set_author(name=embed_title)
         else:
             embed = discord.Embed(title="Execute SQL", description="**Success!**\nResults found.",
                                   color=embed_color).set_footer(text=embed_footer).set_author(name=embed_title)
+            
             for i in res:
                 embed.add_field(name=str(i), value=str(i), inline=False)
+
         self.con.commit()
+
         msg = await ctx.followup.send(embed=embed)
         await msg.edit(embed=embed, view=DeleteButton(ctx, msg))
 
@@ -82,20 +87,25 @@ class Owners(commands.Cog):
     async def servers(self, ctx):
         if ctx.author.id not in owner_ids:
             return await ctx.respond("You are not allowed to use this command.")
+        
         await ctx.defer()
+
         embed = discord.Embed(title="Servers", description=f"I am in `{len(self.client.guilds)}` servers!",
                               color=embed_color).set_footer(text=embed_footer).set_author(name=embed_title)
         count = 0
         page_list = []
+
         for i in self.client.guilds:
             guild = await self.client.fetch_guild(i.id)
             embed.add_field(name=guild.name, value=i.id, inline=False)
             count += 1
+
             if count % 10 == 0:  # If the count is divisible by 10 (It has reached 10 fields)
                 console.debug("[Owners] | ", count)
                 embed.description = f"Page {int(count / 10)}"  # Set the description of the embed
                 page_list.append(embed.copy())  # Create a copy of the embed and add it to the list
                 embed.clear_fields()  # Clear the fields of the embed
+
             elif count == len(self.client.guilds):
                 console.debug("[Owners] | ", count)
                 embed.description = f"Page {int(math.ceil(count / 10))}"  # Set the description of the embed
@@ -112,22 +122,25 @@ class Owners(commands.Cog):
         await paginator.respond(ctx.interaction, ephemeral=True)
 
     @owners.command(name="manualnotify", description="Notify all users in a server.")
-    async def send_manual_notification(self, ctx, circular_name: str, url: str, id_: int,
-                                       category: discord.Option(choices=category_options),
-                                       custom_message: str = None,
-                                       send_only_to: discord.Option(choices=[
-                                           discord.OptionChoice("DMs", value="dms"),
-                                           discord.OptionChoice("Servers", value="servers"),
-                                       ]) = None,
-                                       debug_guild=None, debug_user=None):
+    async def send_manual_notification(
+        self, ctx, circular_name: str, url: str, id_: int, category: discord.Option(choices=category_options),
+        custom_message: str = None, 
+        send_only_to: discord.Option(
+            choices=[
+                    discord.OptionChoice("DMs", value="dms"),
+                    discord.OptionChoice("Servers", value="servers"),
+        ]) = None,
+        debug_guild: int = None, debug_user: int = None
+    ):
 
         if ctx.author.id not in owner_ids:  # Check if the user is a bot owner
             return await ctx.respond("You are not allowed to use this command.")
+        
         await ctx.defer()
 
         embed = discord.Embed(title=f"New Circular | **{category.capitalize()}** ", color=embed_color, url=embed_url)
-        embed.set_footer(text=embed_footer)  # Set the footer
-        embed.set_author(name=embed_title)  # Set the author
+        embed.set_footer(text=embed_footer)
+        embed.set_author(name=embed_title)
 
         embed.add_field(name=f"[{id_}] `{circular_name}`", value=url, inline=False)
 
@@ -145,6 +158,11 @@ class Owners(commands.Cog):
                 if i == 0:
                     continue
                 elif i > 3:
+                    embed.add_field(
+                        name="Note",
+                        value=f"This circular has {len(png_url) - 4} more pages. Please visit the [link]({link}) to view them.",
+                        inline=False
+                    )
                     break
                 temp_embed = discord.Embed(url=embed_url)  # Create a new embed
                 temp_embed.set_image(url=png_url[i])
@@ -157,6 +175,7 @@ class Owners(commands.Cog):
 
             if not message:  # If the message is not found
                 message[0] = "A new circular is out!"  # Set the message to the default message
+
             embed.description = message[0]  # Set the description of the embed to the message
 
             guild = await self.client.fetch_guild(int(debug_guild))  # Get the guild object
@@ -227,15 +246,6 @@ class Owners(commands.Cog):
                 case _:
                     await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed, id_)
                     await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_)
-
-            # Insert the notification log into the database
-            # for item in notif_msgs["dm"]:
-            #     self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) VALUES (?, ?, ?, ?)",
-            #                      (id_, item[0], "dm", item[1]))
-            # for item in notif_msgs["guild"]:
-            #     self.cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id, guild_id) "
-            #                      "VALUES (?, ?, ?, ?, ?)", (id_, item[0], 'guild', item[1], item[2]))
-            # self.con.commit()
 
             console.info(f"Sent Circular to {len(notif_msgs['dm'])} users and {len(notif_msgs['guild'])} guilds.")
 
