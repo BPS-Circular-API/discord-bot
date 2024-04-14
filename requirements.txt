@@ -1,4 +1,4 @@
 colorlog>=6.7.0
 py-cord>=2.4.1
 requests>=2.31.0
-pybpsapi>=1.3.2
+pybpsapi>=1.3.4
