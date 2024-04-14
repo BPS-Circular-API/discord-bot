@@ -137,13 +137,29 @@ class Commands(commands.Cog):
         embed.add_field(name="Download URL", value=link, inline=False)
 
         # Get the circular image and add it to the embed
-        png_url = list(await get_png(link))
+        try:
+            png_url = list(await get_png(link))
+        except ValueError:
+            console.error(f"Could not get the PNG for circular {id_} from API. API returned non 200 HTTP code")
+
+            # Try to still send it without the image
+            try:
+                await ctx.followup.send(embed=embed)
+            except discord.Forbidden:
+                try:
+                    # If it can not be sent in the server, DM it to the user
+                    await author.send(embed=embed)
+                except discord.Forbidden:
+                    console.warning(f"[Commands] | {author} has DMs disabled and can't respond to the command.")
+            return
+
+        print(png_url)
         embed.set_image(url=png_url[0])
 
         embed.description = f"Search took {round(time.time() - start, 2)} second(s). Requested by {author.mention}"
         embed_list = [embed]
 
-        # If there is more than one page, create an embed with each page to create a image gallery 
+        # If there is more than one page, create an embed with each page to create an image gallery
         if len(png_url) != 1:
             for i in range(len(png_url)):
                 # First page is there in main embed
