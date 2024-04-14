@@ -292,7 +292,7 @@ class Commands(commands.Cog):
         else:
             await msg.edit(embeds=embed_list)
 
-        await msg.edit(embeds=embed_list, view=FeedbackButton(msg, author, query, searched))
+        await msg.edit(embeds=embed_list, view=FeedbackButton(msg, query, searched, author))
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
     # Admin commands
@@ -386,6 +386,7 @@ class Commands(commands.Cog):
             await ctx.followup.send(embed=error_embed)
 
             self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = ?", (guild.id,))
+            self.con.commit()
             return
 
     @admin.command(name="delete", description="Delete the server's circular notification configuration.")
