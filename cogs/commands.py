@@ -80,7 +80,7 @@ class Commands(commands.Cog):
         count = 0
 
         for title, link in zip(titles, links):
-            embed.add_field(name=title, value=link, inline=False) 
+            embed.add_field(name=title, value=link, inline=False)
             count += 1
 
             # If the embed has reached 10 pages
@@ -115,7 +115,7 @@ class Commands(commands.Cog):
         await paginator.respond(ctx.interaction)
         console.debug(f"[Commands] | Search took {round(time.time() - start, 2)} seconds.")
 
-    # TODO reaplce choices= with category_options_with_all 
+    # TODO replace choices= with category_options_with_all
     @circular.command(name="latest", description="Sends the latest circular in a particular category.")
     async def latest(self, ctx, category: discord.Option(choices=category_options)):
         await ctx.defer()
@@ -219,7 +219,7 @@ class Commands(commands.Cog):
             embed.add_field(
                 name="Error",
                 value="No circular found with that title or id. Maybe specify better search terms, "
-                        "or find the circular you wanted from </circular list:1010911588703817808>.",
+                      "or find the circular you wanted from </circular list:1010911588703817808>.",
                 inline=False
             )
             embed.color = discord.Color.red()
@@ -304,7 +304,7 @@ class Commands(commands.Cog):
     async def server_setup(self, ctx, channel: discord.TextChannel, message: str = None):
         await ctx.defer()
 
-        # Make sure that this command is bring run in a guild
+        # Make sure that this command is being run in a guild
         try:
             guild = await self.client.fetch_guild(ctx.guild.id)
         except discord.NotFound:
@@ -316,7 +316,7 @@ class Commands(commands.Cog):
             if author.id not in owner_ids:  # Check if the author is an owner
                 await ctx.followup.send(
                     embed=discord.Embed(
-                        title="Error!", 
+                        title="Error!",
                         description="You do not have permission to use this command!",
                         color=embed_color
                     )
@@ -333,7 +333,7 @@ class Commands(commands.Cog):
                 title="Server Setup",
                 description=f"The server already has a notification configuration.",
                 color=discord.Color.red()
-                )
+            )
             embed.set_author(name=embed_title)
             embed.set_footer(text=embed_footer)
             embed.add_field(name="In Channel", value=f"<#{res[1]}>", inline=False)
@@ -349,9 +349,9 @@ class Commands(commands.Cog):
             message = message.replace("<", "").replace(">", "").replace('"', "")  # Remove the <> and " from the message
             self.cur.execute(
                 "INSERT INTO guild_notify (guild_id, channel_id, message) "
-                "VALUES (?, ?, ?)", 
+                "VALUES (?, ?, ?)",
                 (guild.id, channel.id, message)
-                )
+            )
 
         else:
             self.cur.execute("INSERT INTO guild_notify (guild_id, channel_id) VALUES (?, ?)", (guild.id, channel.id))
@@ -381,8 +381,8 @@ class Commands(commands.Cog):
         except discord.Forbidden:
             error_embed = discord.Embed(title="Error!", color=discord.Color.red(), url=embed_url)
             error_embed.set_footer(text=embed_footer)
-            error_embed.description = f"I do not have permission to send messages in that channel! (<#{channel.id}>).\n" \
-                                      f"Please give me permission to do so or set another channel."
+            error_embed.description = f"I do not have permission to send messages in that channel! (<#{channel.id}>)." \
+                                      f"\n\nPlease give me permission to do so or set another channel."
             await ctx.followup.send(embed=error_embed)
 
             self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = ?", (guild.id,))
@@ -418,7 +418,7 @@ class Commands(commands.Cog):
         if not res:
             embed = discord.Embed(
                 title="Server Setup",
-                description=f"The server has no existing notification configuration.", 
+                description=f"The server has no existing notification configuration.",
                 color=embed_color
             )
             embed.set_author(name=embed_title)
@@ -431,7 +431,7 @@ class Commands(commands.Cog):
 
         embed = discord.Embed(
             title="Success!",
-            description="The configuration has successfully been deleted.", 
+            description="The configuration has successfully been deleted.",
             color=embed_color
         )
         embed.set_author(name=embed_title)
@@ -501,7 +501,7 @@ class Commands(commands.Cog):
         res = self.cur.fetchone()
 
         # If the user is already in the database => they are unsubscribing
-        if res:  
+        if res:
             embed.title = "Unsubscribe"
             embed.description = "You are already subscribed to notifications. Do you want to unsubscribe?"
 
@@ -526,7 +526,6 @@ class Commands(commands.Cog):
             await msg.edit(embed=embed, view=None)
             return
 
-
         # If the user is not there in the database => they are subscribing
         # Add them to the database
         if message:
@@ -538,7 +537,7 @@ class Commands(commands.Cog):
 
         embed.title = "Success!"  # Set the title to Success
         embed.description = "You successfully subscribed to DM notifications! " \
-                              "</circular notifyme:1010911588703817808> to unsubscribe."
+                            "</circular notifyme:1010911588703817808> to unsubscribe."
 
         try:  # Try to send the user a DM
             await ctx.author.send(embed=embed)
@@ -548,6 +547,7 @@ class Commands(commands.Cog):
             embed.description = "Error: I couldn't send you a DM. Please enable DMs from server members."
             embed.color = discord.Color.red()
             await ctx.followup.send(embed=embed)
+
 
 def setup(client):
     client.add_cog(Commands(client))
