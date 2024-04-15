@@ -9,6 +9,7 @@ from discord.ext import commands
 from colorlog import ColoredFormatter
 import requests
 
+
 # Initializing the logger
 def colorlogger(name='bps-circular-bot'):
     # disabler loggers
@@ -21,8 +22,8 @@ def colorlogger(name='bps-circular-bot'):
     logger.addHandler(stream)
     return logger
 
-console = colorlogger()
 
+console = colorlogger()
 
 # Loading config.ini
 config = configparser.RawConfigParser()
@@ -106,14 +107,12 @@ console.debug("Ignored Circulars: " + str(ignored_circulars))
 
 
 async def get_circular_list(category: str) -> tuple | None:
-    url = base_api_url + "list"
+    url = base_api_url + "list/" + category
     if category not in categories:
         raise ValueError(f"Invalid Category. `{category}` was passed in while `{categories}` are valid.")
 
-    params = {'category': category}
-
     async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params) as resp:
+        async with session.get(url) as resp:
             if resp.status == 200:
                 return tuple((await resp.json())['data'])
             elif resp.status == 500:
@@ -122,7 +121,7 @@ async def get_circular_list(category: str) -> tuple | None:
 
 
 async def get_latest_circular(category: str) -> dict | None:
-    url = base_api_url + "latest"
+    url = base_api_url + "latest/"
 
     # If the latest between all categories is requested
     if category == "all":
@@ -131,7 +130,7 @@ async def get_latest_circular(category: str) -> dict | None:
 
         for i in categories:
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, params={'category': i}) as resp:
+                async with session.get(url + i) as resp:
 
                     if resp.status == 200:
                         info.append((await resp.json())['data'])
@@ -142,11 +141,10 @@ async def get_latest_circular(category: str) -> dict | None:
         # Get the circular with the highest ID in the latest circulars of each category
         info = max(info, key=lambda element: element['id'])
 
-        
     # If the latest between a valid category is requested
     elif category in categories:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, params={'category': category}) as resp:
+            async with session.get(url + category) as resp:
                 if resp.status == 200:
                     info = (await resp.json())['data']
                 elif resp.status == 500:
@@ -172,7 +170,11 @@ async def get_png(download_url: str) -> list | None:
                 return list((await resp.json())['data'])
             elif resp.status == 500:
                 console.error("The API returned 500 Internal Server Error. Please check the API logs.")
-                return
+                raise ValueError
+            elif resp.status == 422:
+                console.error("The API returned 422. Something is wrong with the URL")
+                console.error(download_url)
+                raise ValueError
 
 
 async def search(query: str, amount: int = 3) -> tuple | None:
@@ -185,7 +187,11 @@ async def search(query: str, amount: int = 3) -> tuple | None:
                 return (await resp.json())['data']
             elif resp.status == 500:
                 console.error("The API returned 500 Internal Server Error. Please check the API logs.")
-                return
+                raise ValueError
+            elif resp.status == 422:
+                console.error("The API returned 422. Something is wrong with the query")
+                console.error(query)
+                raise ValueError
 
 
 async def log(level, category, msg, *args):
@@ -224,8 +230,8 @@ async def log(level, category, msg, *args):
 
 
 async def send_to_guilds(
-    guilds: list, channels: list, messages: list, notif_msgs: list, embed: discord.Embed, embed_list: list, 
-    error_embed: discord.Embed, id_: int
+        guilds: list, channels: list, messages: list, notif_msgs: list, embed: discord.Embed, embed_list: list,
+        error_embed: discord.Embed, id_: int
 ):
     con = sqlite3.connect('./data/data.db')
     cur = con.cursor()
@@ -237,19 +243,19 @@ async def send_to_guilds(
         embed.description = message
 
         # Try to fetch the guild and channel from the discord API
-        try:  
+        try:
             guild = await client.fetch_guild(int(guild))
             channel = await guild.fetch_channel(int(channel))
 
         # If the channel or guild is not found (deleted)
-        except discord.NotFound:  
+        except discord.NotFound:
             if type(guild) is not int:
                 guild = guild.id
-                
+
             console.warning(
                 f"Guild or channel not found. Guild: {guild}, Channel: {channel}"
                 "Seems like I was kicked from the server. Deleting from DB"
-                )   
+            )
             cur.execute(
                 "DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
                 (guild, channel)
@@ -257,10 +263,10 @@ async def send_to_guilds(
             con.commit()
             continue
 
-        except discord.Forbidden:   # TODO find out if this can even happen
+        except discord.Forbidden:  # TODO find out if this can even happen
             if type(guild) is not int:
                 guild = guild.id
-            
+
             console.warning(f"No permission to get guild/channel. Guild: {guild}, Channel: {channel}.")
             continue
 
@@ -269,7 +275,7 @@ async def send_to_guilds(
             continue
 
         # Try to send the message
-        try:  
+        try:
             _msg = await channel.send(embeds=[embed.copy(), *embed_list])
             console.debug(f"Sent Circular Embed to {guild.id} | {channel.id}")
 
@@ -277,10 +283,10 @@ async def send_to_guilds(
         except discord.Forbidden:
             # Find a channel where it can send messages
             # TODO: check if this is possible with no intents
-            for _channel in guild.text_channels:  
+            for _channel in guild.text_channels:
 
-                try: 
-                    await _channel.send(embed=error_embed)  
+                try:
+                    await _channel.send(embed=error_embed)
                     _msg = await _channel.send(embeds=[embed.copy(), *embed_list])
 
                     console.warning(
@@ -292,7 +298,8 @@ async def send_to_guilds(
                     continue
 
             else:  # If it can't send the message in any channel
-                console.error(f"Couldn't send Circular to {guild.id}'s {channel.id} due to discord.Forbidden while attempting to send.")
+                console.error(
+                    f"Couldn't send Circular to {guild.id}'s {channel.id} due to discord.Forbidden while attempting to send.")
                 continue
 
         except Exception as e:
@@ -350,7 +357,7 @@ async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list, id
             # Remove them from database
             cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
             con.commit()
-            
+
             continue
 
         except Exception as e:
@@ -396,7 +403,7 @@ class ConfirmButton(discord.ui.View):
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey)
     async def cancel_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
-        
+
         # If a different user tries to interact with the button
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("This button is not for you", ephemeral=True)
@@ -460,7 +467,7 @@ class FeedbackButton(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label="👍", style=discord.ButtonStyle.green)
-    async def thumbs_up_button_callback(self, button, interaction):  
+    async def thumbs_up_button_callback(self, button, interaction):
         if self.user_id:
             if interaction.user.id != self.user_id:
                 return await interaction.response.send_message("This button is not for you", ephemeral=True)
@@ -517,7 +524,7 @@ class FeedbackButton(discord.ui.View):
         self.stop()
 
 
-async def create_search_dropdown(options: tuple, msg, user_id: int = None):
+async def create_search_dropdown(options: list[discord.SelectOption], msg, user_id: int = None):
     class SearchDropdown(discord.ui.View):
         def __init__(self, msg):
             super().__init__(timeout=60)
