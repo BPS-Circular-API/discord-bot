@@ -44,6 +44,7 @@ try:
     base_api_url: str = config.get('main', 'base_api_url')
     backup_interval: int = config.getint('main', 'backup_interval')
     status_interval: int = config.getint('main', 'status_interval')
+    circular_check_interval: int = config.getint('main', 'circular_check_interval')
     ignored_circulars = config.get('main', 'ignored_circulars').strip().split(',')
     statuses: str = config.get('main', 'statuses').strip()
     invite_url: str = config.get('main', 'invite_url').strip()

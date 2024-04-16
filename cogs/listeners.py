@@ -8,7 +8,7 @@ import asyncio
 import pybpsapi
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, \
-    status_interval, log, embed_url, base_api_url, send_to_guilds, send_to_users, categories, statuses
+    status_interval, log, embed_url, base_api_url, send_to_guilds, send_to_users, categories, statuses, circular_check_interval
 
 
 class Listeners(commands.Cog):
@@ -138,7 +138,7 @@ class Listeners(commands.Cog):
         self.member_count = _member_count
         console.debug(f"[Listeners] | Member Count: {self.member_count}")
 
-    @tasks.loop(seconds=3600)
+    @tasks.loop(seconds=circular_check_interval * 60)
     async def check_for_circular(self):
         # Check for new circulars
         new_circular_objects = self.group.check()
