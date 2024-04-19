@@ -435,7 +435,10 @@ class DeleteButton(discord.ui.View):
         for child in self.children:
             child.disabled = True
 
-        await self.msg.edit(view=self)
+        try:
+            await self.msg.edit(view=self)
+        except discord.NotFound:
+            console.warning("DeleteButton couldn't perform msg.edit due to message not found")
         self.stop()
 
     @discord.ui.button(label="Delete", style=discord.ButtonStyle.red)

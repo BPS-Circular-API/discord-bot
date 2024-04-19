@@ -153,7 +153,6 @@ class Commands(commands.Cog):
                     console.warning(f"[Commands] | {author} has DMs disabled and can't respond to the command.")
             return
 
-        print(png_url)
         embed.set_image(url=png_url[0])
 
         embed.description = f"Search took {round(time.time() - start, 2)} second(s). Requested by {author.mention}"
