@@ -319,11 +319,11 @@ async def send_to_guilds(
     con.close()
 
 
-async def send_to_users(user_id, user_message, notif_msgs, embed, embed_list, id_):
+async def send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_):
     con = sqlite3.connect('./data/data.db')
     cur = con.cursor()
 
-    for user, message in zip(user_id, user_message):
+    for user, message in zip(user_ids, user_messages):
 
         try:
             user = await client.fetch_user(int(user))

@@ -129,7 +129,8 @@ class Owners(commands.Cog):
             choices=[
                     discord.OptionChoice("DMs", value="dms"),
                     discord.OptionChoice("Servers", value="servers"),
-        ]) = None,
+            ]
+        ) = None,
         debug_guild: int = None, debug_user: int = None
     ):
 
@@ -160,7 +161,7 @@ class Owners(commands.Cog):
                 elif i > 3:
                     embed.add_field(
                         name="Note",
-                        value=f"This circular has {len(png_url) - 4} more pages. Please visit the [link]({link}) to view them.",
+                        value=f"This circular has {len(png_url) - 4} more pages. Please visit the [link]({url}) to view them.",
                         inline=False
                     )
                     break
@@ -238,13 +239,21 @@ class Owners(commands.Cog):
 
             match send_only_to:  # If it has been specified to send the notifications to only servers/dms
                 case "dms":  # Send notifications to dms
-                    await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_)
+                    await send_to_users(
+                        user_ids=user_ids, user_messages=user_messages, notif_msgs=notif_msgs, embed=embed, embed_list=embed_list, id_=id_
+                    )
 
                 case "servers":  # Send notifications to servers
-                    await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed, id_)
+                    await send_to_guilds(
+                        guilds=guilds, channels=channels, messages=messages, notif_msgs=notif_msgs, embed=embed,
+                        embed_list=embed_list, error_embed=error_embed, id_=id_
+                    )
 
                 case _:
-                    await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed, id_)
+                    await send_to_guilds(
+                        guilds=guilds, channels=channels, messages=messages, notif_msgs=notif_msgs, embed=embed,
+                        embed_list=embed_list, error_embed=error_embed, id_=id_
+                    )
                     await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_)
 
             console.info(f"Sent Circular to {len(notif_msgs['dm'])} users and {len(notif_msgs['guild'])} guilds.")
