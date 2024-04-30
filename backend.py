@@ -8,6 +8,7 @@ import sys
 from discord.ext import commands
 from colorlog import ColoredFormatter
 import requests
+import mysql.connector
 
 
 # Initializing the logger
@@ -49,12 +50,24 @@ try:
     statuses: str = config.get('main', 'statuses').strip()
     invite_url: str = config.get('main', 'invite_url').strip()
     discord_invite_url: str = config.get('main', 'discord_invite_url').strip()
+    storage_method: str = config.get('main', 'storage_method').strip()
 
     embed_footer: str = config.get('discord', 'embed_footer')
     embed_color: int = int(config.get('discord', 'embed_color'), base=16)
     embed_title: str = config.get('discord', 'embed_title')
     embed_url: str = config.get('discord', 'embed_url')
 
+    if storage_method == "mysql":
+        mysql_config: dict = {
+            'user': config.get('mysql', 'user'),
+            'password': config.get('mysql', 'password'),
+            'host': config.get('mysql', 'host'),
+            'database': config.get('mysql', 'database'),
+            'port': config.get('mysql', 'port'),
+            'raise_on_warnings': False
+        }
+    else:
+        mysql_config = {}
 except Exception as err:
     console.critical("Error reading the config.ini file. Error: " + str(err))
     sys.exit()
@@ -100,11 +113,86 @@ except Exception as e:
     console.critical(f"Error while connecting to the API. Error: {e}")
     sys.exit()
 
+# Check the database and verify if all required tables are there
+if storage_method == "mysql":
+    _con = mysql.connector.connect(**mysql_config)
+else:
+    _con = sqlite3.connect('./data/data.db')
+
+_cur = _con.cursor()
+
+try:
+    [
+        _cur.execute(f'SELECT * FROM {table} LIMIT 1;')
+        for table in ['cache', 'dm_notify', 'guild_notify', 'logs', 'notif_msgs', 'search_feedback']
+    ]
+except:
+    _cur.execute("CREATE TABLE 'cache' (title TEXT, category TEXT, data BLOB)")
+    _cur.execute(
+        "CREATE TABLE 'dm_notify' (`user_id` INT NOT NULL, `message` TEXT "
+        "DEFAULT 'A new Circular was just posted on the website!' )"
+    )
+    _cur.execute(
+        """
+        CREATE TABLE "guild_notify" ( 
+            "guild_id"	INTEGER NOT NULL UNIQUE, 
+            "channel_id"	INTEGER UNIQUE, 
+            "message"	TEXT DEFAULT 'There''s a new circular up on the website!'
+        )
+        """
+    )
+    _cur.execute(
+        """
+        CREATE TABLE "logs" (
+            "timestamp"	INTEGER NOT NULL,
+            "log_level"	TEXT DEFAULT 'debug',
+            "category"	TEXT,
+            "msg"	TEXT
+        )
+        """
+    )
+    _cur.execute(
+        """
+        CREATE TABLE "notif_msgs" ( 	
+            "circular_id"	INTEGER NOT NULL, 	
+            "type"	TEXT NOT NULL, 	"msg_id"	
+            INTEGER NOT NULL UNIQUE, 	
+            "channel_id"	INTEGER, 	
+            "guild_id"	INTEGER 
+        )
+        """
+    )
+    _cur.execute(
+        """
+        CREATE TABLE "search_feedback" ( 	
+            "user_id"	INTEGER, 	
+            "message_id"	INTEGER, 	
+            "search_query"	TEXT, 	
+            "response"	TEXT 
+        )
+        """
+    )
+
+_con.commit()
+_con.close()
+del _con
+del _cur
+
 client = commands.Bot(help_command=None)
 
 console.debug("Owner IDs: " + str(owner_ids))
 console.debug("Owner Guilds: " + str(owner_guilds))
 console.debug("Ignored Circulars: " + str(ignored_circulars))
+
+
+def get_db() -> tuple:
+    if storage_method == "mysql":
+        con = mysql.connector.connect(**mysql_config)
+    else:
+        con = sqlite3.connect('./data/data.db')
+    cur = con.cursor()
+
+    return con, cur
 
 
 async def get_circular_list(category: str) -> tuple | None:
@@ -223,19 +311,17 @@ async def log(level, category, msg, *args):
     if category not in ["command", "notification", "listener", "backend", "etc"]:
         category = "etc"
 
-    con = sqlite3.connect('./data/data.db')
-    cur = con.cursor()
+    con, cur = get_db()
 
     cur.execute('INSERT INTO logs VALUES (?, ?, ?, ?)', (current_time, level, category, msg))
     con.commit()
 
 
 async def send_to_guilds(
-        guilds: list, channels: list, messages: list, notif_msgs: list, embed: discord.Embed, embed_list: list,
+        guilds: list, channels: list, messages: list, notif_msgs: dict, embed: discord.Embed, embed_list: list,
         error_embed: discord.Embed, id_: int
 ):
-    con = sqlite3.connect('./data/data.db')
-    cur = con.cursor()
+    con, cur = get_db()
 
     for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
@@ -319,9 +405,8 @@ async def send_to_guilds(
     con.close()
 
 
-async def send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_):
-    con = sqlite3.connect('./data/data.db')
-    cur = con.cursor()
+async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, embed: discord.Embed, embed_list: list, id_: int):
+    con, cur = get_db()
 
     for user, message in zip(user_ids, user_messages):
 
@@ -477,8 +562,8 @@ class FeedbackButton(discord.ui.View):
             if interaction.user.id != self.user_id:
                 return await interaction.response.send_message("This button is not for you", ephemeral=True)
 
-        con = sqlite3.connect("./data/data.db")
-        cur = con.cursor()
+        con, cur = get_db()
+
         self.search_query = self.search_query.replace('"', "")
         cur.execute(
             f"INSERT INTO search_feedback VALUES (?, ?, ?, ?)",
@@ -506,8 +591,7 @@ class FeedbackButton(discord.ui.View):
 
         self.search_query = self.search_query.replace('"', "")
 
-        con = sqlite3.connect("./data/data.db")
-        cur = con.cursor()
+        con, cur = get_db()
 
         cur.execute(
             f"INSERT INTO search_feedback VALUES (?, ?, ?, ?)",

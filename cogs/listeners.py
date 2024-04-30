@@ -1,5 +1,4 @@
 import os
-import sqlite3
 import discord
 import shutil
 import random
@@ -8,14 +7,14 @@ import asyncio
 import pybpsapi
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, \
-    status_interval, log, embed_url, base_api_url, send_to_guilds, send_to_users, categories, statuses, circular_check_interval
+    status_interval, log, embed_url, base_api_url, send_to_guilds, send_to_users, categories, statuses, \
+    circular_check_interval, get_db
 
 
 class Listeners(commands.Cog):
     def __init__(self, client):
         self.client = client
-        self.con = sqlite3.connect('./data/data.db')
-        self.cur = self.con.cursor()
+        self.con, self.cur = get_db()
         self.member_count = -1
 
         self.mention_embed = discord.Embed(

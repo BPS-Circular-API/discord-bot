@@ -1,9 +1,8 @@
 import discord
 import math
-import sqlite3
 from discord.ext import commands
 from backend import owner_ids, embed_title, embed_footer, embed_color, console, owner_guilds, get_png, ConfirmButton, \
-    DeleteButton, log, search, embed_url, send_to_guilds, send_to_users, categories
+    DeleteButton, log, search, embed_url, send_to_guilds, send_to_users, categories, get_db
 
 category_options = []
 for i in categories:
@@ -14,8 +13,7 @@ del categories
 class Owners(commands.Cog):
     def __init__(self, client):
         self.client = client
-        self.con = sqlite3.connect('./data/data.db')
-        self.cur = self.con.cursor()
+        self.con, self.cur = get_db()
 
     owners = discord.SlashCommandGroup("owners", "Bot owner commands.", guild_ids=owner_guilds)
 

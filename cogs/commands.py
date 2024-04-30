@@ -1,12 +1,11 @@
 import math
-import sqlite3
 import discord
 import time
 import discord.ext.pages
 from discord.ext import commands
 from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, get_png, \
     search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url, FeedbackButton, \
-    ignored_circulars, create_search_dropdown, discord_invite_url, invite_url
+    ignored_circulars, create_search_dropdown, discord_invite_url, invite_url, get_db
 from discord import SlashCommandGroup
 
 category_options = []
@@ -19,8 +18,7 @@ category_options_with_all.insert(0, discord.OptionChoice("All", value="all"))
 
 class Commands(commands.Cog):
     def __init__(self, client):
-        self.con = sqlite3.connect('./data/data.db')
-        self.cur = self.con.cursor()
+        self.con, self.cur = get_db()
         self.client = client
 
     @commands.Cog.listener()
