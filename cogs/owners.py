@@ -313,8 +313,8 @@ class Owners(commands.Cog):
         pages = []
         i = 1
         # Log format: (timestamp, log_level, category, message)
-        for log in logs:
-            embed.add_field(name=f"**{i}** <t:{log[0]}:f>", value=f"```{log[3]}```", inline=False)
+        for _log in logs:
+            embed.add_field(name=f"**{i}** <t:{_log[0]}:f>", value=f"```{_log[3]}```", inline=False)
             i += 1
 
             if i % 10 == 0:
@@ -414,6 +414,10 @@ class Owners(commands.Cog):
 
                     data = await search(id_)
                     png = await get_png(data['link'])
+
+                    if png is None:
+                        await ctx.respond("Error, png is None")
+                        return
 
                     current_embed.set_image(url=png[0])
 

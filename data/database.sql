@@ -1,5 +1,5 @@
 -- This code creates the database and tables for /data/data.db
--- There are 5 tables
+-- There are 6 tables
 
 CREATE TABLE IF NOT EXISTS "dm_notify" (
 	"user_id"	INT NOT NULL,
