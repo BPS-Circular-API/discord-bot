@@ -113,86 +113,88 @@ except Exception as e:
     console.critical(f"Error while connecting to the API. Error: {e}")
     sys.exit()
 
-# Check the database and verify if all required tables are there
-if storage_method == "mysql":
-    _con = mysql.connector.connect(**mysql_config)
-else:
-    _con = sqlite3.connect('./data/data.db')
 
-_cur = _con.cursor()
+def get_db(storage_method_override: str = None) -> tuple:
+    # if storage_method_override: # TODO FIX THIS
+    #     storage_method = storage_method_override
 
-try:
-    [
-        _cur.execute(f'SELECT * FROM {table} LIMIT 1;')
-        for table in ['cache', 'dm_notify', 'guild_notify', 'logs', 'notif_msgs', 'search_feedback']
-    ]
-except:
-    _cur.execute("CREATE TABLE 'cache' (title TEXT, category TEXT, data BLOB)")
+    if storage_method == "mysql":
+        con = mysql.connector.connect(**mysql_config)
+    else:
+        con = sqlite3.connect('./data/data.db')
+    cur = con.cursor(prepared=True)
+
+    return con, cur
+
+def init_database():
+    # Check the database and verify if all required tables are there
+    _con, _cur = get_db()
+
+    # Create table cache
+    _cur.execute("CREATE TABLE IF NOT EXISTS `cache` (title TEXT, category TEXT, data BLOB)")
+
+    # Create table DM Notify
     _cur.execute(
-        "CREATE TABLE 'dm_notify' (`user_id` INT NOT NULL, `message` TEXT "
+        "CREATE TABLE IF NOT EXISTS `dm_notify` (user_id INT NOT NULL, message TEXT "
         "DEFAULT 'A new Circular was just posted on the website!' )"
     )
+
+    # Create table guild notifu
+    _cur.execute(
+    """
+        CREATE TABLE IF NOT EXISTS `guild_notify` (
+        guild_id INT NOT NULL UNIQUE,
+        channel_id INT UNIQUE,
+        message TEXT DEFAULT 'There''s a new circular up on the website!'
+    );
+    """
+    )
+
+    # Create table logs
     _cur.execute(
         """
-        CREATE TABLE "guild_notify" ( 
-            "guild_id"	INTEGER NOT NULL UNIQUE, 
-            "channel_id"	INTEGER UNIQUE, 
-            "message"	TEXT DEFAULT 'There''s a new circular up on the website!'
+        CREATE TABLE IF NOT EXISTS `logs` (
+            timestamp	INTEGER NOT NULL,
+            log_level	TEXT DEFAULT 'debug',
+            category	TEXT,
+            msg	TEXT
         )
         """
     )
     _cur.execute(
         """
-        CREATE TABLE "logs" (
-            "timestamp"	INTEGER NOT NULL,
-            "log_level"	TEXT DEFAULT 'debug',
-            "category"	TEXT,
-            "msg"	TEXT
+        CREATE TABLE IF NOT EXISTS `notif_msgs` ( 	
+            circular_id	INT NOT NULL, 	
+            type	TEXT NOT NULL, 	
+            msg_id	INT NOT NULL UNIQUE, 	
+            channel_id	INT, 	
+            guild_id	INT 
         )
         """
     )
     _cur.execute(
         """
-        CREATE TABLE "notif_msgs" ( 	
-            "circular_id"	INTEGER NOT NULL, 	
-            "type"	TEXT NOT NULL, 	"msg_id"	
-            INTEGER NOT NULL UNIQUE, 	
-            "channel_id"	INTEGER, 	
-            "guild_id"	INTEGER 
-        )
-        """
-    )
-    _cur.execute(
-        """
-        CREATE TABLE "search_feedback" ( 	
-            "user_id"	INTEGER, 	
-            "message_id"	INTEGER, 	
-            "search_query"	TEXT, 	
-            "response"	TEXT 
+        CREATE TABLE IF NOT EXISTS `search_feedback` ( 	
+            user_id 	INT, 	
+            message_id	INT, 	
+            search_query	TEXT, 	
+            response	TEXT 
         )
         """
     )
 
-_con.commit()
-_con.close()
-del _con
-del _cur
+    _con.commit()
+    _con.close()
+    del _con
+    del _cur
 
+
+init_database()
 client = commands.Bot(help_command=None)
 
 console.debug("Owner IDs: " + str(owner_ids))
 console.debug("Owner Guilds: " + str(owner_guilds))
 console.debug("Ignored Circulars: " + str(ignored_circulars))
-
-
-def get_db() -> tuple:
-    if storage_method == "mysql":
-        con = mysql.connector.connect(**mysql_config)
-    else:
-        con = sqlite3.connect('./data/data.db')
-    cur = con.cursor()
-
-    return con, cur
 
 
 async def get_circular_list(category: str) -> tuple | None:
