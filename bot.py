@@ -8,6 +8,8 @@ import discord
 async def on_ready():
     print("Connected to Discord!")
     console.info(f"Bot is ready. Logged in as {client.user}")
+    console.info(f"Latency with Discord: {round(client.latency * 1000, 2)}ms")
+    #console.info(f"Latency with bps API: {}")
 
 
 for file in os.listdir('./cogs'):

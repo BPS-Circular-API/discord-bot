@@ -288,7 +288,6 @@ async def search(query: str | int, amount: int = 3) -> tuple | None:
 async def log(level, category, msg, *args):
     # Db Structure - type, msg, category, timestamp, level
     # categories = ["command", "listener", "backend", "etc"]
-    current_time = int(time.time())
     if level.upper() not in ["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"]:
         level = "INFO"
 
@@ -315,7 +314,7 @@ async def log(level, category, msg, *args):
 
     con, cur = get_db()
 
-    cur.execute('INSERT INTO logs VALUES (?, ?, ?, ?)', (current_time, level, category, msg))
+    cur.execute('INSERT INTO logs VALUES (?, ?, ?, ?)', (int(time.time()), level.upper(), category, msg))
     con.commit()
 
 
@@ -407,7 +406,8 @@ async def send_to_guilds(
     con.close()
 
 
-async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, embed: discord.Embed, embed_list: list, id_: int):
+async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, embed: discord.Embed, embed_list: list,
+                        id_: int):
     con, cur = get_db()
 
     for user, message in zip(user_ids, user_messages):

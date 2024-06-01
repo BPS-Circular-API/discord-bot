@@ -25,7 +25,7 @@ class Owners(commands.Cog):
     async def status(self, ctx, status: str, message: str):
         if ctx.author.id not in owner_ids:
             return await ctx.respond("You are not allowed to use this command.")
-        
+
         match status:
             case 'playing':
                 await self.client.change_presence(activity=discord.Game(name=message))
@@ -63,7 +63,7 @@ class Owners(commands.Cog):
                                                         color=discord.colour.Color.red()).set_footer(
                 text=embed_footer).set_author(name=embed_title), ephemeral=True)
             return
-        
+
         res = self.cur.fetchall()
 
         if len(res) == 0:
@@ -72,7 +72,7 @@ class Owners(commands.Cog):
         else:
             embed = discord.Embed(title="Execute SQL", description="**Success!**\nResults found.",
                                   color=embed_color).set_footer(text=embed_footer).set_author(name=embed_title)
-            
+
             for i in res:
                 embed.add_field(name=str(i), value=str(i), inline=False)
 
@@ -85,7 +85,7 @@ class Owners(commands.Cog):
     async def servers(self, ctx):
         if ctx.author.id not in owner_ids:
             return await ctx.respond("You are not allowed to use this command.")
-        
+
         await ctx.defer()
 
         embed = discord.Embed(title="Servers", description=f"I am in `{len(self.client.guilds)}` servers!",
@@ -121,20 +121,20 @@ class Owners(commands.Cog):
 
     @owners.command(name="manualnotify", description="Notify all users in a server.")
     async def send_manual_notification(
-        self, ctx, circular_name: str, url: str, id_: int, category: discord.Option(choices=category_options),
-        custom_message: str = None, 
-        send_only_to: discord.Option(
-            choices=[
+            self, ctx, circular_name: str, url: str, id_: int, category: discord.Option(choices=category_options),
+            custom_message: str = None,
+            send_only_to: discord.Option(
+                choices=[
                     discord.OptionChoice("DMs", value="dms"),
                     discord.OptionChoice("Servers", value="servers"),
-            ]
-        ) = None,
-        debug_guild: int = None, debug_user: int = None
+                ]
+            ) = None,
+            debug_guild: int = None, debug_user: int = None
     ):
 
         if ctx.author.id not in owner_ids:  # Check if the user is a bot owner
             return await ctx.respond("You are not allowed to use this command.")
-        
+
         await ctx.defer()
 
         embed = discord.Embed(title=f"New Circular | **{category.capitalize()}** ", color=embed_color, url=embed_url)
@@ -238,7 +238,8 @@ class Owners(commands.Cog):
             match send_only_to:  # If it has been specified to send the notifications to only servers/dms
                 case "dms":  # Send notifications to dms
                     await send_to_users(
-                        user_ids=user_ids, user_messages=user_messages, notif_msgs=notif_msgs, embed=embed, embed_list=embed_list, id_=id_
+                        user_ids=user_ids, user_messages=user_messages, notif_msgs=notif_msgs, embed=embed,
+                        embed_list=embed_list, id_=id_
                     )
 
                 case "servers":  # Send notifications to servers
