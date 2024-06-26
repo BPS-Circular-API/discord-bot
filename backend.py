@@ -120,11 +120,13 @@ def get_db(storage_method_override: str = None) -> tuple:
 
     if storage_method == "mysql":
         con = mysql.connector.connect(**mysql_config)
+        cur = con.cursor(prepared=True)
     else:
         con = sqlite3.connect('./data/data.db')
-    cur = con.cursor(prepared=True)
+        cur = con.cursor()
 
     return con, cur
+
 
 def init_database():
     # Check the database and verify if all required tables are there
@@ -141,7 +143,7 @@ def init_database():
 
     # Create table guild notifu
     _cur.execute(
-    """
+        """
         CREATE TABLE IF NOT EXISTS `guild_notify` (
         guild_id INT NOT NULL UNIQUE,
         channel_id INT UNIQUE,
@@ -185,8 +187,7 @@ def init_database():
 
     _con.commit()
     _con.close()
-    del _con
-    del _cur
+
 
 
 init_database()

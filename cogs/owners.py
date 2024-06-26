@@ -200,8 +200,8 @@ class Owners(commands.Cog):
             await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed
             return await ctx.respond(f"Notified the `{debug_user}` user.")  # Respond to the user and return
 
-        else:
-            button = ConfirmButton(ctx.author)  # Create a ConfirmButton object
+        else:   # TODO this button is not for you
+            button = ConfirmButton(ctx.author.id)  # Create a ConfirmButton object
 
             await ctx.followup.send(embeds=[embed.copy(), *embed_list], view=button)
             await button.wait()  # Wait for the user to confirm
@@ -458,6 +458,30 @@ class Owners(commands.Cog):
         embed_.set_footer(text=embed_footer)
         await user.send(embed=embed_)
         await ctx.respond("Successfully sent the message.")
+
+    @owners.command()
+    async def convert_data(self, ctx, conversion: discord.Option(choices=[
+        discord.OptionChoice("SQLITE -> MYSQL", value="mysql"),
+        discord.OptionChoice("MYSQL -> SQLITE", value="sqlite")
+    ])):
+        if ctx.author.id not in owner_ids:
+            return await ctx.respond("You are not allowed to use this command.")
+        await ctx.defer()
+
+        if conversion == "mysql":
+            # Convert from SQLITE3 to MYSQL
+            sqlite_con, sqlite_cur = get_db('sqlite3')
+            mysql_con, mysql_cur = get_db('mysql')
+
+            # Copy all tables from SQLITE DB to MYSQL
+            sqlite_cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = [table[0] for table in sqlite_cur.fetchall()]
+
+            for table in tables:
+                sqlite_cur.execute(f"SELECT * FROM {table};")
+                data = sqlite_cur.fetchall()
+
+                mysql_cur.execute(f"INSERT INTO {table} ")
 
 
 def setup(client):
