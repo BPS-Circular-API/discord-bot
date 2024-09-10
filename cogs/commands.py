@@ -325,7 +325,6 @@ class Commands(commands.Cog):
 
         # If a channel is already set up
         if res:
-            console.debug('[Commands] | ' + res)
             embed = discord.Embed(
                 title="Server Setup",
                 description=f"The server already has a notification configuration.",
