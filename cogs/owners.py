@@ -1,9 +1,8 @@
 import discord
 import math
-import sqlite3
 from discord.ext import commands
 from backend import owner_ids, embed_title, embed_footer, embed_color, console, owner_guilds, get_png, ConfirmButton, \
-    DeleteButton, log, search, embed_url, send_to_guilds, send_to_users, categories
+    DeleteButton, log, search, embed_url, send_to_guilds, send_to_users, categories, get_db
 
 category_options = []
 for i in categories:
@@ -14,8 +13,7 @@ del categories
 class Owners(commands.Cog):
     def __init__(self, client):
         self.client = client
-        self.con = sqlite3.connect('./data/data.db')
-        self.cur = self.con.cursor()
+        self.con, self.cur = get_db()
 
     owners = discord.SlashCommandGroup("owners", "Bot owner commands.", guild_ids=owner_guilds)
 
@@ -27,7 +25,7 @@ class Owners(commands.Cog):
     async def status(self, ctx, status: str, message: str):
         if ctx.author.id not in owner_ids:
             return await ctx.respond("You are not allowed to use this command.")
-        
+
         match status:
             case 'playing':
                 await self.client.change_presence(activity=discord.Game(name=message))
@@ -65,7 +63,7 @@ class Owners(commands.Cog):
                                                         color=discord.colour.Color.red()).set_footer(
                 text=embed_footer).set_author(name=embed_title), ephemeral=True)
             return
-        
+
         res = self.cur.fetchall()
 
         if len(res) == 0:
@@ -74,7 +72,7 @@ class Owners(commands.Cog):
         else:
             embed = discord.Embed(title="Execute SQL", description="**Success!**\nResults found.",
                                   color=embed_color).set_footer(text=embed_footer).set_author(name=embed_title)
-            
+
             for i in res:
                 embed.add_field(name=str(i), value=str(i), inline=False)
 
@@ -87,7 +85,7 @@ class Owners(commands.Cog):
     async def servers(self, ctx):
         if ctx.author.id not in owner_ids:
             return await ctx.respond("You are not allowed to use this command.")
-        
+
         await ctx.defer()
 
         embed = discord.Embed(title="Servers", description=f"I am in `{len(self.client.guilds)}` servers!",
@@ -123,20 +121,20 @@ class Owners(commands.Cog):
 
     @owners.command(name="manualnotify", description="Notify all users in a server.")
     async def send_manual_notification(
-        self, ctx, circular_name: str, url: str, id_: int, category: discord.Option(choices=category_options),
-        custom_message: str = None, 
-        send_only_to: discord.Option(
-            choices=[
+            self, ctx, circular_name: str, url: str, id_: int, category: discord.Option(choices=category_options),
+            custom_message: str = None,
+            send_only_to: discord.Option(
+                choices=[
                     discord.OptionChoice("DMs", value="dms"),
                     discord.OptionChoice("Servers", value="servers"),
-            ]
-        ) = None,
-        debug_guild: int = None, debug_user: int = None
+                ]
+            ) = None,
+            debug_guild: int = None, debug_user: int = None
     ):
 
         if ctx.author.id not in owner_ids:  # Check if the user is a bot owner
             return await ctx.respond("You are not allowed to use this command.")
-        
+
         await ctx.defer()
 
         embed = discord.Embed(title=f"New Circular | **{category.capitalize()}** ", color=embed_color, url=embed_url)
@@ -202,8 +200,8 @@ class Owners(commands.Cog):
             await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed
             return await ctx.respond(f"Notified the `{debug_user}` user.")  # Respond to the user and return
 
-        else:
-            button = ConfirmButton(ctx.author)  # Create a ConfirmButton object
+        else:   # TODO this button is not for you
+            button = ConfirmButton(ctx.author.id)  # Create a ConfirmButton object
 
             await ctx.followup.send(embeds=[embed.copy(), *embed_list], view=button)
             await button.wait()  # Wait for the user to confirm
@@ -240,7 +238,8 @@ class Owners(commands.Cog):
             match send_only_to:  # If it has been specified to send the notifications to only servers/dms
                 case "dms":  # Send notifications to dms
                     await send_to_users(
-                        user_ids=user_ids, user_messages=user_messages, notif_msgs=notif_msgs, embed=embed, embed_list=embed_list, id_=id_
+                        user_ids=user_ids, user_messages=user_messages, notif_msgs=notif_msgs, embed=embed,
+                        embed_list=embed_list, id_=id_
                     )
 
                 case "servers":  # Send notifications to servers
@@ -459,6 +458,30 @@ class Owners(commands.Cog):
         embed_.set_footer(text=embed_footer)
         await user.send(embed=embed_)
         await ctx.respond("Successfully sent the message.")
+
+    @owners.command()
+    async def convert_data(self, ctx, conversion: discord.Option(choices=[
+        discord.OptionChoice("SQLITE -> MYSQL", value="mysql"),
+        discord.OptionChoice("MYSQL -> SQLITE", value="sqlite")
+    ])):
+        if ctx.author.id not in owner_ids:
+            return await ctx.respond("You are not allowed to use this command.")
+        await ctx.defer()
+
+        if conversion == "mysql":
+            # Convert from SQLITE3 to MYSQL
+            sqlite_con, sqlite_cur = get_db('sqlite3')
+            mysql_con, mysql_cur = get_db('mysql')
+
+            # Copy all tables from SQLITE DB to MYSQL
+            sqlite_cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = [table[0] for table in sqlite_cur.fetchall()]
+
+            for table in tables:
+                sqlite_cur.execute(f"SELECT * FROM {table};")
+                data = sqlite_cur.fetchall()
+
+                mysql_cur.execute(f"INSERT INTO {table} ")
 
 
 def setup(client):

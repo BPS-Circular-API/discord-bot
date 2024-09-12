@@ -8,6 +8,7 @@ import sys
 from discord.ext import commands
 from colorlog import ColoredFormatter
 import requests
+import mysql.connector
 
 
 # Initializing the logger
@@ -49,12 +50,24 @@ try:
     statuses: str = config.get('main', 'statuses').strip()
     invite_url: str = config.get('main', 'invite_url').strip()
     discord_invite_url: str = config.get('main', 'discord_invite_url').strip()
+    storage_method: str = config.get('main', 'storage_method').strip()
 
     embed_footer: str = config.get('discord', 'embed_footer')
     embed_color: int = int(config.get('discord', 'embed_color'), base=16)
     embed_title: str = config.get('discord', 'embed_title')
     embed_url: str = config.get('discord', 'embed_url')
 
+    if storage_method == "mysql":
+        mysql_config: dict = {
+            'user': config.get('mysql', 'user'),
+            'password': config.get('mysql', 'password'),
+            'host': config.get('mysql', 'host'),
+            'database': config.get('mysql', 'database'),
+            'port': config.get('mysql', 'port'),
+            'raise_on_warnings': False
+        }
+    else:
+        mysql_config = {}
 except Exception as err:
     console.critical("Error reading the config.ini file. Error: " + str(err))
     sys.exit()
@@ -100,6 +113,84 @@ except Exception as e:
     console.critical(f"Error while connecting to the API. Error: {e}")
     sys.exit()
 
+
+def get_db(storage_method_override: str = None) -> tuple:
+    # if storage_method_override: # TODO FIX THIS
+    #     storage_method = storage_method_override
+
+    if storage_method == "mysql":
+        con = mysql.connector.connect(**mysql_config)
+        cur = con.cursor(prepared=True)
+    else:
+        con = sqlite3.connect('./data/data.db')
+        cur = con.cursor()
+
+    return con, cur
+
+
+def init_database():
+    # Check the database and verify if all required tables are there
+    _con, _cur = get_db()
+
+    # Create table cache
+    _cur.execute("CREATE TABLE IF NOT EXISTS `cache` (title TEXT, category TEXT, data BLOB)")
+
+    # Create table DM Notify
+    _cur.execute(
+        "CREATE TABLE IF NOT EXISTS `dm_notify` (user_id INT NOT NULL, message TEXT "
+        "DEFAULT 'A new Circular was just posted on the website!' )"
+    )
+
+    # Create table guild notifu
+    _cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS `guild_notify` (
+        guild_id INT NOT NULL UNIQUE,
+        channel_id INT UNIQUE,
+        message TEXT DEFAULT 'There''s a new circular up on the website!'
+    );
+    """
+    )
+
+    # Create table logs
+    _cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS `logs` (
+            timestamp	INTEGER NOT NULL,
+            log_level	TEXT DEFAULT 'debug',
+            category	TEXT,
+            msg	TEXT
+        )
+        """
+    )
+    _cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS `notif_msgs` ( 	
+            circular_id	INT NOT NULL, 	
+            type	TEXT NOT NULL, 	
+            msg_id	INT NOT NULL UNIQUE, 	
+            channel_id	INT, 	
+            guild_id	INT 
+        )
+        """
+    )
+    _cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS `search_feedback` ( 	
+            user_id 	INT, 	
+            message_id	INT, 	
+            search_query	TEXT, 	
+            response	TEXT 
+        )
+        """
+    )
+
+    _con.commit()
+    _con.close()
+
+
+
+init_database()
 client = commands.Bot(help_command=None)
 
 console.debug("Owner IDs: " + str(owner_ids))
@@ -198,7 +289,6 @@ async def search(query: str | int, amount: int = 3) -> tuple | None:
 async def log(level, category, msg, *args):
     # Db Structure - type, msg, category, timestamp, level
     # categories = ["command", "listener", "backend", "etc"]
-    current_time = int(time.time())
     if level.upper() not in ["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"]:
         level = "INFO"
 
@@ -223,19 +313,17 @@ async def log(level, category, msg, *args):
     if category not in ["command", "notification", "listener", "backend", "etc"]:
         category = "etc"
 
-    con = sqlite3.connect('./data/data.db')
-    cur = con.cursor()
+    con, cur = get_db()
 
-    cur.execute('INSERT INTO logs VALUES (?, ?, ?, ?)', (current_time, level, category, msg))
+    cur.execute('INSERT INTO logs VALUES (?, ?, ?, ?)', (int(time.time()), level.upper(), category, msg))
     con.commit()
 
 
 async def send_to_guilds(
-        guilds: list, channels: list, messages: list, notif_msgs: list, embed: discord.Embed, embed_list: list,
+        guilds: list, channels: list, messages: list, notif_msgs: dict, embed: discord.Embed, embed_list: list,
         error_embed: discord.Embed, id_: int
 ):
-    con = sqlite3.connect('./data/data.db')
-    cur = con.cursor()
+    con, cur = get_db()
 
     for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
@@ -319,9 +407,9 @@ async def send_to_guilds(
     con.close()
 
 
-async def send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_):
-    con = sqlite3.connect('./data/data.db')
-    cur = con.cursor()
+async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, embed: discord.Embed, embed_list: list,
+                        id_: int):
+    con, cur = get_db()
 
     for user, message in zip(user_ids, user_messages):
 
@@ -477,8 +565,8 @@ class FeedbackButton(discord.ui.View):
             if interaction.user.id != self.user_id:
                 return await interaction.response.send_message("This button is not for you", ephemeral=True)
 
-        con = sqlite3.connect("./data/data.db")
-        cur = con.cursor()
+        con, cur = get_db()
+
         self.search_query = self.search_query.replace('"', "")
         cur.execute(
             f"INSERT INTO search_feedback VALUES (?, ?, ?, ?)",
@@ -506,8 +594,7 @@ class FeedbackButton(discord.ui.View):
 
         self.search_query = self.search_query.replace('"', "")
 
-        con = sqlite3.connect("./data/data.db")
-        cur = con.cursor()
+        con, cur = get_db()
 
         cur.execute(
             f"INSERT INTO search_feedback VALUES (?, ?, ?, ?)",

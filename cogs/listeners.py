@@ -1,5 +1,4 @@
 import os
-import sqlite3
 import discord
 import shutil
 import random
@@ -8,33 +7,33 @@ import asyncio
 import pybpsapi
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, \
-    status_interval, log, embed_url, base_api_url, send_to_guilds, send_to_users, categories, statuses, circular_check_interval
+    status_interval, log, embed_url, base_api_url, send_to_guilds, send_to_users, categories, statuses, \
+    circular_check_interval, get_db
 
 
 class Listeners(commands.Cog):
     def __init__(self, client):
         self.client = client
-        self.con = sqlite3.connect('./data/data.db')
-        self.cur = self.con.cursor()
+        self.con, self.cur = get_db()
         self.member_count = -1
 
         self.mention_embed = discord.Embed(
-            title="Mention Message", 
+            title="Mention Message",
             description="Hello! Thanks for using this bot.",
             color=embed_color
-            )
+        )
         self.mention_embed.set_footer(text=embed_footer)
         self.mention_embed.set_author(name=embed_title)
         self.mention_embed.add_field(
-            name="Prefix", 
+            name="Prefix",
             value="This bot uses slash commands, which are prefixed with `/circular`",
             inline=False
-            )
+        )
         self.mention_embed.add_field(
-            name="For help", 
+            name="For help",
             value="Use </help:1017654494009491476> to get a list of all the commands.",
             inline=False
-            )
+        )
 
         # Create a circular checker group and add all checkers of all categories to it
         self.group = pybpsapi.CircularCheckerGroup()
@@ -69,14 +68,13 @@ class Listeners(commands.Cog):
 
         console.info(f"I am in {len(self.client.guilds)} guilds. They have {self.member_count} members.")
 
-
     @commands.Cog.listener()
     async def on_message(self, ctx):
         # Ignore if message is from a bot or a reply
         if (not ctx.author.bot) & (self.client.user.mentioned_in(ctx)) & (ctx.reference is None):
             # Ignore if it's a @everyone or @here
             if ctx.mention_everyone:
-                return         
+                return
 
             try:
                 msg = await ctx.reply(embed=self.mention_embed)
@@ -109,12 +107,12 @@ class Listeners(commands.Cog):
             discord.ActivityType.watching if item[0] == 'watching' else
             discord.ActivityType.playing for item in statuses
         ]
-        
+
         # replace {xyz} with variable xyz, etc
         for i in range(len(activities)):
             activities[i] = activities[i].replace('{guilds}', str(len(self.client.guilds)))
             activities[i] = activities[i].replace('{members}', str(self.member_count))
-            
+
         # Choose a random activity
         rand_int = random.randint(0, len(activities) - 1)
 
@@ -148,7 +146,7 @@ class Listeners(commands.Cog):
         else:
             console.debug(f"No new circulars found.")
             return
-        
+
         console.debug(f"New Circulars: {new_circular_objects}")
 
         # If there are more than 19 new circulars, skip notification (bug idk how to fix)
@@ -161,6 +159,19 @@ class Listeners(commands.Cog):
             for cat in new_circular_objects:
                 if cat:
                     for obj in new_circular_objects[cat]:
+                        # Check if the circular is already there in the database
+
+                        con, cur = get_db()
+                        cur.execute("SELECT * FROM notif_msgs WHERE circular_id = ? LIMIT 1", (obj['id'],))
+
+                        if len(found := cur.fetchall()) > 0:
+                            console.error("Duplicate new-circular found. This is an issue with the bot and needs to be investigated.")
+                            console.error(str(new_circular_objects))
+                            console.error(str(obj))
+                            console.error(obj['id'])
+                            console.error(found)
+                            return
+
                         try:
                             await self.notify(cat, obj)
                         except Exception as err:
@@ -279,7 +290,7 @@ class Listeners(commands.Cog):
         if isinstance(error, discord.errors.Forbidden):
             await ctx.respond("I don't have the permission to do that!")
         elif isinstance(error, discord.errors.ApplicationCommandInvokeError):
-            return 
+            return
         else:
             console.error(error)
             raise error
