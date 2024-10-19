@@ -133,20 +133,20 @@ def init_database():
     _con, _cur = get_db()
 
     # Create table cache
-    _cur.execute("CREATE TABLE IF NOT EXISTS `cache` (title TEXT, category TEXT, data BLOB)")
+    # _cur.execute("CREATE TABLE IF NOT EXISTS `cache` (title TEXT, category TEXT, data BLOB)")
 
     # Create table DM Notify
     _cur.execute(
-        "CREATE TABLE IF NOT EXISTS `dm_notify` (user_id INT NOT NULL, message TEXT "
+        "CREATE TABLE IF NOT EXISTS `dm_notify` (user_id BIGINT UNSIGNED NOT NULL, message TEXT "
         "DEFAULT 'A new Circular was just posted on the website!' )"
     )
 
-    # Create table guild notifu
+    # Create table guild notify
     _cur.execute(
         """
         CREATE TABLE IF NOT EXISTS `guild_notify` (
-        guild_id INT NOT NULL UNIQUE,
-        channel_id INT UNIQUE,
+        guild_id BIGINT UNSIGNED NOT NULL UNIQUE,
+        channel_id BIGINT UNSIGNED UNIQUE,
         message TEXT DEFAULT 'There''s a new circular up on the website!'
     );
     """
@@ -168,17 +168,17 @@ def init_database():
         CREATE TABLE IF NOT EXISTS `notif_msgs` ( 	
             circular_id	INT NOT NULL, 	
             type	TEXT NOT NULL, 	
-            msg_id	INT NOT NULL UNIQUE, 	
-            channel_id	INT, 	
-            guild_id	INT 
+            msg_id	BIGINT UNSIGNED NOT NULL UNIQUE, 	
+            channel_id	BIGINT UNSIGNED, 	
+            guild_id	BIGINT UNSIGNED 
         )
         """
     )
     _cur.execute(
         """
         CREATE TABLE IF NOT EXISTS `search_feedback` ( 	
-            user_id 	INT, 	
-            message_id	INT, 	
+            user_id 	BIGINT UNSIGNED, 	
+            message_id	BIGINT UNSIGNED, 	
             search_query	TEXT, 	
             response	TEXT 
         )
@@ -265,7 +265,7 @@ async def get_png(download_url: str) -> list | None:
                 raise ValueError
             elif resp.status == 422:
                 console.error("The API returned 422. Something is wrong with the URL")
-                console.error(download_url)
+                console.error(f"download url: {download_url}")
                 raise ValueError
 
 
