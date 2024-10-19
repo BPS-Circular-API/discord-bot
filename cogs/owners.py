@@ -329,23 +329,6 @@ class Owners(commands.Cog):
         )
         await paginator.respond(ctx.interaction, ephemeral=True)
 
-    @owners.command(name="setmessage", description="Set a message for the next circular embed.")
-    async def set_message(self, ctx, message: str):
-        if ctx.author.id not in owner_ids:
-            return await ctx.respond("You are not allowed to use this command.")
-        await ctx.defer()
-
-        self.cur.execute("SELECT * FROM cache where title = 'circular_message'")
-        circular_message = self.cur.fetchone()
-
-        if circular_message is None:
-            self.cur.execute("INSERT INTO cache VALUES ('circular_message', 'None', ?)", (message,))
-        else:
-            self.cur.execute("UPDATE cache SET data = ? WHERE title = 'circular_message'", (message,))
-        self.con.commit()
-
-        await ctx.respond("Successfully set the message for the next circular embed.")
-
     @owners.command(name="editnotif", description="Edit a notification message.")
     async def edit_notif(self, ctx, id_: int,
                          update_type: discord.Option(choices=[
