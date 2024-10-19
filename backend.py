@@ -276,12 +276,15 @@ async def search(query: str | int, amount: int = 3) -> tuple | None:
     async with aiohttp.ClientSession() as session:
         async with session.get(url, params=params) as resp:
             if resp.status == 200:
-                return tuple(await resp.json()['data'])
+                return tuple((await resp.json())['data'])
             elif resp.status == 500:
                 console.error("The API returned 500 Internal Server Error. Please check the API logs.")
                 raise ValueError
             elif resp.status == 422:
                 console.error("The API returned 422. Something is wrong with the query")
+                console.error(query)
+                raise ValueError
+            else:
                 console.error(query)
                 raise ValueError
 
