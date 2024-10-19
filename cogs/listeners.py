@@ -8,7 +8,7 @@ import pybpsapi
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, \
     status_interval, log, embed_url, base_api_url, send_to_guilds, send_to_users, categories, statuses, \
-    circular_check_interval, get_db
+    circular_check_interval, get_db, mysql_config, storage_method
 
 
 class Listeners(commands.Cog):
@@ -37,9 +37,28 @@ class Listeners(commands.Cog):
 
         # Create a circular checker group and add all checkers of all categories to it
         self.group = pybpsapi.CircularCheckerGroup()
-        for checker in [pybpsapi.CircularChecker(
-                cat, cache_method='database', db_name='data', db_path='./data', db_table='cache', url=base_api_url
-        ) for cat in categories]:
+
+        if storage_method == 'sqlite':
+            circular_checkers = [
+                pybpsapi.CircularChecker(
+                    cat, cache_method='sqlite', db_name='data', db_path='./data', db_table='cache', url=base_api_url
+                ) for cat in categories
+            ]
+        else:
+            circular_checkers = [
+                pybpsapi.CircularChecker(
+                    cat, cache_method='mysql',
+                    db_name=mysql_config['database'],
+                    db_table='cache',
+                    db_port=mysql_config['port'],
+                    db_password=mysql_config['password'],
+                    db_host=mysql_config['host'],
+                    db_user=mysql_config['user'],
+                    url=base_api_url
+                ) for cat in categories
+            ]
+
+        for checker in circular_checkers:
             self.group.add(checker)
 
     @commands.Cog.listener()
@@ -161,17 +180,6 @@ class Listeners(commands.Cog):
                     for obj in new_circular_objects[cat]:
                         # Check if the circular is already there in the database
 
-                        con, cur = get_db()
-                        cur.execute("SELECT * FROM notif_msgs WHERE circular_id = ? LIMIT 1", (obj['id'],))
-
-                        if len(found := cur.fetchall()) > 0:
-                            console.error("Duplicate new-circular found. This is an issue with the bot and needs to be investigated.")
-                            console.error(str(new_circular_objects))
-                            console.error(str(obj))
-                            console.error(obj['id'])
-                            console.error(found)
-                            return
-
                         try:
                             await self.notify(cat, obj)
                         except Exception as err:
@@ -227,16 +235,6 @@ class Listeners(commands.Cog):
         embed.set_author(name=embed_title)
         embed.set_image(url=png_url[0])  # Set the image to the attachment
         embed.add_field(name=f"[{id_}]  `{title.strip()}`", value=link, inline=False)
-
-        # If there is a custom message set by the bot dev, add it to the embed
-        self.cur.execute("SELECT data FROM cache WHERE title = 'circular_message'")  # Get the circular message
-        circular_message = self.cur.fetchone()
-
-        # If there is a circular dev message, add it to the embed
-        if circular_message:
-            embed.add_field(name="Message from the Developer", value=circular_message[0], inline=False)
-            self.cur.execute("DELETE FROM cache WHERE title = 'circular_message'")  # Delete the circular message
-            self.con.commit()
 
         embed_list = []
 
