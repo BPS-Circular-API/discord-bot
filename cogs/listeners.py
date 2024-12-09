@@ -14,7 +14,6 @@ from backend import console, embed_color, embed_footer, embed_title, get_png, ba
 class Listeners(commands.Cog):
     def __init__(self, client):
         self.client = client
-        self.con, self.cur = get_db()
         self.member_count = -1
 
         self.mention_embed = discord.Embed(
@@ -191,16 +190,18 @@ class Listeners(commands.Cog):
 
     async def notify(self, _circular_category, _circular_obj):
         # Gather all guilds
-        self.cur.execute("SELECT * FROM guild_notify")
-        guild_notify = self.cur.fetchall()
+        con, cur = get_db()
+
+        cur.execute("SELECT * FROM guild_notify")
+        guild_notify = cur.fetchall()
 
         guilds = [x[0] for x in guild_notify]
         channels = [x[1] for x in guild_notify]
         messages = [x[2] for x in guild_notify]
 
         # Gather all DMs
-        self.cur.execute("SELECT * FROM dm_notify")
-        users = self.cur.fetchall()
+        cur.execute("SELECT * FROM dm_notify")
+        users = cur.fetchall()
 
         user_ids = [x[0] for x in users]
         user_messages = [x[1] for x in users]

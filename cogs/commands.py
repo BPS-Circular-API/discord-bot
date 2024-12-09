@@ -18,7 +18,6 @@ category_options_with_all.insert(0, discord.OptionChoice("All", value="all"))
 
 class Commands(commands.Cog):
     def __init__(self, client):
-        self.con, self.cur = get_db()
         self.client = client
 
     @commands.Cog.listener()
@@ -320,8 +319,10 @@ class Commands(commands.Cog):
                 )
                 return
 
-        self.cur.execute("SELECT * FROM guild_notify WHERE guild_id = ?", (guild.id,))
-        res = self.cur.fetchone()
+        con, cur = get_db()
+
+        cur.execute("SELECT * FROM guild_notify WHERE guild_id = ?", (guild.id,))
+        res = cur.fetchone()
 
         # If a channel is already set up
         if res:
@@ -343,16 +344,16 @@ class Commands(commands.Cog):
 
         if message:
             message = message.replace("<", "").replace(">", "").replace('"', "")  # Remove the <> and " from the message
-            self.cur.execute(
+            cur.execute(
                 "INSERT INTO guild_notify (guild_id, channel_id, message) "
                 "VALUES (?, ?, ?)",
                 (guild.id, channel.id, message)
             )
 
         else:
-            self.cur.execute("INSERT INTO guild_notify (guild_id, channel_id) VALUES (?, ?)", (guild.id, channel.id))
+            cur.execute("INSERT INTO guild_notify (guild_id, channel_id) VALUES (?, ?)", (guild.id, channel.id))
 
-        self.con.commit()
+        con.commit()
 
         embed = discord.Embed(
             title="Circular Notification Setup",
@@ -381,8 +382,8 @@ class Commands(commands.Cog):
                                       f"\n\nPlease give me permission to do so or set another channel."
             await ctx.followup.send(embed=error_embed)
 
-            self.cur.execute(f"DELETE FROM guild_notify WHERE guild_id = ?", (guild.id,))
-            self.con.commit()
+            cur.execute(f"DELETE FROM guild_notify WHERE guild_id = ?", (guild.id,))
+            con.commit()
             return
 
     @admin.command(name="delete", description="Delete the server's circular notification configuration.")
@@ -408,9 +409,11 @@ class Commands(commands.Cog):
                     ).set_footer(text=embed_footer)
                 )
 
+        con, cur = get_db()
+
         # Check if the guild is in the database
-        self.cur.execute("SELECT * FROM guild_notify WHERE guild_id = ?", (guild.id,))
-        res = self.cur.fetchone()
+        cur.execute("SELECT * FROM guild_notify WHERE guild_id = ?", (guild.id,))
+        res = cur.fetchone()
 
         if not res:
             embed = discord.Embed(
@@ -423,8 +426,8 @@ class Commands(commands.Cog):
             await ctx.followup.send(embed=embed)
             return
 
-        self.cur.execute("DELETE FROM guild_notify WHERE guild_id = ?", (ctx.guild.id,))
-        self.con.commit()  # Commit the changes to the database
+        cur.execute("DELETE FROM guild_notify WHERE guild_id = ?", (ctx.guild.id,))
+        con.commit()  # Commit the changes to the database
 
         embed = discord.Embed(
             title="Success!",
@@ -494,8 +497,10 @@ class Commands(commands.Cog):
         embed.set_author(name=embed_title)
         embed.set_footer(text=embed_footer)
 
-        self.cur.execute("SELECT * FROM dm_notify WHERE user_id = ?", (ctx.author.id,))
-        res = self.cur.fetchone()
+        con, cur = get_db()
+
+        cur.execute("SELECT * FROM dm_notify WHERE user_id = ?", (ctx.author.id,))
+        res = cur.fetchone()
 
         # If the user is already in the database => they are unsubscribing
         if res:
@@ -515,8 +520,8 @@ class Commands(commands.Cog):
                 return
 
             # Remove the user from the database
-            self.cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (ctx.author.id,))
-            self.con.commit()
+            cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (ctx.author.id,))
+            con.commit()
 
             embed.title = "Success!"
             embed.description = "You unsubscribed from notifications."
@@ -527,10 +532,10 @@ class Commands(commands.Cog):
         # Add them to the database
         if message:
             message = message.replace("<", "").replace(">", "").replace('"', "")
-            self.cur.execute("INSERT INTO dm_notify (user_id, message) VALUES (?, ?)", (ctx.author.id, message))
+            cur.execute("INSERT INTO dm_notify (user_id, message) VALUES (?, ?)", (ctx.author.id, message))
         else:
-            self.cur.execute("INSERT INTO dm_notify (user_id) VALUES (?)", (ctx.author.id,))
-        self.con.commit()
+            cur.execute("INSERT INTO dm_notify (user_id) VALUES (?)", (ctx.author.id,))
+        con.commit()
 
         embed.title = "Success!"  # Set the title to Success
         embed.description = "You successfully subscribed to DM notifications! " \
