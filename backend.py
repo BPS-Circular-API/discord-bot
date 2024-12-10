@@ -169,10 +169,7 @@ if categories is None:
     sys.exit(1)
 
 
-def get_db(storage_method_override: str = None) -> tuple:
-    # if storage_method_override: # TODO FIX THIS
-    #     storage_method = storage_method_override
-
+def get_db() -> tuple:
     if storage_method == "mysql":
         con = mysql.connector.connect(**mysql_config)
         cur = con.cursor(prepared=True)
@@ -187,9 +184,6 @@ def init_database():
     # Check the database and verify if all required tables are there
     _con, _cur = get_db()
 
-    # Create table cache
-    # _cur.execute("CREATE TABLE IF NOT EXISTS `cache` (title TEXT, category TEXT, data BLOB)")
-
     # Create table DM Notify
     _cur.execute(
         "CREATE TABLE IF NOT EXISTS `dm_notify` (user_id BIGINT UNSIGNED NOT NULL, message TEXT "
@@ -200,10 +194,10 @@ def init_database():
     _cur.execute(
         """
         CREATE TABLE IF NOT EXISTS `guild_notify` (
-        guild_id BIGINT UNSIGNED NOT NULL UNIQUE,
-        channel_id BIGINT UNSIGNED UNIQUE,
-        message TEXT DEFAULT 'There''s a new circular up on the website!'
-    );
+            guild_id BIGINT UNSIGNED NOT NULL UNIQUE,
+            channel_id BIGINT UNSIGNED UNIQUE,
+            message TEXT DEFAULT 'There''s a new circular up on the website!'
+        );
     """
     )
 
