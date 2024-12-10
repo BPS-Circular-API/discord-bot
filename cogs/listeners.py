@@ -255,9 +255,43 @@ class Listeners(commands.Cog):
         if not os.path.exists('./data/backups/'):
             os.mkdir("./data/backups/")
 
-        # Copy the current db to the new directory
-        shutil.copyfile("./data/data.db",
-                        f"./data/backups/data-{date_time}.db")
+        if storage_method == 'sqlite':
+            # Copy the current db to the new directory
+            shutil.copyfile("./data/data.db",
+                            f"./data/backups/data-{date_time}.db")
+        elif storage_method == "mysql":
+            with open(f'./data/backups/data-{date_time}.db') as f:
+                f.write(b'')
+
+            backup_con = sqlite3.connect(f'./data/backups/data-{date_time}.db')
+            backup_cur = backup_con.cursor()
+
+            con, cur = get_db()
+
+            # Copy guild_notify
+            cur.execute('SELECT * FROM guild_notify;')
+            data = cur.fetchall()
+            backup_cur.executemany(
+                'INSERT INTO guild_notify (guild_id, channel_id, message) VALUES (?, ?, ?)',
+                data
+            )
+
+            # Copy dm_notify
+            cur.execute('SELECT * FROM dm_notify;')
+            data = cur.fetchall()
+            backup_cur.executemany(
+                'INSERT INTO dm_notify (user_id, message) VALUES (?, ?)',
+                data
+            )
+
+            # Copy notif_msgs
+            cur.execute('SELECT * FROM notif_msgs;')
+            data = cur.fetchall()
+            backup_cur.executemany(
+                'INSERT INTO notif_msgs (circular_id, type, msg_id, channel_id, guild_id) VALUES (?, ?, ?, ?, ?)',
+                data
+            )
+
         await log('info', "etc", f"Backed up the database to ./data/backups/data-{date_time}.db")
 
     @commands.Cog.listener()
