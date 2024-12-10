@@ -1,3 +1,4 @@
+import asyncio
 import configparser
 import sqlite3
 import time
@@ -102,16 +103,44 @@ for i in range(len(statuses)):
     statuses[i] = statuses[i].strip()
     statuses[i] = statuses[i].split('|')
 
-# Try to get list of categories
 try:
-    json = requests.get(base_api_url + "categories", timeout=1000).json()
-    if json['http_status'] == 200:
+    response = requests.get(base_api_url + "categories", timeout=10)
+    response.raise_for_status()  # Raise an error for HTTP status codes 4xx/5xx
+    json = response.json()
+    if json.get('http_status') == 200:
         categories = json['data']
     else:
         raise ConnectionError("Invalid API Response. HTTP status is not 200.")
-except Exception as e:
+except requests.exceptions.Timeout:
+    console.critical("API request timed out after 10 seconds.")
+    sys.exit(1)
+except requests.exceptions.RequestException as e:
     console.critical(f"Error while connecting to the API. Error: {e}")
-    sys.exit()
+    sys.exit(1)
+
+
+async def send_api_request(url: str, params: dict = None) -> dict | None:
+    timeout = aiohttp.ClientTimeout(total=15, connect=5)
+    try:
+        console.debug(f"Sending API request to {url} with params: {params}")
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url, params=params) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    console.debug(f"Received successful response from {url}")
+                    return data['data']
+                elif resp.status == 422:
+                    console.error(f"API returned status 422 for {url}. Params: {params}")
+                else:
+                    console.error(f"API returned status {resp.status} for {url}")
+                    return None
+    except asyncio.TimeoutError:
+        console.error(f"API request to {url} timed out.")
+        return None
+    except aiohttp.ClientError as e:
+        console.error(f"Error while connecting to the API at {url}. Error: {e}")
+        return None
+
 
 
 def get_db(storage_method_override: str = None) -> tuple:
@@ -189,7 +218,6 @@ def init_database():
     _con.close()
 
 
-
 init_database()
 client = commands.Bot(help_command=None)
 
@@ -203,13 +231,8 @@ async def get_circular_list(category: str) -> tuple | None:
     if category not in categories:
         raise ValueError(f"Invalid Category. `{category}` was passed in while `{categories}` are valid.")
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            if resp.status == 200:
-                return tuple((await resp.json())['data'])
-            elif resp.status == 500:
-                console.error("The API returned 500 Internal Server Error. Please check the API logs.")
-                return
+    data = await send_api_request(url)
+    return tuple(data)
 
 
 async def get_latest_circular(category: str) -> dict | None:
@@ -217,77 +240,43 @@ async def get_latest_circular(category: str) -> dict | None:
 
     # If the latest between all categories is requested
     if category == "all":
+        latest_circular = []
 
-        info = []
-
-        for i in categories:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url + i) as resp:
-
-                    if resp.status == 200:
-                        info.append((await resp.json())['data'])
-                    elif resp.status == 500:
-                        console.error("The API returned 500 Internal Server Error. Please check the API logs.")
-                        return
+        # Get the latest circulars of each category
+        for category in categories:
+            async with aiohttp.ClientSession(timeout=10) as session:
+                data = await send_api_request(url + category)
+                latest_circular.append(data)
 
         # Get the circular with the highest ID in the latest circulars of each category
-        info = max(info, key=lambda element: element['id'])
+        latest_circular = max(latest_circular, key=lambda element: element['id'])
 
-    # If the latest between a valid category is requested
+    # If the latest circular of a valid category is requested
     elif category in categories:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url + category) as resp:
-                if resp.status == 200:
-                    info = (await resp.json())['data']
-                elif resp.status == 500:
-                    console.error("The API returned 500 Internal Server Error. Please check the API logs.")
-                    return
-                else:
-                    return
+        data = await send_api_request(url + category)
+        latest_circular = data
 
     else:
         raise ValueError(f"Invalid Category. `{category}` was passed in while `{categories}` and `all` are valid.")
 
-    console.debug(info)
-    return info
+    console.debug(latest_circular)
+    return latest_circular
 
 
-async def get_png(download_url: str) -> list | None:
+async def get_png(download_url: str) -> tuple | None:
     url = base_api_url + "getpng"
     params = {'url': download_url}
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params) as resp:
-            if resp.status == 200:
-                return list((await resp.json())['data'])
-            elif resp.status == 500:
-                console.error("The API returned 500 Internal Server Error. Please check the API logs.")
-                raise ValueError
-            elif resp.status == 422:
-                console.error("The API returned 422. Something is wrong with the URL")
-                console.error(f"download url: {download_url}")
-                raise ValueError
+    data = await send_api_request(url, params)
+    return tuple(data)
 
 
 async def search(query: str | int, amount: int = 3) -> tuple | None:
     url = base_api_url + "search"
     params = {'query': query, "amount": amount}
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params) as resp:
-            if resp.status == 200:
-                return tuple((await resp.json())['data'])
-            elif resp.status == 500:
-                console.error("The API returned 500 Internal Server Error. Please check the API logs.")
-                raise ValueError
-            elif resp.status == 422:
-                console.error("The API returned 422. Something is wrong with the query")
-                console.error(query)
-                raise ValueError
-            else:
-                console.error(query)
-                raise ValueError
-
+    data = await send_api_request(url, params)
+    return tuple(data)
 
 async def log(level, category, msg, *args):
     # Db Structure - type, msg, category, timestamp, level
@@ -638,7 +627,7 @@ async def create_search_dropdown(options: list[discord.SelectOption], msg, user_
                 if interaction.user.id != self.user_id:
                     return await interaction.response.send_message("This button is not for you", ephemeral=True)
 
-            # Get the ID of the selected circular 
+            # Get the ID of the selected circular
             self.value = select.values[0][-4:]
 
             # Disable all views
