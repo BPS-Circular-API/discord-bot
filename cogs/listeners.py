@@ -1,4 +1,6 @@
 import os
+import sqlite3
+
 import discord
 import shutil
 import random
@@ -8,7 +10,7 @@ import pybpsapi
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, \
     status_interval, log, embed_url, base_api_url, send_to_guilds, send_to_users, categories, statuses, \
-    circular_check_interval, get_db, mysql_config, storage_method
+    circular_check_interval, get_db, mysql_config, storage_method, fallback_api_url
 
 
 class Listeners(commands.Cog):
@@ -34,31 +36,18 @@ class Listeners(commands.Cog):
             inline=False
         )
 
-        # Create a circular checker group and add all checkers of all categories to it
-        self.group = pybpsapi.CircularCheckerGroup()
-
         if storage_method == 'sqlite':
-            circular_checkers = [
-                pybpsapi.CircularChecker(
-                    cat, cache_method='sqlite', db_name='data', db_path='./data', db_table='cache', url=base_api_url
-                ) for cat in categories
-            ]
-        else:
-            circular_checkers = [
-                pybpsapi.CircularChecker(
-                    cat, cache_method='mysql',
-                    db_name=mysql_config['database'],
-                    db_table='cache',
-                    db_port=mysql_config['port'],
-                    db_password=mysql_config['password'],
-                    db_host=mysql_config['host'],
-                    db_user=mysql_config['user'],
-                    url=base_api_url
-                ) for cat in categories
-            ]
+            self.circular_checker = pybpsapi.CircularChecker(
+                api_url=base_api_url, fallback_api_url=fallback_api_url, cache_method='sqlite',
+                db_path='./data/data.db', db_table="cache"
+            )
+        elif storage_method == 'mysql':
+            self.circular_checker = pybpsapi.CircularChecker(
+                api_url=base_api_url, fallback_api_url=fallback_api_url, cache_method='mysql',
+                db_table='cache', db_host=mysql_config['host'], db_user=mysql_config['user'],
+                db_password=mysql_config['password'], db_name=mysql_config['database'], db_port=mysql_config['port']
+            )
 
-        for checker in circular_checkers:
-            self.group.add(checker)
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -157,36 +146,23 @@ class Listeners(commands.Cog):
     @tasks.loop(seconds=circular_check_interval * 60)
     async def check_for_circular(self):
         # Check for new circulars
-        new_circular_objects = self.group.check()
-
-        if (new_circulars := sum(i for i in map(len, new_circular_objects.values()))) > 0:
-            console.info(f"Found {new_circulars} new circulars.")
-        else:
-            console.debug(f"No new circulars found.")
-            return
-
+        new_circular_objects = self.circular_checker.check()
         console.debug(f"New Circulars: {new_circular_objects}")
 
-        # If there are more than 19 new circulars, skip notification (bug idk how to fix)
-        if sum((i for i in map(len, new_circular_objects.values()))) > 19:
+        if len(new_circular_objects) > 19:
             console.warning(f"[Listeners] | More than 19 new circulars found. Skipping notification.")
             return
 
-        # if there are actually any new circulars, notify
-        if sum((i for i in map(len, new_circular_objects.values()))) > 0:
-            for cat in new_circular_objects:
-                if cat:
-                    for obj in new_circular_objects[cat]:
-                        # Check if the circular is already there in the database
+        for circular_object in new_circular_objects:
+            # {'title': '...', 'link': '...', 'id': '...', 'category': '...'}
 
-                        try:
-                            await self.notify(cat, obj)
-                        except Exception as err:
-                            console.error(err)
-                            await log('error', 'listener', f"Error in notifying about circular {obj['id']}: {err}")
+            try:
+                await self.notify(circular_object['category'], circular_object)
+            except Exception as err:
+                console.error(err)
+                await log('error', 'listener', f"Error in notifying about circular {circular_object['id']}: {err}")
 
-        else:
-            console.debug(f"[Listeners] | No new circulars found.")
+            #console.debug(f"[Listeners] | No new circulars found.")
 
     async def notify(self, _circular_category, _circular_obj):
         # Gather all guilds
