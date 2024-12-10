@@ -50,7 +50,7 @@ class Commands(commands.Cog):
 
         # If there are no circulars
         if raw_res is None or raw_res == []:
-            console.error(f"Got an empty list of circulars from the API. raw_less was None or []")
+            console.error(f"Got an empty list of circulars from the API. raw_res was None or []")
             await ctx.respond("There was a bit of an issue on our end. Please try again later.")
 
         page_list = []

@@ -10,6 +10,7 @@ from discord.ext import commands
 from colorlog import ColoredFormatter
 import requests
 import mysql.connector
+from unicodedata import category
 
 
 # Initializing the logger
@@ -44,6 +45,7 @@ try:
     owner_ids = config.get('main', 'owner_ids').strip().split(',')
     owner_guilds = config.get('main', 'owner_guilds').strip().split(',')
     base_api_url: str = config.get('main', 'base_api_url')
+    fallback_api_url: str = config.get('main', 'fallback_api_url')
     backup_interval: int = config.getint('main', 'backup_interval')
     status_interval: int = config.getint('main', 'status_interval')
     circular_check_interval: int = config.getint('main', 'circular_check_interval')
@@ -96,6 +98,9 @@ else:
 # Base API URL
 if base_api_url[-1] != "/":  # For some very bright people who don't know how to read
     base_api_url += "/"
+if fallback_api_url[-1] != "/":
+    fallback_api_url += "/"
+
 
 # Bot discord presences
 statuses: list = statuses.split(',')
@@ -103,24 +108,10 @@ for i in range(len(statuses)):
     statuses[i] = statuses[i].strip()
     statuses[i] = statuses[i].split('|')
 
-try:
-    response = requests.get(base_api_url + "categories", timeout=10)
-    response.raise_for_status()  # Raise an error for HTTP status codes 4xx/5xx
-    json = response.json()
-    if json.get('http_status') == 200:
-        categories = json['data']
-    else:
-        raise ConnectionError("Invalid API Response. HTTP status is not 200.")
-except requests.exceptions.Timeout:
-    console.critical("API request timed out after 10 seconds.")
-    sys.exit(1)
-except requests.exceptions.RequestException as e:
-    console.critical(f"Error while connecting to the API. Error: {e}")
-    sys.exit(1)
 
 
-async def send_api_request(url: str, params: dict = None) -> dict | None:
-    timeout = aiohttp.ClientTimeout(total=15, connect=5)
+async def send_async_api_request(url: str, params: dict = None, fallback=False) -> dict | None:
+    timeout = aiohttp.ClientTimeout(total=5, connect=2)
     try:
         console.debug(f"Sending API request to {url} with params: {params}")
         async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -135,12 +126,47 @@ async def send_api_request(url: str, params: dict = None) -> dict | None:
                     console.error(f"API returned status {resp.status} for {url}")
                     return None
     except asyncio.TimeoutError:
-        console.error(f"API request to {url} timed out.")
-        return None
+        if fallback:
+            console.error(f"API request to {url} timed out. Fallback also timed out.")
+            return None
+        else:
+            console.warning(f"API request to {url} timed out. Trying fallback API.")
+            return await send_async_api_request(fallback_api_url + url.split(base_api_url)[1], params, True)
     except aiohttp.ClientError as e:
-        console.error(f"Error while connecting to the API at {url}. Error: {e}")
-        return None
+        if fallback:
+            console.error(f"Error while connecting to the API at {url}. Error: {e}")
+            return None
+        else:
+            console.warning(f"Error while connecting to the API at {url}. Trying fallback API. Error: {e}")
+            return await send_async_api_request(fallback_api_url + url.split(base_api_url)[1], params, True)
 
+def send_api_request(url: str, params: dict = None, fallback=False) -> dict | None:
+    try:
+        console.debug(f"Sending API request to {url} with params: {params}")
+        response = requests.get(url, params=params, timeout=5)
+        data = response.json()
+        console.debug(f"Received successful response from {url}")
+        return data['data']
+    except requests.exceptions.Timeout:
+        if fallback:
+            console.error(f"API request to {url} timed out. Fallback also timed out.")
+            return None
+        else:
+            console.warning(f"API request to {url} timed out. Trying fallback API.")
+            return send_api_request(fallback_api_url + url.split(base_api_url)[1], params, True)
+    except requests.exceptions.RequestException as e:
+        if fallback:
+            console.error(f"Error while connecting to the API at {url}. Error: {e}")
+            return None
+        else:
+            console.warning(f"Error while connecting to the API at {url}. Trying fallback API. Error: {e}")
+            return send_api_request(fallback_api_url + url.split(base_api_url)[1], params, True)
+
+
+categories = send_api_request(base_api_url + "categories")
+if categories is None:
+    console.critical("Could not get categories from the API. Exiting.")
+    sys.exit(1)
 
 
 def get_db(storage_method_override: str = None) -> tuple:
@@ -217,8 +243,6 @@ def init_database():
     _con.commit()
     _con.close()
 
-
-init_database()
 client = commands.Bot(help_command=None)
 
 console.debug("Owner IDs: " + str(owner_ids))
@@ -231,7 +255,7 @@ async def get_circular_list(category: str) -> tuple | None:
     if category not in categories:
         raise ValueError(f"Invalid Category. `{category}` was passed in while `{categories}` are valid.")
 
-    data = await send_api_request(url)
+    data = await send_async_api_request(url)
     return tuple(data)
 
 
@@ -245,7 +269,7 @@ async def get_latest_circular(category: str) -> dict | None:
         # Get the latest circulars of each category
         for category in categories:
             async with aiohttp.ClientSession(timeout=10) as session:
-                data = await send_api_request(url + category)
+                data = await send_async_api_request(url + category)
                 latest_circular.append(data)
 
         # Get the circular with the highest ID in the latest circulars of each category
@@ -253,7 +277,7 @@ async def get_latest_circular(category: str) -> dict | None:
 
     # If the latest circular of a valid category is requested
     elif category in categories:
-        data = await send_api_request(url + category)
+        data = await send_async_api_request(url + category)
         latest_circular = data
 
     else:
@@ -267,7 +291,7 @@ async def get_png(download_url: str) -> tuple | None:
     url = base_api_url + "getpng"
     params = {'url': download_url}
 
-    data = await send_api_request(url, params)
+    data = await send_async_api_request(url, params)
     return tuple(data)
 
 
@@ -275,7 +299,7 @@ async def search(query: str | int, amount: int = 3) -> tuple | None:
     url = base_api_url + "search"
     params = {'query': query, "amount": amount}
 
-    data = await send_api_request(url, params)
+    data = await send_async_api_request(url, params)
     return tuple(data)
 
 async def log(level, category, msg, *args):
@@ -651,3 +675,5 @@ async def create_search_dropdown(options: list[discord.SelectOption], msg, user_
             self.stop()
 
     return SearchDropdown(msg)
+
+print('e')
