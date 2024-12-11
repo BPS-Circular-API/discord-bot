@@ -130,7 +130,7 @@ class Owners(commands.Cog):
                     discord.OptionChoice("Servers", value="servers"),
                 ]
             ) = None,
-            debug_guild: int = None, debug_user: int = None
+            debug_guild: str = None, debug_user: str = None
     ):
 
         if ctx.author.id not in owner_ids:  # Check if the user is a bot owner
@@ -226,9 +226,9 @@ class Owners(commands.Cog):
             cur.execute("SELECT * FROM dm_notify")  # Get all the users from the database
             users = cur.fetchall()  # Get all the user_id s from the database
 
-            user_ids = [x[0] for x in users]  # Get all the user_id s from the database
-            user_messages = [x[1] for x in users]  # Get all the messages from the database
-            del users, guild_notify  # Delete the variables to free up memory
+            user_ids = [x[0] for x in users]
+            user_messages = [x[1] for x in users]
+            del users, guild_notify
 
             error_embed = discord.Embed(title=f"Error!",
                                         description="Please make sure that I have the permission "
@@ -251,10 +251,12 @@ class Owners(commands.Cog):
                     )
 
                 case _:
+                    print("e")
                     await send_to_guilds(
                         guilds=guilds, channels=channels, messages=messages, notif_msgs=notif_msgs, embed=embed,
                         embed_list=embed_list, error_embed=error_embed, id_=id_
                     )
+                    print("f")
                     await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_)
 
             console.info(f"Sent Circular to {len(notif_msgs['dm'])} users and {len(notif_msgs['guild'])} guilds.")

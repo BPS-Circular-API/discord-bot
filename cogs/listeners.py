@@ -164,7 +164,6 @@ class Listeners(commands.Cog):
 
             #console.debug(f"[Listeners] | No new circulars found.")
 
-    async def notify(self, _circular_category, _circular_obj):
         # Gather all guilds
         con, cur = get_db()
 
