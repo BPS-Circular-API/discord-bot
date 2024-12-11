@@ -10,7 +10,6 @@ from discord.ext import commands
 from colorlog import ColoredFormatter
 import requests
 import mysql.connector
-from unicodedata import category
 
 
 # Initializing the logger
