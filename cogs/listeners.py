@@ -10,7 +10,7 @@ import pybpsapi
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, \
     status_interval, log, embed_url, base_api_url, send_to_guilds, send_to_users, categories, statuses, \
-    circular_check_interval, get_db, mysql_config, storage_method, fallback_api_url
+    circular_check_interval, get_db, mysql_config, storage_method, fallback_api_url, multi_page_embed_generator
 
 
 class Listeners(commands.Cog):
@@ -192,9 +192,9 @@ class Listeners(commands.Cog):
         id_ = _circular_obj['id']
 
         # Get the circular image
-        png_url = await get_png(link)
+        png_urls = await get_png(link)
 
-        if not png_url:
+        if not png_urls:
             await log('error', 'listener', f"Error in getting circular image for {id_}. It is None.")
             return
 
@@ -210,35 +210,14 @@ class Listeners(commands.Cog):
                               url=embed_url)
         embed.set_footer(text=embed_footer)
         embed.set_author(name=embed_title)
-        embed.set_image(url=png_url[0])  # Set the image to the attachment
+        embed.set_image(url=png_urls[0])  # Set the image to the attachment
         embed.add_field(name=f"[{id_}]  `{title.strip()}`", value=link, inline=False)
 
-        embed_list = []
-
-        # If the circular has more than 1 page
-        if len(png_url) > 1:
-            for i in range(len(png_url)):
-                # The first image is already there in the main embed
-                if i == 0:
-                    continue
-
-                # If the circular has more than 4 pages, only send the first 4
-                # This is due to the discord embed limit of 4 images.
-                elif i > 3:
-                    embed.add_field(
-                        name="Note",
-                        value=f"This circular has {len(png_url) - 4} more pages. Please visit the [link]({link}) to view them.",
-                        inline=False
-                    )
-                    break
-
-                temp_embed = discord.Embed(url=embed_url)
-                temp_embed.set_image(url=png_url[i])
-                embed_list.append(temp_embed.copy())
+        embed_list = multi_page_embed_generator(png_urls=png_urls, embed=embed, link=link)
 
         # Gather all guilds/users and send the embed
-        await send_to_guilds(guilds, channels, messages, notif_msgs, embed, embed_list, error_embed, id_)
-        await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_)
+        await send_to_guilds(guilds, channels, messages, notif_msgs, embed_list, error_embed, id_)
+        await send_to_users(user_ids, user_messages, notif_msgs, embed_list, id_)
 
         await log(
             'info', "listener",

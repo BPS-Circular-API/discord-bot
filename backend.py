@@ -329,10 +329,11 @@ async def log(level, category, msg, *args):
 
 
 async def send_to_guilds(
-        guilds: list, channels: list, messages: list, notif_msgs: dict, embed: discord.Embed, embed_list: list,
+        guilds: list, channels: list, messages: list, notif_msgs: dict, embed_list: tuple[discord.Embed],
         error_embed: discord.Embed, id_: int
 ):
     con, cur = get_db()
+    embed = embed_list[0]
 
     for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
@@ -374,7 +375,7 @@ async def send_to_guilds(
 
         # Try to send the message
         try:
-            _msg = await channel.send(embeds=[embed.copy(), *embed_list])
+            _msg = await channel.send(embeds=list(embed_list))
             console.debug(f"Sent Circular Embed to {guild.id} | {channel.id}")
 
         # If the bot doesn't have permissions to post in the channel
@@ -385,7 +386,7 @@ async def send_to_guilds(
 
                 try:
                     await _channel.send(embed=error_embed)
-                    _msg = await _channel.send(embeds=[embed.copy(), *embed_list])
+                    _msg = await _channel.send(embeds=list(embed_list))
 
                     console.warning(
                         f"Could not send message to {channel.id} in {guild.id}. Sent to {channel.id} instead.")
@@ -416,9 +417,10 @@ async def send_to_guilds(
     con.close()
 
 
-async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, embed: discord.Embed, embed_list: list,
+async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, embed_list: list,
                         id_: int):
     con, cur = get_db()
+    embed = embed_list[0]
 
     for user, message in zip(user_ids, user_messages):
 
@@ -428,6 +430,7 @@ async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, e
         # If the user is not found (deleted)
         except discord.NotFound:
             console.warning(f"User not found. User: {user}")
+
             await log('info', 'listener', f'Removed {user} from database due to discord.NotFound')
             cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user,))
             con.commit()
@@ -443,7 +446,7 @@ async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, e
 
         # Try to send the embed
         try:
-            _msg = await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed to the user
+            _msg = await user.send(embeds=list(embed_list))  # Send the embed to the user
             console.debug(f"Successfully sent Circular in DMs to {user.name} ({user.display_name}) | {user.id}")
 
         # If their DMs are disabled/bot is blocked
@@ -456,7 +459,6 @@ async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, e
             # Remove them from database
             cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
             con.commit()
-
             continue
 
         except Exception as e:
@@ -473,6 +475,33 @@ async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, e
             console.error(f"Error: {e}")
 
     con.close()
+
+
+def multi_page_embed_generator(png_urls: tuple, embed: discord.Embed, link: str):
+    """
+    If the circular has more than 1 page, this function will create duplicate discord embeds with different
+    page images and add it to the embed_list.
+    """
+    embed_list = [embed]
+
+    if len(png_urls) > 1:
+        # Range starts from 1 because the first page is already added to the embed_list
+        for i in range(1, len(png_urls)):
+            # If the circular has more than 4 pages, only send the first 4
+            # This is due to the discord embed limit of 4 images.
+            if i > 3:
+                embed_list[0].add_field(
+                    name="Note",
+                    value=f"This circular has {len(png_urls) - 4} more pages. Please visit the [link]({link}) to view them.",
+                    inline=False
+                )
+                break
+
+            temp_embed = discord.Embed(url=embed_url)
+            temp_embed.set_image(url=png_urls[i])
+            embed_list.append(temp_embed.copy())
+
+    return embed_list
 
 
 # Confirm Button Discord View
@@ -668,5 +697,3 @@ async def create_search_dropdown(options: list[discord.SelectOption], msg, user_
             self.stop()
 
     return SearchDropdown(msg)
-
-print('e')

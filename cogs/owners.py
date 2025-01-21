@@ -2,7 +2,7 @@ import discord
 import math
 from discord.ext import commands
 from backend import owner_ids, embed_title, embed_footer, embed_color, console, owner_guilds, get_png, ConfirmButton, \
-    DeleteButton, log, search, embed_url, send_to_guilds, send_to_users, categories, get_db
+    DeleteButton, log, search, embed_url, send_to_guilds, send_to_users, categories, get_db, multi_page_embed_generator
 
 category_options = []
 for i in categories:
@@ -148,26 +148,11 @@ class Owners(commands.Cog):
         if custom_message is not None:  # If the user has provided a custom message
             embed.add_field(name="Message from the Developer", value=custom_message, inline=False)
 
-        png_url = await get_png(url)  # Get the png from the url
-        embed.set_image(url=png_url[0])  # Set the image of the embed to the file
+        png_urls = await get_png(url)  # Get the png from the url
+        embed.set_image(url=png_urls[0])  # Set the image of the embed to the file
 
-        embed_list = []
         notif_msgs = {"guild": [], "dm": []}
-
-        if len(png_url) != 1:  # If there is more than a single page in the circular
-            for i in range(len(png_url)):
-                if i == 0:
-                    continue
-                elif i > 3:
-                    embed.add_field(
-                        name="Note",
-                        value=f"This circular has {len(png_url) - 4} more pages. Please visit the [link]({url}) to view them.",
-                        inline=False
-                    )
-                    break
-                temp_embed = discord.Embed(url=embed_url)  # Create a new embed
-                temp_embed.set_image(url=png_url[i])
-                embed_list.append(temp_embed.copy())
+        embed_list = multi_page_embed_generator(png_urls=png_urls, embed=embed, link=url)
 
         if debug_guild:  # If a debug guild is specified, send the message to ONLY that guild.
             cur.execute("SELECT message FROM guild_notify WHERE guild_id = ?", (debug_guild,))
@@ -185,7 +170,7 @@ class Owners(commands.Cog):
 
             channel = await guild.fetch_channel(int(channel_id))  # Get the channel object
 
-            await channel.send(embeds=[embed.copy(), *embed_list])  # Send the embed
+            await channel.send(embeds=embed_list)  # Send the embed
             return await ctx.respond(f"Notified the `{debug_guild}` server.")  # Respond to the user and return
 
         elif debug_user:  # If a debug user is specified, send the message to ONLY that user.
@@ -199,13 +184,13 @@ class Owners(commands.Cog):
 
             user = await self.client.fetch_user(int(debug_user))  # Get the user object
 
-            await user.send(embeds=[embed.copy(), *embed_list])  # Send the embed
+            await user.send(embeds=embed_list)  # Send the embed
             return await ctx.respond(f"Notified the `{debug_user}` user.")  # Respond to the user and return
 
         else:   # TODO this button is not for you
             button = ConfirmButton(ctx.author.id)  # Create a ConfirmButton object
 
-            await ctx.followup.send(embeds=[embed.copy(), *embed_list], view=button)
+            await ctx.followup.send(embeds=embed_list, view=button)
             await button.wait()  # Wait for the user to confirm
 
             if button.value is None:  # Timeout
@@ -240,24 +225,25 @@ class Owners(commands.Cog):
             match send_only_to:  # If it has been specified to send the notifications to only servers/dms
                 case "dms":  # Send notifications to dms
                     await send_to_users(
-                        user_ids=user_ids, user_messages=user_messages, notif_msgs=notif_msgs, embed=embed,
+                        user_ids=user_ids, user_messages=user_messages, notif_msgs=notif_msgs,
                         embed_list=embed_list, id_=id_
                     )
 
                 case "servers":  # Send notifications to servers
                     await send_to_guilds(
-                        guilds=guilds, channels=channels, messages=messages, notif_msgs=notif_msgs, embed=embed,
+                        guilds=guilds, channels=channels, messages=messages, notif_msgs=notif_msgs,
                         embed_list=embed_list, error_embed=error_embed, id_=id_
                     )
 
                 case _:
-                    print("e")
                     await send_to_guilds(
-                        guilds=guilds, channels=channels, messages=messages, notif_msgs=notif_msgs, embed=embed,
+                        guilds=guilds, channels=channels, messages=messages, notif_msgs=notif_msgs,
                         embed_list=embed_list, error_embed=error_embed, id_=id_
                     )
-                    print("f")
-                    await send_to_users(user_ids, user_messages, notif_msgs, embed, embed_list, id_)
+                    await send_to_users(
+                        user_ids=user_ids, user_messages=user_messages, notif_msgs=notif_msgs,
+                        embed_list=embed_list, id_=id_
+                    )
 
             console.info(f"Sent Circular to {len(notif_msgs['dm'])} users and {len(notif_msgs['guild'])} guilds.")
 
@@ -395,32 +381,30 @@ class Owners(commands.Cog):
 
         match update_type:
             case "image":
+                await ctx.respond("Updating images...")
+                counter = 0
 
+                circular_obj = (await search(id_))[0]
+                png = await get_png(circular_obj['link'])
+
+                embed_list = multi_page_embed_generator(png_urls=png, embed=msg_list[0].embeds[0], link=circular_obj['link'])
+
+                # For each notification message that was sent
                 for msg in msg_list:
-                    current_embed = msg.embeds[0]
-                    embed_list = []
 
-                    data = await search(id_)
-                    png = await get_png(data['link'])
+                    # Modify all embeds to have the correct description
+                    # TODO it might be possible to set each embed's description to a variable and modify that variable only
+                    for embed in embed_list:
+                        embed.description = msg.embeds[0].description
 
-                    if png is None:
-                        await ctx.respond("Error, png is None")
-                        return
+                    await msg.edit(embeds=embed_list)
 
-                    current_embed.set_image(url=png[0])
+                    counter += 1
+                    if counter % 10 == 0:
+                        await ctx.response.edit_original_message(f"Updating images... {counter}/{len(msg_list)}")
 
-                    if len(png) != 1:
-                        for i in range(png):
-                            if i == 0:
-                                continue
-                            if i > 3:
-                                break
-
-                            temp_embed = discord.Embed(url=embed_url)
-                            temp_embed.set_image(url=png[i])
-                            embed_list.append(temp_embed.copy())
-
-                    await msg.edit(embeds=[current_embed, *embed_list])
+                await ctx.response.edit_original_message(f"Successfully updated {len(msg_list)} messages.")
+                return
 
             case "delete":
                 for msg in msg_list:
@@ -434,7 +418,7 @@ class Owners(commands.Cog):
                     current_embed.add_field(name="Dev Message", value=dev_message)
                     await msg.edit(embed=current_embed)
 
-        await ctx.respond("Successfully updated the messages.")
+        await ctx.respond(f"Successfully updated {len(msg_list)} messages.")
 
     @owners.command()
     async def send_msg(self, ctx, user_id: str, msg: str):
