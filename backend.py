@@ -168,7 +168,18 @@ if categories is None:
     sys.exit(1)
 
 
-def get_db() -> tuple:
+def get_db(storage_method_override=None) -> tuple:
+
+    if storage_method_override is not None:
+        if storage_method_override == "mysql":
+            con = mysql.connector.connect(**mysql_config)
+            cur = con.cursor(prepared=True)
+        else:
+            con = sqlite3.connect('./data/data.db')
+            cur = con.cursor()
+
+        return con, cur
+
     if storage_method == "mysql":
         con = mysql.connector.connect(**mysql_config)
         cur = con.cursor(prepared=True)
@@ -295,38 +306,6 @@ async def search(query: str | int, amount: int = 3) -> tuple | None:
     data = await send_async_api_request(url, params)
     return tuple(data)
 
-async def log(level, category, msg, *args):
-    # Db Structure - type, msg, category, timestamp, level
-    # categories = ["command", "listener", "backend", "etc"]
-    if level.upper() not in ["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"]:
-        level = "INFO"
-
-    # join msg and args into one string
-    if args:
-        msg %= args
-    msg.replace('"', "")
-
-    # This code logs the message using the correct level's logger based on the level parameter
-    match level.upper():
-        case "DEBUG":
-            console.debug(msg)
-        case "INFO":
-            console.info(msg)
-        case "WARNING":
-            console.warning(msg)
-        case "ERROR":
-            console.error(msg)
-        case "CRITICAL":
-            console.critical(msg)
-
-    if category not in ["command", "notification", "listener", "backend", "etc"]:
-        category = "etc"
-
-    con, cur = get_db()
-
-    cur.execute('INSERT INTO logs VALUES (?, ?, ?, ?)', (int(time.time()), level.upper(), category, msg))
-    con.commit()
-
 
 async def send_to_guilds(
         guilds: list, channels: list, messages: list, notif_msgs: dict, embed_list: tuple[discord.Embed],
@@ -352,7 +331,7 @@ async def send_to_guilds(
                 guild = guild.id
 
             console.warning(
-                f"Guild or channel not found. Guild: {guild}, Channel: {channel}"
+                f"Guild or channel not found. Guild: {guild}, Channel: {channel}. "
                 "Seems like I was kicked from the server. Deleting from DB"
             )
             cur.execute(
@@ -380,26 +359,18 @@ async def send_to_guilds(
 
         # If the bot doesn't have permissions to post in the channel
         except discord.Forbidden:
-            # Find a channel where it can send messages
-            # TODO: check if this is possible with no intents
-            for _channel in guild.text_channels:
 
-                try:
-                    await _channel.send(embed=error_embed)
-                    _msg = await _channel.send(embeds=list(embed_list))
+            console.warning(
+                    f"Couldn't send Circular to {guild.id}'s {channel.id} due to discord.Forbidden while attempting to send. "
+                    f"Deleting from DB.1"
+            )
 
-                    console.warning(
-                        f"Could not send message to {channel.id} in {guild.id}. Sent to {channel.id} instead.")
-                    channel = _channel  # Set the channel to the new channel
-                    break
-
-                except discord.Forbidden:  # If the bot can't send messages in the channel
-                    continue
-
-            else:  # If it can't send the message in any channel
-                console.error(
-                    f"Couldn't send Circular to {guild.id}'s {channel.id} due to discord.Forbidden while attempting to send.")
-                continue
+            cur.execute(
+                "DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
+                (guild, channel)
+            )
+            con.commit()
+            continue
 
         except Exception as e:
             console.error(
@@ -429,9 +400,8 @@ async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, e
 
         # If the user is not found (deleted)
         except discord.NotFound:
-            console.warning(f"User not found. User: {user}")
+            console.warning(f"discord.NotFound while fetching user `{user}` to send notification to. Removed from database")
 
-            await log('info', 'listener', f'Removed {user} from database due to discord.NotFound')
             cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user,))
             con.commit()
             continue
@@ -451,10 +421,10 @@ async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, e
 
         # If their DMs are disabled/bot is blocked
         except discord.Forbidden:
-            console.error(
-                f"Could not send Circular in DMs to {user.name} ({user.display_name}) | {user.id}. DMs are disabled.")
-            await log('info', 'listener',
-                      f"Removed {user.name} ({user.display_name}) | {user.id} from the DM notify list.")
+            console.warning(
+                f"Could not send Circular in DMs to {user.name} ({user.display_name}) | {user.id}. DMs are disabled. "
+                f"Removed from database"
+            )
 
             # Remove them from database
             cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))

@@ -2,7 +2,7 @@ import discord
 import math
 from discord.ext import commands
 from backend import owner_ids, embed_title, embed_footer, embed_color, console, owner_guilds, get_png, ConfirmButton, \
-    DeleteButton, log, search, embed_url, send_to_guilds, send_to_users, categories, get_db, multi_page_embed_generator
+    DeleteButton, search, embed_url, send_to_guilds, send_to_users, categories, get_db, multi_page_embed_generator
 
 category_options = []
 for i in categories:

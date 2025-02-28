@@ -4,7 +4,7 @@ import time
 import discord.ext.pages
 from discord.ext import commands
 from backend import get_circular_list, console, embed_color, embed_footer, embed_title, categories, get_png, \
-    search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, log, embed_url, FeedbackButton, \
+    search, owner_ids, DeleteButton, ConfirmButton, get_latest_circular, embed_url, FeedbackButton, \
     ignored_circulars, create_search_dropdown, discord_invite_url, invite_url, get_db
 from discord import SlashCommandGroup
 

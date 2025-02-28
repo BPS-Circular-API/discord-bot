@@ -9,7 +9,7 @@ import asyncio
 import pybpsapi
 from discord.ext import commands, tasks
 from backend import console, embed_color, embed_footer, embed_title, get_png, backup_interval, DeleteButton, \
-    status_interval, log, embed_url, base_api_url, send_to_guilds, send_to_users, categories, statuses, \
+    status_interval, embed_url, base_api_url, send_to_guilds, send_to_users, statuses, \
     circular_check_interval, get_db, mysql_config, storage_method, fallback_api_url, multi_page_embed_generator
 
 
@@ -79,27 +79,27 @@ class Listeners(commands.Cog):
     async def on_message(self, ctx):
         # Ignore if message is from a bot or a reply
         if (not ctx.author.bot) & (self.client.user.mentioned_in(ctx)) & (ctx.reference is None):
-            # Ignore if it's a @everyone or @here
+            # Ignore if it's an @everyone or @here
             if ctx.mention_everyone:
                 return
 
             try:
                 msg = await ctx.reply(embed=self.mention_embed)
                 await msg.edit(embed=self.mention_embed, view=DeleteButton(msg, ctx.author.id))
-                await log('info', 'command',
+                console.info(
                           f"Sent mention message to {ctx.author.name} ({ctx.author.display_name}) | {ctx.author.id}")
 
             except discord.Forbidden:  # If the bot doesn't have permission to send messages
-                await log('warning', 'command',
+                console.warning(
                           f"Missing permissions to send mention message in {ctx.channel.id} in {ctx.guild.id}")
 
             except Exception as e:
-                await log('warning', 'command',
+                console.warning(
                           f"Error in sending mention message in {ctx.channel.id} in {ctx.guild.id} : {e}")
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-        await log('info', 'listener', f"Joined guild {guild.id}")
+        console.info(f"Joined guild {guild.id}")
 
     @tasks.loop(seconds=status_interval * 60)
     async def random_status(self):
@@ -129,7 +129,7 @@ class Listeners(commands.Cog):
                 activity=discord.Activity(type=types[rand_int], name=activities[rand_int])
             )
         except Exception as e:
-            await log('warning', 'listener', f"Error in changing status : {e}")
+            console.warning(f"Error in changing status : {e}")
         console.debug(f"Changed status to {activities[rand_int]}")
 
     @tasks.loop(seconds=3600 * 24)  # Run every 24 hours
@@ -160,7 +160,7 @@ class Listeners(commands.Cog):
                 await self.notify(circular_object['category'], circular_object)
             except Exception as err:
                 console.error(err)
-                await log('error', 'listener', f"Error in notifying about circular {circular_object['id']}: {err}")
+                console.error(f"Error in notifying about circular {circular_object['id']}: {err}")
 
             #console.debug(f"[Listeners] | No new circulars found.")
 
@@ -195,7 +195,7 @@ class Listeners(commands.Cog):
         png_urls = await get_png(link)
 
         if not png_urls:
-            await log('error', 'listener', f"Error in getting circular image for {id_}. It is None.")
+            console.warning(f"Error in getting circular image for {id_}. It is None.")
             return
 
         # Create the error embed
@@ -219,8 +219,7 @@ class Listeners(commands.Cog):
         await send_to_guilds(guilds, channels, messages, notif_msgs, embed_list, error_embed, id_)
         await send_to_users(user_ids, user_messages, notif_msgs, embed_list, id_)
 
-        await log(
-            'info', "listener",
+        console.info(
             f"Notified {len(notif_msgs['guild'])} guilds and {len(notif_msgs['dm'])} "
             f"users about the new circular. ({id_})"
         )
@@ -271,7 +270,7 @@ class Listeners(commands.Cog):
                 data
             )
 
-        await log('info', "etc", f"Backed up the database to ./data/backups/data-{date_time}.db")
+        console.info(f"Backed up the database to ./data/backups/data-{date_time}.db")
 
     @commands.Cog.listener()
     async def on_application_command_error(self, ctx: discord.ApplicationContext, error: Exception):
@@ -285,7 +284,7 @@ class Listeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_application_command(self, ctx: discord.ApplicationContext):
-        await log('info', "command", f"{ctx.author} ({ctx.author.id}) used the command /{ctx.command.qualified_name}")
+        console.info(f"{ctx.author} ({ctx.author.id}) used the command /{ctx.command.qualified_name}")
 
     @random_status.before_loop
     @check_for_circular.before_loop
