@@ -1,7 +1,7 @@
 import asyncio
 import configparser
 import sqlite3
-import time
+from datetime import datetime
 import discord
 import logging
 import aiohttp
@@ -11,6 +11,60 @@ from colorlog import ColoredFormatter
 import requests
 import mysql.connector
 
+def get_db(storage_method_override=None) -> tuple:
+
+    if storage_method_override is not None:
+        if storage_method_override == "mysql":
+            con = mysql.connector.connect(**mysql_config)
+            cur = con.cursor(prepared=True)
+        else:
+            con = sqlite3.connect('./data/data.db')
+            cur = con.cursor()
+
+        return con, cur
+
+    if storage_method == "mysql":
+        con = mysql.connector.connect(**mysql_config)
+        cur = con.cursor(prepared=True)
+    else:
+        con = sqlite3.connect('./data/data.db')
+        cur = con.cursor()
+
+    return con, cur
+
+
+class SQLHandler(logging.Handler):
+    """Custom logging handler that saves log messages to a database."""
+
+    def __init__(self):
+        super().__init__()
+
+    def emit(self, record):
+        """Insert a log record into the database."""
+        if record.levelname.upper() == "DEBUG":
+            return
+
+
+        con, cur = get_db()
+
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        level = record.levelname
+        message = self.format(record)
+        filename = record.pathname  # Full file path
+        function_name = record.funcName  # Function name
+        line_number = record.lineno  # Line number
+        thread_name = record.threadName  # Thread name
+        process_id = record.process  # Process ID
+        exception_info = record.exc_text if record.exc_info else None  # Exception details
+
+        cur.execute(
+            "INSERT INTO logs (timestamp, level, filename, function_name, line_number, thread_name, process_id, message, exception_info) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (timestamp, level, filename, function_name, line_number, thread_name, process_id, message, exception_info),
+        )
+
+        con.commit()
+        con.close()
 
 # Initializing the logger
 def colorlogger(name='bps-circular-bot'):
@@ -18,10 +72,19 @@ def colorlogger(name='bps-circular-bot'):
     # for logger in logging.Logger.manager.loggerDict:
     #    logging.getLogger(logger).disabled = True
     logger = logging.getLogger(name)
-    stream = logging.StreamHandler()
     log_format = "%(reset)s%(log_color)s%(levelname)-8s%(reset)s | %(log_color)s%(message)s"
-    stream.setFormatter(ColoredFormatter(log_format))
-    logger.addHandler(stream)
+
+    # Console Handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(ColoredFormatter(log_format))
+
+    # DB Handler
+    db_handler = SQLHandler()
+    db_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+
+    logger.addHandler(console_handler)
+    logger.addHandler(db_handler)
+
     return logger
 
 
@@ -168,27 +231,6 @@ if categories is None:
     sys.exit(1)
 
 
-def get_db(storage_method_override=None) -> tuple:
-
-    if storage_method_override is not None:
-        if storage_method_override == "mysql":
-            con = mysql.connector.connect(**mysql_config)
-            cur = con.cursor(prepared=True)
-        else:
-            con = sqlite3.connect('./data/data.db')
-            cur = con.cursor()
-
-        return con, cur
-
-    if storage_method == "mysql":
-        con = mysql.connector.connect(**mysql_config)
-        cur = con.cursor(prepared=True)
-    else:
-        con = sqlite3.connect('./data/data.db')
-        cur = con.cursor()
-
-    return con, cur
-
 
 def init_database():
     # Check the database and verify if all required tables are there
@@ -211,17 +253,6 @@ def init_database():
     """
     )
 
-    # Create table logs
-    _cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS `logs` (
-            timestamp	INTEGER NOT NULL,
-            log_level	TEXT DEFAULT 'debug',
-            category	TEXT,
-            msg	TEXT
-        )
-        """
-    )
     _cur.execute(
         """
         CREATE TABLE IF NOT EXISTS `notif_msgs` ( 	
@@ -233,16 +264,22 @@ def init_database():
         )
         """
     )
-    _cur.execute(
+
+    sql = """
+            CREATE TABLE IF NOT EXISTS `logs` (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                timestamp DATETIME NOT NULL,
+                level VARCHAR(50) NOT NULL,
+                filename VARCHAR(255) NOT NULL,
+                function_name VARCHAR(255) NOT NULL,
+                line_number INT NOT NULL,
+                thread_name VARCHAR(255) NOT NULL,
+                process_id INT NOT NULL,
+                message TEXT NOT NULL,
+                exception_info TEXT NULL
+            );
         """
-        CREATE TABLE IF NOT EXISTS `search_feedback` ( 	
-            user_id 	BIGINT UNSIGNED, 	
-            message_id	BIGINT UNSIGNED, 	
-            search_query	TEXT, 	
-            response	TEXT 
-        )
-        """
-    )
+    _cur.execute(sql)
 
     _con.commit()
     _con.close()
@@ -393,22 +430,22 @@ async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, e
     con, cur = get_db()
     embed = embed_list[0]
 
-    for user, message in zip(user_ids, user_messages):
+    for user_id, message in zip(user_ids, user_messages):
 
         try:
-            user = await client.fetch_user(int(user))
+            user = await client.fetch_user(int(user_id))
 
         # If the user is not found (deleted)
         except discord.NotFound:
-            console.warning(f"discord.NotFound while fetching user `{user}` to send notification to. Removed from database")
+            console.warning(f"discord.NotFound while fetching user `{user_id}` to send notification to. Removed from database")
 
-            cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user,))
+            cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user_id,))
             con.commit()
             continue
 
         # If there is any other error
         except Exception as e:
-            console.error(f"Could get fetch a user {user}. Error: {e}")
+            console.error(f"Could get fetch a user {user_id}. Error: {e}")
             continue
 
         console.debug(f"[Listeners] | Message: {message}")
@@ -427,19 +464,19 @@ async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, e
             )
 
             # Remove them from database
-            cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user.id,))
+            cur.execute("DELETE FROM dm_notify WHERE user_id = ?", (user_id,))
             con.commit()
             continue
 
         except Exception as e:
-            console.error(f"Couldn't send Circular Embed to User: {user.id}")
+            console.error(f"Couldn't send Circular Embed to User: {user_id}")
             console.error(e)
             continue
 
         try:
             notif_msgs["dm"].append((_msg.id, user.id))
             cur.execute("INSERT INTO notif_msgs (circular_id, msg_id, type, channel_id) "
-                        "VALUES (?, ?, ?, ?)", (id_, _msg.id, "dm", user.id))
+                        "VALUES (?, ?, ?, ?)", (id_, _msg.id, "dm", user_id))
             con.commit()
         except Exception as e:
             console.error(f"Error: {e}")
