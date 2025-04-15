@@ -420,6 +420,88 @@ class Owners(commands.Cog):
 
         await ctx.respond(f"Successfully updated {len(msg_list)} messages.")
 
+
+
+    @owners.command(name="deletenotif", description="Edit a notification message.")
+    async def delete_notif(self, ctx, id_: int,
+                         delete_from: discord.Option(choices=[
+                             discord.OptionChoice("Server", value="server"),
+                             discord.OptionChoice("DM", value="dm"),
+
+                         ]) = None,
+                         most_recent_x: int = None,
+                         ):
+
+        if ctx.author.id not in owner_ids:
+            return await ctx.respond("You are not allowed to use this command.")
+        await ctx.defer()
+
+        msg_list = []
+        con, cur = get_db()
+
+        # Get the message ids of the circular embeds
+        cur.execute("SELECT msg_id, channel_id FROM notif_msgs WHERE circular_id = ? AND type = 'dm'", (id_,))
+        dm_msgs = cur.fetchall()
+        cur.execute("SELECT msg_id, channel_id, guild_id FROM notif_msgs WHERE circular_id = ? AND type = 'guild'",
+                         (id_,))
+        guild_msgs = cur.fetchall()
+
+        for msg in dm_msgs:
+            if delete_from == "server":
+                break
+            try:
+                user = await self.client.fetch_user(msg[1])
+                message = await user.fetch_message(msg[0])
+                msg_list.append(message)
+
+            except discord.NotFound:
+                console.warning(f"Could not find DM message with id {msg[0]}")
+                cur.execute("DELETE FROM notif_msgs WHERE circular_id = ? AND msg_id = ?", (id_, msg[0]))
+                con.commit()
+                continue
+
+            except discord.Forbidden:
+                console.warning(f"Could not fetch DM message with id {msg[0]}")
+                cur.execute("DELETE FROM notif_msgs WHERE circular_id = ? AND msg_id = ?", (id_, msg[0]))
+                con.commit()
+                continue
+
+            except Exception as e:
+                console.error(f"Could not fetch DM message with id {msg[0]}")
+                console.error(e)
+                continue
+
+        for msg in guild_msgs:
+            if delete_from == "dm":
+                break
+            try:
+                guild = await self.client.fetch_guild(msg[2])
+                channel = await guild.fetch_channel(msg[1])
+                message = discord.utils.get(await channel.history(limit=100).flatten(), id=msg[0])
+                msg_list.append(message)
+
+            except discord.NotFound:
+                console.warning(f"Could not find guild message with id {msg[0]}")
+                cur.execute("DELETE FROM notif_msgs WHERE circular_id = ? AND msg_id = ?", (id_, msg[0]))
+                continue
+
+        msg_list.reverse()
+
+        counter = 0
+        for msg in msg_list:
+            if most_recent_x is not None:
+                if counter >= most_recent_x:
+                    break
+            counter += 1
+
+
+            await msg.delete()
+            cur.execute("DELETE FROM notif_msgs WHERE circular_id = ?", (id_,))
+            con.commit()
+
+
+        await ctx.respond(f"Successfully deleted {counter} messages.")
+
     @owners.command()
     async def send_msg(self, ctx, user_id: str, msg: str):
         if ctx.author.id not in owner_ids:
