@@ -13,7 +13,6 @@ async def on_ready():
     console.info(f"Latency with Discord: {round(client.latency * 1000, 2)}ms")
     console.info(f"Latency with BPS API: {requests.get(base_api_url).elapsed.total_seconds() * 1000:.2f}ms")
 
-print("f")
 for file in os.listdir('./cogs'):
     if file.endswith('.py'):
         print(file)

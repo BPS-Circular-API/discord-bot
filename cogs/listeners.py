@@ -217,12 +217,23 @@ class Listeners(commands.Cog):
 
         # Gather all guilds/users and send the embed
         await send_to_guilds(guilds, channels, messages, notif_msgs, embed_list, error_embed, id_)
-        await send_to_users(user_ids, user_messages, notif_msgs, embed_list, id_)
 
-        console.info(
-            f"Notified {len(notif_msgs['guild'])} guilds and {len(notif_msgs['dm'])} "
-            f"users about the new circular. ({id_})"
-        )
+        try:
+            console.info(user_ids)
+            console.info(user_messages)
+            console.info(notif_msgs)
+            console.info(embed_list)
+            console.info(id_)
+            await send_to_users(user_ids, user_messages, notif_msgs, embed_list, id_)
+        except Exception as e:
+            console.error(f"Error in sending DM to users: {e}")
+            console.error("askjdaks")
+
+
+        # console.info(
+        #     f"Notified {len(notif_msgs['guild'])} guilds and {len(notif_msgs['dm'])} "
+        #     f"users about the new circular. ({id_})"
+        # )
 
     @tasks.loop(minutes=backup_interval * 60)
     async def backup(self):
