@@ -6,6 +6,8 @@ import discord
 import logging
 import aiohttp
 import sys
+
+from discord import Embed
 from discord.ext import commands
 from colorlog import ColoredFormatter
 import requests
@@ -95,7 +97,7 @@ config = configparser.RawConfigParser()
 
 # Attempt to open the config file
 try:
-    config.read('data/config.ini')
+    config.read('./data/config.ini')
 except Exception as e:
     print("Error reading the config.ini file. Error: " + str(e))
     sys.exit()
@@ -350,7 +352,6 @@ async def send_to_guilds(
 ):
     con, cur = get_db()
     embed = embed_list[0]
-
     for guild, channel, message in zip(guilds, channels, messages):  # For each guild in the database
 
         # Set the custom message if there is one
@@ -401,10 +402,9 @@ async def send_to_guilds(
                     f"Couldn't send Circular to {guild.id}'s {channel.id} due to discord.Forbidden while attempting to send. "
                     f"Deleting from DB.1"
             )
-
             cur.execute(
                 "DELETE FROM guild_notify WHERE guild_id = ? AND channel_id = ?",
-                (guild, channel)
+                (guild.id, channel.id)
             )
             con.commit()
             continue
@@ -425,7 +425,7 @@ async def send_to_guilds(
     con.close()
 
 
-async def send_to_users(user_ids: list, user_messages: list, notif_msgs: dict, embed_list: list,
+async def send_to_users(user_ids: list, user_messages: list[str], notif_msgs: dict, embed_list: list[Embed],
                         id_: int):
     con, cur = get_db()
     embed = embed_list[0]
