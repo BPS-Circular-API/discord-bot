@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS "search_feedback" (
 
 
 CREATE TABLE IF NOT EXISTS "notif_msgs" (
+    "timestamp" DATETIME DEFAULT NOW(),
 	"circular_id"	INTEGER NOT NULL,
 	"type"	TEXT NOT NULL,
 	"msg_id"	INTEGER NOT NULL UNIQUE,
