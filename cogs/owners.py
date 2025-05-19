@@ -20,6 +20,7 @@ class Owners(commands.Cog):
     async def on_ready(self):
         console.info(f"Cog : Owners.py loaded.")
 
+
     @owners.command(name='status', description='Change the bot status.')
     async def status(self, ctx, status: str, message: str):
         if ctx.author.id not in owner_ids:
@@ -422,7 +423,7 @@ class Owners(commands.Cog):
 
 
 
-    @owners.command(name="deletenotif", description="Edit a notification message.")
+    #@owners.command(name="deletenotif", description="Edit a notification message.")
     async def delete_notif(self, ctx, id_: int,
                          delete_from: discord.Option(choices=[
                              discord.OptionChoice("Server", value="server"),
@@ -483,6 +484,7 @@ class Owners(commands.Cog):
             except discord.NotFound:
                 console.warning(f"Could not find guild message with id {msg[0]}")
                 cur.execute("DELETE FROM notif_msgs WHERE circular_id = ? AND msg_id = ?", (id_, msg[0]))
+                con.commit()
                 continue
 
         msg_list.reverse()
