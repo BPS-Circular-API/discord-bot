@@ -497,11 +497,16 @@ def multi_page_embed_generator(png_urls: tuple, embed: discord.Embed, link: str)
             # If the circular has more than 4 pages, only send the first 4
             # This is due to the discord embed limit of 4 images.
             if i > 3:
-                embed_list[0].add_field(
-                    name="Note",
-                    value=f"This circular has {len(png_urls) - 4} more pages. Please visit the [link]({link}) to view them.",
-                    inline=False
-                )
+                # If this "This circular has x more pages" field does not already exist
+                # (If owner is reloading a circular's images)
+                if len(embed_list[0].fields) == 1:
+                    embed_list[0].add_field(
+                        name="Note",
+                        value=f"This circular has {len(png_urls) - 4} more pages. Please visit the [link]({link}) to view them.",
+                        inline=False
+                    )
+                else:
+                    console.debug(f"[Listeners] | Skipping Circular has x more pages due to embed already having the field")
                 break
 
             temp_embed = discord.Embed(url=embed_url)

@@ -401,10 +401,12 @@ class Owners(commands.Cog):
                     await msg.edit(embeds=embed_list)
 
                     counter += 1
-                    if counter % 10 == 0:
-                        await ctx.response.edit_original_message(f"Updating images... {counter}/{len(msg_list)}")
+                    # if counter % 10 == 0:
+                        # this part stops the update process after 10 for some reason
+                        # await ctx.response.edit_original_message(f"Updating images... {counter}/{len(msg_list)}")
 
-                await ctx.response.edit_original_message(f"Successfully updated {len(msg_list)} messages.")
+                console.info(f"Successfully updated {len(msg_list)} messages.")
+                #await ctx.response.edit_original_message(f"Successfully updated {len(msg_list)} messages.")
                 return
 
             case "delete":
@@ -423,7 +425,7 @@ class Owners(commands.Cog):
 
 
 
-    #@owners.command(name="deletenotif", description="Edit a notification message.")
+    @owners.command(name="deletenotif", description="Edit a notification message.")
     async def delete_notif(self, ctx, id_: int,
                          delete_from: discord.Option(choices=[
                              discord.OptionChoice("Server", value="server"),

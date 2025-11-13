@@ -1,6 +1,5 @@
 import os
 import sqlite3
-
 import discord
 import shutil
 import random
@@ -157,6 +156,13 @@ class Listeners(commands.Cog):
             # {'title': '...', 'link': '...', 'id': '...', 'category': '...'}
 
             try:
+                con, cur = get_db()
+                cur.execute('SELECT latest_circular_id FROM cache LIMIT 1')
+                res = cur.fetchone()
+                if res is not None:
+                    res = res[0]
+                    console.info(f"[Listeners] | Cached latest ID: {res}")
+
                 await self.notify(circular_object['category'], circular_object)
             except Exception as err:
                 console.error(err)
